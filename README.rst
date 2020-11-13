@@ -10,17 +10,17 @@ Averbis Python API
 .. image:: https://img.shields.io/badge/code%20style-black-000000.svg
   :target: https://github.com/averbis/averbis-python-api
 
-`Averbis <https://averbis.com>` is a leading text mining and machine learning company in Healthcare and Life Sciences. We extract information from texts, automate intellectual processes and make meaningful predictions.
+`Averbis <https://averbis.com>`_ is a leading text mining and machine learning company in Healthcare and Life Sciences. We extract information from texts, automate intellectual processes and make meaningful predictions.
 
 The **Averbis Python API** allows convenient access to the REST API of Averbis products. This includes in particular the ability to interact with the text mining pipelines offered by these products, e.g. to use these in data science environments such as Jupyter notebooks or for integration of the Averbis products in other enterprise systems.
 
 Supported products are:
 
-- `Health Discovery <https://averbis.com/health-discovery/>`
+- `Health Discovery <https://averbis.com/health-discovery/>`_
 
-- `Information Discovery <https://averbis.com/information-discovery/>`
+- `Information Discovery <https://averbis.com/information-discovery/>`_
 
-- `Patent Monitor <https://averbis.com/patent-monitor/>`
+- `Patent Monitor <https://averbis.com/patent-monitor/>`_
 
 Features
 --------
