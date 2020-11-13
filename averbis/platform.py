@@ -113,7 +113,7 @@ class Pipeline:
             self.__fail_on_pipeline_error_state(pipeline_info)
             if total_time_slept > self.pipeline_state_change_timeout:
                 raise OperationTimeoutError(
-                    f"Pipeline stuck in transient state {state} for ${total_time_slept}"
+                    f"Pipeline stuck in transient state {pipeline_info['pipelineState']} for ${total_time_slept}"
                 )
             sleep(self.pipeline_state_poll_interval)
             total_time_slept += self.pipeline_state_poll_interval
