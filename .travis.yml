@@ -8,5 +8,6 @@ install:
 - pip install --upgrade -e .[test]
 script:
 - pytest --cov=./
+- python -m mypy averbis
 after_success:
 - codecov
