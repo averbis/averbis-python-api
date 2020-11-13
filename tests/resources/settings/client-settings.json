@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "localhost-hd": {
+      "url": "https://localhost:8080/health-discovery",
+      "api-token": "dummy-token",
+      "verify-ssl": false
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "profiles": {
+    "*": {
+      "verify-ssl": "caRoot.pem"
+    },
+    "localhost-hd": {
+      "url": "https://localhost:8080/health-discovery",
+      "api-token": "dummy-token"
+    },
+    "localhost-id": {
+      "url": "https://localhost:8080/information-discovery",
+      "api-token": "dummy-token",
+      "verify-ssl": "id.pem"
+    }
+  }
+}
