@@ -31,8 +31,8 @@ from shutil import rmtree
 from setuptools import setup, Command, find_packages
 
 # Package meta-data.
-NAME = "Averbis Python API"
-DESCRIPTION = "Conveniently access the REST API of Averbis products from Python."
+NAME = "averbis-python-api"
+DESCRIPTION = "Averbis REST API client for Python."
 AUTHOR = "Averbis GmbH"
 REQUIRES_PYTHON = ">=3.6.0"
 
