@@ -17,7 +17,12 @@
 # limitations under the License.
 #
 #
-from averbis.highlighting import highlight_match, highlight_matches, highlight_annotation, highlight_annotations
+from averbis.highlighting import (
+    highlight_match,
+    highlight_matches,
+    highlight_annotation,
+    highlight_annotations,
+)
 import re
 
 

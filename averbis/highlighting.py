@@ -88,7 +88,9 @@ COLOR_LIST = {
 }
 
 
-def highlight_matches(document_text: str, matches: Iterable, highlight_color: str = "On_Green") -> None:
+def highlight_matches(
+    document_text: str, matches: Iterable, highlight_color: str = "On_Green"
+) -> None:
     pass
     """
     Highlights a list of annotations in a given document. Annotations must not overlap.
@@ -98,7 +100,7 @@ def highlight_matches(document_text: str, matches: Iterable, highlight_color: st
     """
     last_position = 0
     for match in sorted(matches, key=lambda match: match.start()):
-        sys.stdout.write(document_text[last_position: match.start()])
+        sys.stdout.write(document_text[last_position : match.start()])
         sys.stdout.write(
             _render_highlighted(
                 document_text,
@@ -150,7 +152,7 @@ def highlight_annotations(
     """
     last_position = 0
     for annotation in sorted(annotations, key=lambda ann: ann["begin"]):
-        sys.stdout.write(document_text[last_position: annotation["begin"]])
+        sys.stdout.write(document_text[last_position : annotation["begin"]])
         sys.stdout.write(
             _render_highlighted(
                 document_text,
@@ -197,11 +199,11 @@ def _render_highlighted(
     """  Actual internal print method that assembles the output string. """
     black_color = _get_text_color_from_list("Color_off")
     return (
-        document_text[begin - context_size: begin]
+        document_text[begin - context_size : begin]
         + _get_text_color_from_list(highlight_color)
         + document_text[begin:end]
         + black_color
-        + document_text[end: end + context_size]
+        + document_text[end : end + context_size]
     )
 
 

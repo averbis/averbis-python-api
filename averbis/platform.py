@@ -142,6 +142,13 @@ class Pipeline:
                 )
 
     def ensure_started(self) -> "Pipeline":
+        """
+        Checks if the pipline has started. If the pipeline has not started yet, an attempt will be made to start it. The
+        call will block for a certain time. If the time expires without the pipeline becoming available, an exception
+        is generated.
+
+        :return: the pipeline object for chaining additional calls.
+        """
         state = self.wait_for_pipeline_to_leave_transient_state()
         if state != self.STATE_STARTED:
             self.start()
@@ -149,6 +156,11 @@ class Pipeline:
         return self
 
     def ensure_stopped(self) -> "Pipeline":
+        """
+        Causes the pipeline on the server to shut done.
+
+        :return: the pipeline object for chaining additional calls.
+        """
         state = self.wait_for_pipeline_to_leave_transient_state()
         if state != self.STATE_STOPPED:
             self.stop()
@@ -156,31 +168,72 @@ class Pipeline:
         return self
 
     def start(self) -> dict:
+        """
+        Start the server-side pipeline. This call returns immediately. However, the pipeline will usually take a while
+        to boot and become available.
+
+        :return: The raw payload of the server response. Future versions of this library may return a better-suited
+                 representation.
+        """
         # noinspection PyProtectedMember
         return self.project.client._start_pipeline(self.project.name, self.name)
 
     def stop(self) -> dict:
+        """
+        Stop the server-side pipeline.
+
+        :return: The raw payload of the server response. Future versions of this library may return a better-suited
+                 representation.
+        """
         # noinspection PyProtectedMember
         return self.project.client._stop_pipeline(self.project.name, self.name)
 
     def get_info(self) -> dict:
+        """
+        Obtain information about the server-side pipeline.
+
+        :return: The raw payload of the server response. Future versions of this library may return a better-suited
+                 representation.
+        """
         # noinspection PyProtectedMember
         return self.project.client._get_pipeline_info(self.project.name, self.name)
 
     def delete(self) -> None:
+        """
+        Delete the pipeline from the server.
+
+        :return: The raw payload of the server response. Future versions of this library may return a better-suited
+                 representation.
+        """
         # noinspection PyProtectedMember
         self.project.client._delete_pipeline(self.project.name, self.name)
 
     def is_started(self) -> bool:
+        """
+        Checks if the pipeline has already started.
+
+        :return: Whether the pipeline has started.
+        """
         return self.get_info()["pipelineState"] == "STARTED"
 
     def analyse_text(self, source: Union[Path, IO, str], **kwargs) -> dict:
+        """
+        Analyze the given text or text file using the pipeline.
+
+        :return: The raw payload of the server response. Future versions of this library may return a better-suited
+                 representation.
+        """
         # noinspection PyProtectedMember
         return self.project.client._analyse_text(self.project.name, self.name, source, **kwargs)
 
     def analyse_texts(
         self, sources: Iterable[Union[Path, IO, str]], parallelism: int = 0, **kwargs
     ) -> Iterator[Result]:
+        """
+        Analyze the given texts or files using the pipeline. If feasible, multiple documents are processed in parallel.
+
+        :return: An iterator over the results produced by the pipeline.
+        """
         pipeline_instances = self.get_configuration()["analysisEnginePoolSize"]
         if parallelism < 0:
             parallel_request_count = max(pipeline_instances + parallelism, 1)
@@ -206,10 +259,22 @@ class Pipeline:
             return executor.map(run_analysis, sources)
 
     def analyse_html(self, source: Union[Path, IO, str], **kwargs) -> dict:
+        """
+        Analyze the given HTML string or HTML file using the pipeline.
+
+        :return: The raw payload of the server response. Future versions of this library may return a better-suited
+                 representation.
+        """
         # noinspection PyProtectedMember
         return self.project.client._analyse_html(self.project.name, self.name, source, **kwargs)
 
     def get_configuration(self) -> dict:
+        """
+        Obtain the pipeline configuration.
+
+        :return: The raw payload of the server response. Future versions of this library may return a better-suited
+                 representation.
+        """
         # noinspection PyProtectedMember
         return self.project.client._get_pipeline_configuration(self.project.name, self.name)
 
@@ -281,24 +346,45 @@ class Terminology:
         self.name = name
 
     def start_export(self, terminology_format: str = TERMINOLOGY_EXPORTER_OBO_1_4) -> None:
+        """
+        Trigger the export of the terminology.
+        """
         # noinspection PyProtectedMember
         self.project.client._start_terminology_export(
             self.project.name, self.name, terminology_format
         )
 
     def get_export_status(self) -> dict:
+        """
+        Obtain the status of the terminology export.
+
+        :return: The raw payload of the server response. Future versions of this library may return a better-suited
+                 representation.
+        """
         # noinspection PyProtectedMember
         return self.project.client._get_terminology_export_info(self.project.name, self.name)
 
     def start_import(
         self, source: Union[IO, str], importer: str = TERMINOLOGY_IMPORTER_OBO
     ) -> None:
+        """
+        Upload the given terminology and trigger its import.
+
+        :return: The raw payload of the server response. Future versions of this library may return a better-suited
+                 representation.
+        """
         # noinspection PyProtectedMember
         self.project.client._start_terminology_import(
             self.project.name, self.name, importer, source
         )
 
     def get_import_status(self) -> dict:
+        """
+        Obtain the status of the import of the terminology.
+
+        :return: The raw payload of the server response. Future versions of this library may return a better-suited
+                 representation.
+        """
         # noinspection PyProtectedMember
         return self.project.client._get_terminology_import_info(self.project.name, self.name)
 
@@ -345,6 +431,9 @@ class Terminology:
         )
 
     def delete(self) -> None:
+        """
+        Delete the terminology.
+        """
         # noinspection PyProtectedMember
         self.project.client._delete_terminology(self.project.name, self.name)
 
@@ -356,12 +445,22 @@ class Project:
         self.__cached_pipelines: dict = {}
 
     def get_pipeline(self, name: str) -> Pipeline:
+        """
+        Access an existing pipeline.
+
+        :return: The pipeline.
+        """
         if name not in self.__cached_pipelines:
             self.__cached_pipelines[name] = Pipeline(self, name)
 
         return self.__cached_pipelines[name]
 
     def create_pipeline(self, configuration: dict, name: str = None) -> Pipeline:
+        """
+        Create a new pipeline.
+
+        :return: The pipeline.
+        """
         if name is not None:
             cfg = copy.deepcopy(configuration)
             cfg["name"] = name
@@ -382,6 +481,11 @@ class Project:
         version: str = "",
         hierarchical: bool = True,
     ) -> Terminology:
+        """
+        Create a new terminology.
+
+        :return: The terminology.
+        """
         # noinspection PyProtectedMember
         response = self.client._create_terminology(
             self.name, terminology_name, label, languages, concept_type, version, hierarchical
@@ -389,24 +493,49 @@ class Project:
         return Terminology(self, response["payload"]["terminology_name"])
 
     def get_terminology(self, terminology: str) -> Terminology:
+        """
+        Obtain an existing terminology.
+
+        :return: The terminology.
+        """
         return Terminology(self, terminology)
 
     def list_terminologies(self) -> dict:
+        """
+        List all existing terminologies.
+
+        :return: The terminology list.
+        """
         # noinspection PyProtectedMember
         return self.client._list_terminologies(self.name)
 
     def delete(self) -> None:
+        """
+        Delete the project.
+        """
         # noinspection PyProtectedMember
         self.client._delete_project(self.name)
         return None
 
     def classify_text(self, text: str, classification_set: str = "Default") -> dict:
+        """
+        Classify the given text.
+
+        :return: The raw payload of the server response. Future versions of this library may return a better-suited
+                 representation.
+        """
         # noinspection PyProtectedMember
         return self.client._classify_document(
             self.name, text.encode(ENCODING_UTF_8), classification_set, DOCUMENT_IMPORTER_TEXT
         )
 
     def search(self, query: str = "", **kwargs) -> dict:
+        """
+        Search for documents matching the query.
+
+        :return: The raw payload of the server response. Future versions of this library may return a better-suited
+                 representation.
+        """
         # noinspection PyProtectedMember
         return self.client._select(self.name, query, **kwargs)
 
@@ -483,6 +612,10 @@ class Client:
         return {}
 
     def ensure_available(self, timeout: int = 120) -> "Client":
+        """
+        Checks whether the server is available and responding. The call will block for a given time if the server
+        is not available. If the time has passed without the server becoming available , an exception will be generated.
+        """
         started_at = time()
         while time() < started_at + timeout:
             try:
@@ -543,7 +676,9 @@ class Client:
         return response
 
     def __request_with_bytes_response(self, method: str, endpoint: str, **kwargs) -> bytes:
-        """ A bytes response is used in the experimental API for encoding CAS objects """
+        """
+        A bytes response is used in the experimental API for encoding CAS objects.
+        """
         raw_response = self._run_request(method, endpoint, **kwargs)
 
         is_actually_json_response = MEDIA_TYPE_APPLICATION_JSON in raw_response.headers.get(
@@ -570,6 +705,12 @@ class Client:
         return headers
 
     def change_password(self, user: str, old_password: str, new_password: str) -> dict:
+        """
+        Changes the password of the given user.
+
+        :return: The raw payload of the server response. Future versions of this library may return a better-suited
+                 representation.
+        """
         response = self.__request(
             "put",
             f"/v1/users/{user}/changeMyPassword",
@@ -618,6 +759,12 @@ class Client:
         return None
 
     def get_api_token_status(self, user: str, password: str) -> str:
+        """
+        Obtains the status of the given API token.
+
+        :return: The raw payload of the server response. Future versions of this library may return a better-suited
+                 representation.
+        """
         response = self.__request(
             "post",
             f"/v1/users/{user}/apitoken/status",
@@ -626,16 +773,32 @@ class Client:
         return response["payload"]
 
     def get_build_info(self) -> dict:
+        """
+        Obtains information about the version of the server instance.
+
+        :return: The raw payload of the server response. Future versions of this library may return a better-suited
+                 representation.
+        """
         response = self.__request("get", f"/v1/buildInfo")
         return response["payload"]
 
     def create_project(self, name: str, description: str) -> Project:
+        """
+        Creates a new project.
+
+        :return: The project.
+        """
         response = self.__request(
             "post", f"/v1/projects", params={"name": name, "description": description}
         )
         return Project(self, response["payload"]["name"])
 
     def get_project(self, name: str) -> Project:
+        """
+        Access an existing project.
+
+        :return: The project.
+        """
         return Project(self, name)
 
     def list_projects(self) -> List[Project]:
