@@ -36,7 +36,10 @@ Currently supported features are:
 Installation
 ------------
 
-... work in progress ...
+To install the latest development version of the library directly from GitHub, you can use the following command:
+
+.. code-block:: shell
+   $ pip install --upgrade git+https://github.com/averbis/averbis-python-api.git
 
 
 Usage
