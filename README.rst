@@ -50,7 +50,8 @@ Usage
 Connecting the client to a platform
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. code-block:: python
+.. code:: python
+
   from averbis.platform import Client
   client = Client('http://localhost:8400/health-discovery')
   client.regenerate_api_token('YOUR_USERNAME', 'YOUR_PASSWORD')
@@ -58,10 +59,11 @@ Connecting the client to a platform
   client = Client("http://localhost:8400/health-discovery api_token="YOUR_API_TOKEN")
 
 
-Connecting the client to a platform
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Connecting to a pipeline and assure that it is started
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. code-block:: python
+.. code:: python
+
   pipeline = client.get_project("YOUR_PROJECT_NAME").get_pipeline("YOUR_PIPELINE_NAME")
   pipeline.ensure_started()
 
@@ -69,7 +71,8 @@ Connecting the client to a platform
 Analysing a string
 ~~~~~~~~~~~~~~~~~~
 
-.. code-block:: python
+.. code:: python
+
   document = "This is the string we want to analyse."
   annotations = pipeline.analyse_text(document, language="en")
   for annotation in annotations:
@@ -79,7 +82,8 @@ Analysing a string
 Analysing a text file
 ~~~~~~~~~~~~~~~~~~~~~
 
-.. code-block:: python
+.. code:: python
+
   with open('/path/to/text_file.txt', 'rb') as document:
       annotations = pipeline.analyse_text(document, language="en")
       for annotation in annotations:
@@ -89,7 +93,8 @@ Analysing a text file
 Restricting returned annotation types
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. code-block:: python
+.. code:: python
+
   annotations = pipeline.analyse_text(document,
                                       language="en",
                                       annotation_types="*Diagnosis") # will return only annotations that end with 'Diagnosis'
