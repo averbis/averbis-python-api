@@ -56,7 +56,7 @@ Connecting the client to a platform
   client = Client('http://localhost:8400/health-discovery')
   client.regenerate_api_token('YOUR_USERNAME', 'YOUR_PASSWORD')
   # or
-  client = Client("http://localhost:8400/health-discovery api_token="YOUR_API_TOKEN")
+  client = Client('http://localhost:8400/health-discovery', api_token='YOUR_API_TOKEN')
 
 
 Connecting to a pipeline and assure that it is started
@@ -64,7 +64,7 @@ Connecting to a pipeline and assure that it is started
 
 .. code:: python
 
-  pipeline = client.get_project("YOUR_PROJECT_NAME").get_pipeline("YOUR_PIPELINE_NAME")
+  pipeline = client.get_project('YOUR_PROJECT_NAME').get_pipeline('YOUR_PIPELINE_NAME')
   pipeline.ensure_started()
 
 
@@ -73,8 +73,8 @@ Analysing a string
 
 .. code:: python
 
-  document = "This is the string we want to analyse."
-  annotations = pipeline.analyse_text(document, language="en")
+  document = 'This is the string we want to analyse.'
+  annotations = pipeline.analyse_text(document, language='en')
   for annotation in annotations:
       print(annotation)
 
@@ -85,7 +85,7 @@ Analysing a text file
 .. code:: python
 
   with open('/path/to/text_file.txt', 'rb') as document:
-      annotations = pipeline.analyse_text(document, language="en")
+      annotations = pipeline.analyse_text(document, language='en')
       for annotation in annotations:
           print(annotation)
 
@@ -96,5 +96,5 @@ Restricting returned annotation types
 .. code:: python
 
   annotations = pipeline.analyse_text(document,
-                                      language="en",
-                                      annotation_types="*Diagnosis") # will return only annotations that end with 'Diagnosis'
+                                      language='en',
+                                      annotation_types='*Diagnosis') # will return only annotations that end with 'Diagnosis'
