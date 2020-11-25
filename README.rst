@@ -36,11 +36,11 @@ Currently supported features are:
 Installation
 ------------
 
-To install the latest development version of the library directly from GitHub, you can use the following command:
+The library can be installed easily via :code:`pip`
 
 .. code-block:: shell
 
-  $ pip install --upgrade git+https://github.com/averbis/averbis-python-api.git
+  pip install averbis-python-api
 
 
 Usage
@@ -95,6 +95,24 @@ Restricting returned annotation types
 
 .. code:: python
 
-  annotations = pipeline.analyse_text(document,
-                                      language='en',
-                                      annotation_types='*Diagnosis') # will return only annotations that end with 'Diagnosis'
+  annotations = pipeline.analyse_text(document, language='en',
+      annotation_types='*Diagnosis') # will return only annotations that end with 'Diagnosis'
+
+
+Development
+------------
+
+To set up a local development environment, check out the repository, set up a virtual environment
+and install the required dependencies (if :code:`--no-site-packages` does not work on your system, omit it):
+
+.. code-block:: shell
+
+  virtualenv venv --python=python3 --no-site-packages
+  source venv/bin/activate
+  pip install -e ".[test, dev, doc]"
+
+To install the latest development version of the library directly from GitHub, you can use the following command:
+
+.. code-block:: shell
+
+  $ pip install --upgrade git+https://github.com/averbis/averbis-python-api.git
