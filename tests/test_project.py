@@ -21,8 +21,7 @@ import logging
 
 import pytest
 
-from averbis.platform import OperationNotSupported, Pipeline, OperationTimeoutError, Project
-from averbis.platform import Client
+from averbis import Project, Client
 
 URL_BASE = "http://localhost:8080"
 API_BASE = URL_BASE + "/rest/v1"

@@ -24,8 +24,8 @@ from pathlib import Path
 import pytest
 import time
 
-from averbis.platform import Client, Project
-from averbis.platform import Pipeline, OperationTimeoutError
+from averbis import Client, Project, Pipeline
+from averbis.core import OperationTimeoutError
 
 URL_BASE = "http://localhost:8080"
 API_BASE = URL_BASE + "/rest/v1"

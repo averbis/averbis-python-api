@@ -52,13 +52,6 @@ TERMINOLOGY_EXPORTER_SOLR_AUTO_SUGGEST_XML = "Solr Autosuggest XML Exporter"
 TERMINOLOGY_EXPORTER_CONCEPT_DICTIONARY_XML = "Concept Dictionary XML Exporter"
 
 
-def inofficial_api(original_function):
-    def new_function(*args, **kwargs):
-        return original_function(*args, **kwargs)
-
-    return new_function
-
-
 class OperationNotSupported(Exception):
     """Raised when the REST API does not support a given operation."""
 
@@ -296,25 +289,6 @@ class Pipeline:
         self.project.client._set_pipeline_configuration(self.project.name, self.name, configuration)
         if was_running_before_configuration_change:
             self.ensure_started()
-
-    # Ignoring errors as linter (compiler) cannot resolve dynamically loaded lib (with type:ignore for mypy) and (noinspection PyProtectedMember for pycharm)
-    @inofficial_api
-    def analyse_text_to_cas(self, source: Union[IO, str], **kwargs) -> "Cas":  # type: ignore
-        # noinspection PyProtectedMember
-        return importlib.import_module("cassis").load_cas_from_xmi(  # type: ignore
-            self.project.client._analyse_text_xmi(self.project.name, self.name, source, **kwargs),
-            typesystem=self.get_type_system(),
-        )
-
-    # Ignoring errors as linter (compiler) cannot resolve dynamically loaded lib (with type:ignore for mypy) and (noinspection PyProtectedMember for pycharm)
-    @inofficial_api
-    def get_type_system(self) -> "TypeSystem":  # type: ignore
-        if self.cached_type_system is None:
-            # noinspection PyProtectedMember
-            self.cached_type_system = importlib.import_module("cassis").load_typesystem(  # type: ignore
-                self.project.client._get_pipeline_type_system(self.project.name, self.name)
-            )
-        return self.cached_type_system
 
 
 class Terminology:
@@ -1025,43 +999,6 @@ class Client:
             headers={HEADER_CONTENT_TYPE: MEDIA_TYPE_TEXT_PLAIN_UTF8},
         )
         return response["payload"]
-
-    @inofficial_api
-    def _analyse_text_xmi(
-        self,
-        project: str,
-        pipeline: str,
-        source: Union[IO, str],
-        annotation_types: str = None,
-        language: str = "de",
-    ) -> str:
-        data: IO = BytesIO(source.encode(ENCODING_UTF_8)) if isinstance(source, str) else source
-
-        return str(
-            self.__request_with_bytes_response(
-                "post",
-                f"/v1/textanalysis/projects/{project}/pipelines/{pipeline}/analyseText",
-                data=data,
-                params={"annotationTypes": annotation_types, "language": language},
-                headers={
-                    HEADER_CONTENT_TYPE: MEDIA_TYPE_TEXT_PLAIN_UTF8,
-                    HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_XMI,
-                },
-            ),
-            ENCODING_UTF_8,
-        )
-
-    @inofficial_api
-    def _get_pipeline_type_system(self, project: str, pipeline: str) -> str:
-        return str(
-            self.__request_with_bytes_response(
-                "get",
-                f"/v1/textanalysis/projects/{project}/pipelines/{pipeline}/exportTypeSystem",
-                params={"annotationTypes": "*"},
-                headers={HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_XML},
-            ),
-            ENCODING_UTF_8,
-        )
 
     @staticmethod
     def __handle_error(response):
