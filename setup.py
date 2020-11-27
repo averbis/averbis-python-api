@@ -37,7 +37,6 @@ AUTHOR = "Averbis GmbH"
 REQUIRES_PYTHON = ">=3.6.0"
 
 install_requires = [
-    "dkpro-cassis>=0.4.0",
     "requests"
 ]
 
