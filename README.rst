@@ -9,8 +9,8 @@ Averbis Python API
   :target: https://averbis-python-api.readthedocs.io/en/latest/?badge=latest
   :alt: Documentation Status
 
-.. image:: https://github.com/averbis/averbis-python-api/workflows/Python%20package/badge.svg?branch=main
-  :target: https://github.com/averbis/averbis-python-api/actions?query=workflow%3A%22Python+package%22
+.. image:: https://github.com/averbis/averbis-python-api/workflows/Build/badge.svg?branch=main
+  :target: https://github.com/averbis/averbis-python-api/actions?query=workflow%3A%22Build%22
   :alt: Build Status
 
 .. image:: https://codecov.io/gh/averbis/averbis-python-api/branch/main/graph/badge.svg
