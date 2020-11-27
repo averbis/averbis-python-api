@@ -17,7 +17,7 @@ Averbis Python API
   :target: https://codecov.io/gh/averbis/averbis-python-api
   :alt: Test Coverage Status
 
-.. image:: https://img.shields.io/pypi/l/averbis-python-api.svg
+.. image:: https://img.shields.io/pypi/l/averbis-python-api
   :alt: PyPI - License
   :target: https://pypi.org/project/averbis-python-api/
   
