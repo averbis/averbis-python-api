@@ -1,15 +1,34 @@
 Averbis Python API
 ==================
 
-.. image:: https://api.travis-ci.org/averbis/averbis-python-api.svg?branch=main
-  :target: https://travis-ci.org/averbis/averbis-python-api
+.. image:: https://img.shields.io/pypi/v/averbis-python-api.svg
+  :alt: PyPI
+  :target: https://pypi.org/project/averbis-python-api/
+
+.. image:: https://readthedocs.org/projects/averbis-python-api/badge/?version=latest
+  :target: https://averbis-python-api.readthedocs.io/en/latest/?badge=latest
+  :alt: Documentation Status
+
+.. image:: https://github.com/averbis/averbis-python-api/workflows/Python%20package/badge.svg?branch=main
+  :target: https://github.com/averbis/averbis-python-api/actions?query=workflow%3A%22Python+package%22
+  :alt: Build Status
 
 .. image:: https://codecov.io/gh/averbis/averbis-python-api/branch/main/graph/badge.svg
   :target: https://codecov.io/gh/averbis/averbis-python-api
+  :alt: Test Coverage Status
+
+.. image:: https://img.shields.io/pypi/l/averbis-python-api.svg
+  :alt: PyPI - License
+  :target: https://pypi.org/project/averbis-python-api/
+  
+.. image:: https://img.shields.io/pypi/pyversions/averbis-python-api.svg
+  :alt: PyPI - Python Version
+  :target: https://pypi.org/project/averbis-python-api/
 
 .. image:: https://img.shields.io/badge/code%20style-black-000000.svg
   :target: https://github.com/averbis/averbis-python-api
-
+  :alt: Code Style
+  
 `Averbis <https://averbis.com>`_ is a leading text mining and machine learning company in Healthcare and Life Sciences. We extract information from texts, automate intellectual processes and make meaningful predictions.
 
 The **Averbis Python API** allows convenient access to the REST API of Averbis products. This includes in particular the ability to interact with the text mining pipelines offered by these products, e.g. to use these in data science environments such as Jupyter notebooks or for integration of the Averbis products in other enterprise systems.
