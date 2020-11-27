@@ -18,12 +18,10 @@
 #
 #
 import logging
-import os
-from pathlib import Path
 
 import pytest
-from averbis.platform import Client, Pipeline, Project
-from averbis.platform import (
+from averbis import Client, Pipeline, Project
+from averbis.core import (
     OperationNotSupported,
     TERMINOLOGY_EXPORTER_OBO_1_4,
     TERMINOLOGY_IMPORTER_OBO,

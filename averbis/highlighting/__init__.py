@@ -16,6 +16,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from .core import Client, Project, Pipeline, Result, Terminology
 
-__all__ = ["Client", "Project", "Pipeline", "Result", "Terminology"]
+"""Utilities for highlighting annotations in text"""
+
+from ._utils import (
+    COLOR_LIST,
+    highlight_matches,
+    highlight_annotation,
+    highlight_annotations,
+    highlight_match,
+)
+
+__all__ = [
+    "COLOR_LIST",
+    "highlight_matches",
+    "highlight_annotation",
+    "highlight_annotations",
+    "highlight_match",
+]

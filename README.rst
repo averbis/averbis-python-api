@@ -52,7 +52,7 @@ Connecting the client to a platform
 
 .. code:: python
 
-  from averbis.platform import Client
+  from averbis import Client
   client = Client('http://localhost:8400/health-discovery')
   client.regenerate_api_token('YOUR_USERNAME', 'YOUR_PASSWORD')
   # or
