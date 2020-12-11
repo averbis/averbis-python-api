@@ -951,7 +951,7 @@ class Client:
         pipeline: str,
         source: Union[Path, IO, str],
         annotation_types: str = None,
-        language: str = "de",
+        language: str = None,
     ) -> dict:
         if isinstance(source, Path):
             with source.open("r", encoding=ENCODING_UTF_8) as file:
@@ -974,7 +974,7 @@ class Client:
         pipeline: str,
         source: Union[Path, IO, str],
         annotation_types: str = None,
-        language: str = "de",
+        language: str = None,
     ) -> dict:
         if isinstance(source, Path):
             with source.open("r", encoding=ENCODING_UTF_8) as file:
