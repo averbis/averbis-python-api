@@ -51,3 +51,22 @@ def test_that_get_pipeline_returns_same_instance_on_consecutive_calls(project, r
     pipeline2 = project.get_pipeline("discharge")
 
     assert pipeline1 is pipeline2
+
+
+def test_list_document_collection(project, requests_mock):
+    requests_mock.get(
+        f"{API_BASE}/importer/projects/LoadTesting/documentCollections",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": [
+                {"name": "collection0", "numberOfDocuments": 5},
+                {"name": "collection1", "numberOfDocuments": 1},
+                {"name": "collection2", "numberOfDocuments": 20},
+            ],
+            "errorMessages": [],
+        },
+    )
+
+    collections = project.list_document_collections()
+
+    assert collections[2].name == "collection2"

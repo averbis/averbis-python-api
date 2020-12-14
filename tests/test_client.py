@@ -304,6 +304,25 @@ def test_set_pipeline_configuration(client, requests_mock):
     client._set_pipeline_configuration("LoadTesting", "discharge", configuration)
 
 
+def test_list_document_collections(client, requests_mock):
+    requests_mock.get(
+        f"{API_BASE}/importer/projects/LoadTesting/documentCollections",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": [
+                {"name": "collection0", "numberOfDocuments": 5},
+                {"name": "collection1", "numberOfDocuments": 1},
+                {"name": "collection2", "numberOfDocuments": 20},
+            ],
+            "errorMessages": [],
+        },
+    )
+
+    response = client._list_document_collections("LoadTesting")
+
+    assert response[0].name == "collection0"  # TODO test complete list
+
+
 def test_list_terminologies(client, requests_mock):
     requests_mock.get(
         f"{API_BASE}/terminology/projects/LoadTesting/terminologies",

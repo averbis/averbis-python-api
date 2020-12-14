@@ -412,6 +412,12 @@ class Terminology:
         self.project.client._delete_terminology(self.project.name, self.name)
 
 
+class DocumentCollection:
+    def __init__(self, project: "Project", name: str):
+        self.project = project
+        self.name = name
+
+
 class Project:
     def __init__(self, client: "Client", name: str):
         self.client = client
@@ -482,6 +488,14 @@ class Project:
         """
         # noinspection PyProtectedMember
         return self.client._list_terminologies(self.name)
+
+    def list_document_collections(self) -> List[DocumentCollection]:
+        """
+        Use Project.list_document_collections() instead.
+        """
+        # noinspection PyProtectedMember
+        collection = self.client._list_document_collections(self.name)
+        return [DocumentCollection(self, c["name"]) for c in collection]
 
     def delete(self) -> None:
         """
@@ -783,6 +797,14 @@ class Client:
         Use Project.delete() instead.
         """
         raise OperationNotSupported("Deleting projects is not supported by the REST API yet")
+
+    def _list_document_collections(self, project: str) -> dict:
+        """
+        Use Project.list_document_collections() instead.
+        """
+        response = self.__request("get", f"/v1/importer/projects/{project}/documentCollections")
+
+        return response["payload"]
 
     def _list_terminologies(self, project: str) -> dict:
         """
