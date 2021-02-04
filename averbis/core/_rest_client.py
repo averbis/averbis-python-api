@@ -35,7 +35,7 @@ HEADER_ACCEPT = "Accept"
 HEADER_CONTENT_TYPE = "Content-Type"
 
 MEDIA_TYPE_ANY = "*/*"
-MEDIA_TYPE_APPLICATION_XMI = "application/vnd.xmi+xml"
+MEDIA_TYPE_APPLICATION_XMI = "application/vnd.uima.cas+xmi"
 MEDIA_TYPE_APPLICATION_JSON = "application/json"
 MEDIA_TYPE_APPLICATION_XML = "application/xml"
 MEDIA_TYPE_TEXT_PLAIN_UTF8 = "text/plain; charset=utf-8"
@@ -1040,7 +1040,7 @@ class Client:
         return str(
             self.__request_with_bytes_response(
                 "post",
-                f"/v1/textanalysis/projects/{project}/pipelines/{pipeline}/analyseText",
+                f"/experimental/textanalysis/projects/{project}/pipelines/{pipeline}/debugAnalyseText",
                 data=data,
                 params={"annotationTypes": annotation_types, "language": language},
                 headers={
@@ -1056,7 +1056,7 @@ class Client:
         return str(
             self.__request_with_bytes_response(
                 "get",
-                f"/v1/textanalysis/projects/{project}/pipelines/{pipeline}/exportTypeSystem",
+                f"/experimental/textanalysis/projects/{project}/pipelines/{pipeline}/debugTypesystem",
                 params={"annotationTypes": "*"},
                 headers={HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_XML},
             ),
