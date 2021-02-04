@@ -29,6 +29,7 @@ from averbis.core import OperationTimeoutError
 
 URL_BASE = "http://localhost:8080"
 API_BASE = URL_BASE + "/rest/v1"
+TEST_DIRECTORY = os.path.dirname(__file__)
 
 logging.basicConfig(level=logging.INFO)
 
@@ -224,11 +225,12 @@ def test_analyse_texts_with_paths(client, pipeline_analyse_text_mock):
 
 def test_analyse_texts_with_files(client, pipeline_analyse_text_mock):
     pipeline = Pipeline(Project(client, "LoadTesting"), "discharge")
+    file1_path = os.path.join(TEST_DIRECTORY, "resources/texts/text1.txt")
+    file2_path = os.path.join(TEST_DIRECTORY, "resources/texts/text2.txt")
 
-    with open("tests/resources/texts/text1.txt", "rb") as file1, open(
-        "tests/resources/texts/text2.txt", "rb"
-    ) as file2:
+    with open(file1_path, "rb") as file1, open(file2_path, "rb") as file2:
         results = pipeline.analyse_texts([file1, file2])
         sources = [result.source.replace(os.sep, "/") for result in results]
 
-    assert sources == ["tests/resources/texts/text1.txt", "tests/resources/texts/text2.txt"]
+    assert sources[0].endswith("tests/resources/texts/text1.txt")
+    assert sources[1].endswith("tests/resources/texts/text2.txt")

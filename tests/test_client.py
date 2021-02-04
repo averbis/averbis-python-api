@@ -28,13 +28,14 @@ from averbis.core import (
     ENCODING_UTF_8,
     DOCUMENT_IMPORTER_TEXT,
 )
+import os
 
 URL_BASE = "http://localhost:8080"
 API_BASE = URL_BASE + "/rest/v1"
 TEST_API_TOKEN = "I-am-a-dummy-API-token"
 
 logging.basicConfig(level=logging.INFO)
-
+TEST_DIRECTORY = os.path.dirname(__file__)
 
 @pytest.fixture
 def client():
@@ -613,7 +614,7 @@ def test_select(client, requests_mock):
 
 
 def test_with_settings_file():
-    client = Client("localhost-hd", settings="tests/resources/settings/client-settings.json")
+    client = Client("localhost-hd", settings= os.path.join(TEST_DIRECTORY, "resources/settings/client-settings.json"))
 
     assert client._url == "https://localhost:8080/health-discovery"
     assert client._api_token == "dummy-token"
@@ -622,7 +623,7 @@ def test_with_settings_file():
 
 def test_with_settings_file_with_defaults():
     hd_client = Client(
-        "localhost-hd", settings="tests/resources/settings/client-settings-with-defaults.json"
+        "localhost-hd", settings= os.path.join(TEST_DIRECTORY, "resources/settings/client-settings-with-defaults.json")
     )
 
     assert hd_client._url == "https://localhost:8080/health-discovery"
@@ -630,7 +631,7 @@ def test_with_settings_file_with_defaults():
     assert hd_client._verify_ssl == "caRoot.pem"
 
     id_client = Client(
-        "localhost-id", settings="tests/resources/settings/client-settings-with-defaults.json"
+        "localhost-id", settings= os.path.join(TEST_DIRECTORY, "resources/settings/client-settings-with-defaults.json")
     )
 
     assert id_client._url == "https://localhost:8080/information-discovery"
