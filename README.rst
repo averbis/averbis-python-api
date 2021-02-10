@@ -41,6 +41,11 @@ Supported products are:
 
 - `Patent Monitor <https://averbis.com/patent-monitor/>`_
 
+Status
+------
+
+The Averbis Python API is currently in an open alpha development stage. We try to keep breaking changes minimal but they may happen on the way to the first stable release.
+
 Features
 --------
 
