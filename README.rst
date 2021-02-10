@@ -61,6 +61,13 @@ The library can be installed easily via :code:`pip`
 
   pip install averbis-python-api
 
+Documentation
+-------------
+
+To get an overview over the methods provided with the client and the corresponding documentation, we refer to our `readthedocs API reference <https://averbis-python-api.readthedocs.io/en/latest/index.html>`_.
+
+Moreover, we will provide a number of example jupyter notebooks that showcase the usage of the client to solve different use cases in an upcoming release.
+
 
 Usage
 -----
