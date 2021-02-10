@@ -300,6 +300,10 @@ class Pipeline:
     # Ignoring errors as linter (compiler) cannot resolve dynamically loaded lib (with type:ignore for mypy) and (noinspection PyProtectedMember for pycharm)
     @experimental_api
     def analyse_text_to_cas(self, source: Union[IO, str], **kwargs) -> "Cas":  # type: ignore
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear. Processes text using a pipeline and returns the result
+        as a UIMA CAS. Calling this method requires that the DKPro Cassis Python library has been installed.
+        """
         # noinspection PyProtectedMember
         return importlib.import_module("cassis").load_cas_from_xmi(  # type: ignore
             self.project.client._analyse_text_xmi(self.project.name, self.name, source, **kwargs),
@@ -309,6 +313,10 @@ class Pipeline:
     # Ignoring errors as linter (compiler) cannot resolve dynamically loaded lib (with type:ignore for mypy) and (noinspection PyProtectedMember for pycharm)
     @experimental_api
     def get_type_system(self) -> "TypeSystem":  # type: ignore
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear. Processes text using a pipeline and returns the result
+        as a UIMA CAS. Calling this method requires that the DKPro Cassis Python library has been installed.
+        """
         if self.cached_type_system is None:
             # noinspection PyProtectedMember
             self.cached_type_system = importlib.import_module("cassis").load_typesystem(  # type: ignore
