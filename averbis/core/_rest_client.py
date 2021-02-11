@@ -22,6 +22,7 @@ import importlib
 import json
 import logging
 from concurrent.futures.thread import ThreadPoolExecutor
+from functools import wraps
 from io import BytesIO
 
 from time import sleep, time
@@ -53,6 +54,7 @@ TERMINOLOGY_EXPORTER_CONCEPT_DICTIONARY_XML = "Concept Dictionary XML Exporter"
 
 
 def experimental_api(original_function):
+    @wraps(original_function)
     def new_function(*args, **kwargs):
         return original_function(*args, **kwargs)
 
