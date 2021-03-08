@@ -69,7 +69,7 @@ def pipeline_analyse_text_mock(client, requests_mock):
         },
     )
 
-    def callback(request, _):
+    def callback(request, _content):
         doc_text = request.text.read().decode("utf-8")
         return {
             "payload": [
@@ -166,7 +166,7 @@ class PipelineEndpointMock:
         self.state_locked = locked
         self.requested_state_pipeline_state_message = pipeline_state_message
 
-    def info_callback(self, _, __):
+    def info_callback(self, _request, _content):
         if (
             not self.state_locked
             and self.last_state_change_request + self.change_state_after < time.time()
@@ -189,12 +189,12 @@ class PipelineEndpointMock:
             "errorMessages": [],
         }
 
-    def start_callback(self, _, __):
+    def start_callback(self, _request, _content):
         self.last_state_change_request = time.time()
         self.requested_state = Pipeline.STATE_STARTED
         return {"payload": {}, "errorMessages": []}
 
-    def stop_callback(self, _, __):
+    def stop_callback(self, _request, _content):
         self.last_state_change_request = time.time()
         self.requested_state = Pipeline.STATE_STOPPED
         return {"payload": {}, "errorMessages": []}
