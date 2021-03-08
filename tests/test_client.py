@@ -318,6 +318,19 @@ def test_set_pipeline_configuration(client, requests_mock):
     client._set_pipeline_configuration("LoadTesting", "discharge", configuration)
 
 
+def test_create_document_collection(client, requests_mock):
+    requests_mock.post(
+        f"{API_BASE}/importer/projects/LoadTesting/documentCollections",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": {"name": "collection0"},
+            "errorMessages": [],
+        },
+    )
+    response = client._create_document_collection("LoadTesting", "collection0")
+    assert response.name == "collection0"
+
+
 def test_list_document_collections(client, requests_mock):
     requests_mock.get(
         f"{API_BASE}/importer/projects/LoadTesting/documentCollections",
@@ -331,10 +344,72 @@ def test_list_document_collections(client, requests_mock):
             "errorMessages": [],
         },
     )
-
     response = client._list_document_collections("LoadTesting")
 
-    assert response[0].name == "collection0"  # TODO test complete list
+    assert response[1]["name"] == "collection1"
+
+
+def test_get_documents_collection(client, requests_mock):
+    project = client.get_project("LoadTesting")
+    requests_mock.get(
+        f"{API_BASE}/importer/projects/LoadTesting/documentCollections/collection0",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": {"name": "collection0", "numberOfDocuments": 5},
+            "errorMessages": [],
+        },
+    )
+    response = client._get_document_collection(project.name, "collection0")
+    assert response["numberOfDocuments"] == 5
+
+
+def test_delete_document_collection(client, requests_mock):
+    project = client.get_project("LoadTesting")
+    requests_mock.delete(
+        f"{API_BASE}/importer/projects/LoadTesting/documentCollections/collection0",
+        json={
+            "payload": {},
+            "errorMessages": [],
+        },
+    )
+    client._delete_document_collection(project.name, "collection0")
+
+
+def test_import_txt_into_collection(client, requests_mock):
+    project = client.get_project("LoadTesting")
+    requests_mock.post(
+        f"{API_BASE}/importer/projects/LoadTesting/documentCollections/collection0/documents",
+        json={
+            "payload": {"original_document_name": "text1.txt", "document_name": "text1.txt"},
+            "errorMessages": [],
+        },
+    )
+    file_path = os.path.join(TEST_DIRECTORY, "resources/texts/text1.txt")
+    with open(file_path, "r", encoding="UTF-8") as input_io:
+        response = client._import_document(
+            project.name, "collection0", input_io, mime_type="text/plain"
+        )
+    assert response["original_document_name"] == "text1.txt"
+
+
+def test_import_solr_xml_into_collection(client, requests_mock):
+    project = client.get_project("LoadTesting")
+    requests_mock.post(
+        f"{API_BASE}/importer/projects/LoadTesting/documentCollections/collection0/documents",
+        json={
+            "payload": {
+                "original_document_name": "disease_solr.xml",
+                "document_name": "disease_solr.xml",
+            },
+            "errorMessages": [],
+        },
+    )
+    file_path = os.path.join(TEST_DIRECTORY, "resources/xml/disease_solr.xml")
+    with open(file_path, "r", encoding="UTF-8") as input_io:
+        response = client._import_document(
+            project.name, "collection0", input_io, mime_type="application/vnd.averbis.solr+xml"
+        )
+    assert response["original_document_name"] == "disease_solr.xml"
 
 
 def test_list_terminologies(client, requests_mock):

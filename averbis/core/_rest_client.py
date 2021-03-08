@@ -29,6 +29,8 @@ from time import sleep, time
 from typing import List, Union, IO, Iterable, Dict, TextIO, Iterator, Optional
 from pathlib import Path
 import requests
+import typing
+import mimetypes
 
 ENCODING_UTF_8 = "utf-8"
 
@@ -39,6 +41,8 @@ MEDIA_TYPE_ANY = "*/*"
 MEDIA_TYPE_APPLICATION_XMI = "application/vnd.uima.cas+xmi"
 MEDIA_TYPE_APPLICATION_JSON = "application/json"
 MEDIA_TYPE_APPLICATION_XML = "application/xml"
+MEDIA_TYPE_APPLICATION_SOLR_XML = "application/vnd.averbis.solr+xml"
+MEDIA_TYPE_TEXT_PLAIN = "text/plain"
 MEDIA_TYPE_TEXT_PLAIN_UTF8 = "text/plain; charset=utf-8"
 MEDIA_TYPE_OCTET_STREAM = "application/octet-stream"
 
@@ -457,6 +461,40 @@ class DocumentCollection:
         self.project = project
         self.name = name
 
+    def get_number_of_documents(self) -> int:
+        """
+        Returns the number of documents in that collection.
+        """
+        # noinspection PyProtectedMember
+        return self.project.client._get_document_collection(self.project.name, self.name)[
+            "numberOfDocuments"
+        ]
+
+    def delete(self) -> dict:
+        """
+        Deletes the document collection.
+        """
+        # noinspection PyProtectedMember
+        return self.project.client._delete_document_collection(self.project.name, self.name)
+
+    def import_documents(self, file: typing.IO, mime_type: str = None) -> dict:
+        """
+        Imports documents from a given file. Supported file content types are plain text (text/plain)
+        and Averbis Solr XML (application/vnd.averbis.solr+xml).
+        """
+        if mime_type is None:
+            # Infering MimeType if not set
+            mime_type = mimetypes.guess_type(url=file.name)[0]
+            if mime_type not in [MEDIA_TYPE_TEXT_PLAIN, MEDIA_TYPE_APPLICATION_SOLR_XML]:
+                raise ValueError(
+                    "Unable to guess a valid mime_type. Supported file content types are plain text (mime_type = 'text/plain') "
+                    + "and Averbis Solr XML (mime_type = 'application/vnd.averbis.solr+xml').\nPlease provide the correct mime_type with: "
+                    "`document_collection.import_documents(file, mime_type = ...)`."
+                )
+
+        # noinspection PyProtectedMember
+        return self.project.client._import_document(self.project.name, self.name, file, mime_type)
+
 
 class Project:
     def __init__(self, client: "Client", name: str):
@@ -537,9 +575,29 @@ class Project:
         # noinspection PyProtectedMember
         return self.client._list_terminologies(self.name)
 
+    def create_document_collection(self, name: str) -> DocumentCollection:
+        """
+        Creates a new document collection.
+
+        :return: The document collection.
+        """
+        # noinspection PyProtectedMember
+        return self.client._create_document_collection(self.name, name)
+
+    def get_document_collection(self, collection: str) -> DocumentCollection:
+        """
+        Obtain an existing document collection.
+
+        :return: The document collection.
+        """
+        # noinspection PyProtectedMember
+        return DocumentCollection(self, collection)
+
     def list_document_collections(self) -> List[DocumentCollection]:
         """
-        Use Project.list_document_collections() instead.
+        Lists all document collections.
+
+        :return: List of DocumentCollection objects
         """
         # noinspection PyProtectedMember
         collection = self.client._list_document_collections(self.name)
@@ -849,6 +907,47 @@ class Client:
         """
         response = self.__request("get", f"/v1/importer/projects/{project}/documentCollections")
 
+        return response["payload"]
+
+    def _create_document_collection(self, project: str, collection_name: str) -> DocumentCollection:
+        """
+        Use Project.create_document_collection() instead.
+        """
+        response = self.__request(
+            "post",
+            f"/v1/importer/projects/{project}/documentCollections",
+            json={"name": collection_name},
+        )
+        return DocumentCollection(self.get_project(project), response["payload"]["name"])
+
+    def _get_document_collection(self, project: str, collection_name: str):
+        """
+        Use DocumentCollection.get_number_of_documents() instead.
+        """
+        response = self.__request(
+            "get", f"/v1/importer/projects/{project}/documentCollections/{collection_name}"
+        )
+
+        return response["payload"]
+
+    def _delete_document_collection(self, project: str, collection_name: str) -> dict:
+        """
+        Use DocumentCollection.delete() instead.
+        """
+        response = self.__request(
+            "delete", f"/v1/importer/projects/{project}/documentCollections/{collection_name}"
+        )
+        return response["payload"]
+
+    def _import_document(self, project: str, collection_name: str, file: typing.IO, mime_type):
+        """
+        Use DocumentCollection.import_document() instead.
+        """
+        response = self.__request(
+            "post",
+            f"/v1/importer/projects/{project}/documentCollections/{collection_name}/documents",
+            files={"documentFile": (file.name, file, mime_type)},
+        )
         return response["payload"]
 
     def _list_terminologies(self, project: str) -> dict:
