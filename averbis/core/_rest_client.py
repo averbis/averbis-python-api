@@ -22,6 +22,7 @@ import importlib
 import json
 import logging
 from concurrent.futures.thread import ThreadPoolExecutor
+from functools import wraps
 from io import BytesIO
 
 from time import sleep, time
@@ -35,7 +36,7 @@ HEADER_ACCEPT = "Accept"
 HEADER_CONTENT_TYPE = "Content-Type"
 
 MEDIA_TYPE_ANY = "*/*"
-MEDIA_TYPE_APPLICATION_XMI = "application/vnd.xmi+xml"
+MEDIA_TYPE_APPLICATION_XMI = "application/vnd.uima.cas+xmi"
 MEDIA_TYPE_APPLICATION_JSON = "application/json"
 MEDIA_TYPE_APPLICATION_XML = "application/xml"
 MEDIA_TYPE_TEXT_PLAIN_UTF8 = "text/plain; charset=utf-8"
@@ -50,6 +51,14 @@ TERMINOLOGY_IMPORTER_OBO = "OBO Importer"
 TERMINOLOGY_EXPORTER_OBO_1_4 = "Obo 1.4 Exporter"
 TERMINOLOGY_EXPORTER_SOLR_AUTO_SUGGEST_XML = "Solr Autosuggest XML Exporter"
 TERMINOLOGY_EXPORTER_CONCEPT_DICTIONARY_XML = "Concept Dictionary XML Exporter"
+
+
+def experimental_api(original_function):
+    @wraps(original_function)
+    def new_function(*args, **kwargs):
+        return original_function(*args, **kwargs)
+
+    return new_function
 
 
 class OperationNotSupported(Exception):
@@ -227,7 +236,11 @@ class Pipeline:
 
         :return: An iterator over the results produced by the pipeline.
         """
-        pipeline_instances = self.get_configuration()["analysisEnginePoolSize"]
+        if self.project.client.spec_version.startswith("5."):
+            pipeline_instances = self.get_configuration()["analysisEnginePoolSize"]
+        else:
+            pipeline_instances = self.get_configuration()["numberOfInstances"]
+
         if parallelism < 0:
             parallel_request_count = max(pipeline_instances + parallelism, 1)
         elif parallelism > 0:
@@ -289,6 +302,33 @@ class Pipeline:
         self.project.client._set_pipeline_configuration(self.project.name, self.name, configuration)
         if was_running_before_configuration_change:
             self.ensure_started()
+
+    # Ignoring errors as linter (compiler) cannot resolve dynamically loaded lib (with type:ignore for mypy) and (noinspection PyProtectedMember for pycharm)
+    @experimental_api
+    def analyse_text_to_cas(self, source: Union[IO, str], **kwargs) -> "Cas":  # type: ignore
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear. Processes text using a pipeline and returns the result
+        as a UIMA CAS. Calling this method requires that the DKPro Cassis Python library has been installed.
+        """
+        # noinspection PyProtectedMember
+        return importlib.import_module("cassis").load_cas_from_xmi(  # type: ignore
+            self.project.client._analyse_text_xmi(self.project.name, self.name, source, **kwargs),
+            typesystem=self.get_type_system(),
+        )
+
+    # Ignoring errors as linter (compiler) cannot resolve dynamically loaded lib (with type:ignore for mypy) and (noinspection PyProtectedMember for pycharm)
+    @experimental_api
+    def get_type_system(self) -> "TypeSystem":  # type: ignore
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear. Processes text using a pipeline and returns the result
+        as a UIMA CAS. Calling this method requires that the DKPro Cassis Python library has been installed.
+        """
+        if self.cached_type_system is None:
+            # noinspection PyProtectedMember
+            self.cached_type_system = importlib.import_module("cassis").load_typesystem(  # type: ignore
+                self.project.client._get_pipeline_type_system(self.project.name, self.name)
+            )
+        return self.cached_type_system
 
 
 class Terminology:
@@ -441,15 +481,23 @@ class Project:
 
         :return: The pipeline.
         """
+
+        # The pipeline name parameter differs between schemaVersion 1.x ("name") and 2.x ("pipelineName")
+        if configuration["schemaVersion"].startswith("1."):
+            pipeline_name_key = "name"
+        else:
+            pipeline_name_key = "pipelineName"
+
         if name is not None:
             cfg = copy.deepcopy(configuration)
-            cfg["name"] = name
+            cfg[pipeline_name_key] = name
         else:
             cfg = configuration
+            name = cfg[pipeline_name_key]
 
         self.client._create_pipeline(self.name, cfg)
-        new_pipeline = Pipeline(self, cfg["name"])
-        self.__cached_pipelines[cfg["name"]] = new_pipeline
+        new_pipeline = Pipeline(self, name)
+        self.__cached_pipelines[name] = new_pipeline
         return new_pipeline
 
     def create_terminology(
@@ -533,12 +581,12 @@ class Client:
         self,
         url_or_id: str,
         api_token: str = None,
-        verify_ssl: Union[str, bool] = None,
+        verify_ssl: Union[str, bool] = True,
         settings: Union[str, Path, dict] = None,
     ):
         self.__logger = logging.getLogger(self.__class__.__module__ + "." + self.__class__.__name__)
-        self._api_token = None
-        self._verify_ssl = True
+        self._api_token = api_token
+        self._verify_ssl = verify_ssl
 
         if isinstance(settings, dict):
             self._settings = settings
@@ -552,11 +600,8 @@ class Client:
                 self._apply_profile("*")
             self._apply_profile(url_or_id)
 
-        if api_token:
-            self._api_token = api_token
-
-        if verify_ssl:
-            self.verify_ssl = api_token
+        self.build_info = self.get_build_info()
+        self.spec_version = self.build_info["specVersion"]
 
     def _exists_profile(self, profile: str):
         return (
@@ -973,7 +1018,7 @@ class Client:
         pipeline: str,
         source: Union[Path, IO, str],
         annotation_types: str = None,
-        language: str = "de",
+        language: str = None,
     ) -> dict:
         if isinstance(source, Path):
             with source.open("r", encoding=ENCODING_UTF_8) as file:
@@ -996,7 +1041,7 @@ class Client:
         pipeline: str,
         source: Union[Path, IO, str],
         annotation_types: str = None,
-        language: str = "de",
+        language: str = None,
     ) -> dict:
         if isinstance(source, Path):
             with source.open("r", encoding=ENCODING_UTF_8) as file:
@@ -1021,6 +1066,43 @@ class Client:
             headers={HEADER_CONTENT_TYPE: MEDIA_TYPE_TEXT_PLAIN_UTF8},
         )
         return response["payload"]
+
+    @experimental_api
+    def _analyse_text_xmi(
+        self,
+        project: str,
+        pipeline: str,
+        source: Union[IO, str],
+        annotation_types: str = None,
+        language: str = "de",
+    ) -> str:
+        data: IO = BytesIO(source.encode(ENCODING_UTF_8)) if isinstance(source, str) else source
+
+        return str(
+            self.__request_with_bytes_response(
+                "post",
+                f"/experimental/textanalysis/projects/{project}/pipelines/{pipeline}/debugAnalyseText",
+                data=data,
+                params={"annotationTypes": annotation_types, "language": language},
+                headers={
+                    HEADER_CONTENT_TYPE: MEDIA_TYPE_TEXT_PLAIN_UTF8,
+                    HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_XMI,
+                },
+            ),
+            ENCODING_UTF_8,
+        )
+
+    @experimental_api
+    def _get_pipeline_type_system(self, project: str, pipeline: str) -> str:
+        return str(
+            self.__request_with_bytes_response(
+                "get",
+                f"/experimental/textanalysis/projects/{project}/pipelines/{pipeline}/debugTypesystem",
+                params={"annotationTypes": "*"},
+                headers={HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_XML},
+            ),
+            ENCODING_UTF_8,
+        )
 
     @staticmethod
     def __handle_error(response):
