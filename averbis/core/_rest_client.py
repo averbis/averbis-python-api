@@ -200,15 +200,21 @@ class Pipeline:
         # noinspection PyProtectedMember
         return self.project.client._get_pipeline_info(self.project.name, self.name)
 
-    def delete(self) -> None:
+    @experimental_api
+    def delete(self) -> dict:
         """
-        Delete the pipeline from the server.
+        HIGHLY EXPERIMENTAL API - may soon change or disappear. Deletes an existing pipeline from the server.
 
         :return: The raw payload of the server response. Future versions of this library may return a better-suited
                  representation.
         """
+        if self.project.client.spec_version.startswith("5."):
+            raise OperationNotSupported(
+                "Deleting pipelines is not supported by the REST API in platform version 5.x, but only from 6.x onwards."
+            )
+
         # noinspection PyProtectedMember
-        self.project.client._delete_pipeline(self.project.name, self.name)
+        return self.project.client._delete_pipeline(self.project.name, self.name)
 
     def is_started(self) -> bool:
         """
@@ -931,11 +937,15 @@ class Client:
         )
         return response["payload"]
 
-    def _delete_pipeline(self, project: str, pipeline: str) -> None:
+    @experimental_api
+    def _delete_pipeline(self, project: str, pipeline: str) -> dict:
         """
         Use Pipeline.delete() instead.
         """
-        raise OperationNotSupported("Deleting pipelines is not supported by the REST API yet")
+        response = self.__request(
+            "delete", f"/experimental/textanalysis/projects/{project}/pipelines/{pipeline}"
+        )
+        return response["payload"]
 
     def _start_pipeline(self, project: str, pipeline: str) -> dict:
         response = self.__request(

@@ -22,7 +22,7 @@ import time
 from pathlib import Path
 
 from averbis import Project, Pipeline
-from averbis.core import OperationTimeoutError
+from averbis.core import OperationTimeoutError, OperationNotSupported
 from tests.fixtures import *
 
 logging.basicConfig(level=logging.INFO)
@@ -242,3 +242,19 @@ def test_analyse_texts_(client, pipeline_analyse_text_mock):
 
     assert sources[0].endswith("tests/resources/texts/text1.txt")
     assert sources[1].endswith("tests/resources/texts/text2.txt")
+
+
+def test_delete_pipeline_v5(client_version_5):
+    pipeline = Pipeline(Project(client_version_5, "LoadTesting"), "discharge")
+    with pytest.raises(OperationNotSupported):
+        pipeline.delete()
+
+
+def test_delete_pipeline_v6(client_version_6, requests_mock):
+    pipeline = Pipeline(Project(client_version_6, "LoadTesting"), "discharge")
+    requests_mock.delete(
+        f"{URL_BASE_ID}/rest/experimental/textanalysis/projects/LoadTesting/pipelines/discharge",
+        headers={"Content-Type": "application/json"},
+        json={"payload": None, "errorMessages": []},
+    )
+    pipeline.delete()

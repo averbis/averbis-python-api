@@ -216,11 +216,6 @@ def test_create_pipeline_schema_version_two(client, requests_mock):
     assert new_pipeline is None
 
 
-def test_delete_pipeline(client):
-    with pytest.raises(OperationNotSupported):
-        client._delete_pipeline("LoadTesting", "discharge")
-
-
 def test_start_pipeline(client, requests_mock):
     requests_mock.put(
         f"{API_BASE}/textanalysis/projects/LoadTesting/pipelines/discharge/start",
