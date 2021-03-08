@@ -258,3 +258,46 @@ def test_delete_pipeline_v6(client_version_6, requests_mock):
         json={"payload": None, "errorMessages": []},
     )
     pipeline.delete()
+
+
+def test_export_text_analysis_export_v5(client_version_5):
+    project = Project(client_version_5, "LoadTesting")
+    with pytest.raises(OperationNotSupported):
+        project.export_text_analysis(document_sources="my_document_sources", process="my_process")
+
+
+def test_export_text_analysis_export_v6(client_version_6, requests_mock):
+    project = Project(client_version_6, "LoadTesting")
+    requests_mock.get(
+        f"{URL_BASE_ID}/rest/experimental/textanalysis/projects/LoadTesting/documentSources/my_document_sources/processes/my_process/export",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": {
+                "projectName": "LoadTesting",
+                "documentSourceName": "my_document_sources",
+                "textAnalysisResultSetName": "my_process",
+                "pipelineName": "discharge",
+                "textAnalysisResultDtos": [
+                    {
+                        "documentName": "abcdef.txt",
+                        "annotationDtos": [
+                            {
+                                "begin": 0,
+                                "end": 12,
+                                "type": "uima.tcas.DocumentAnnotation",
+                                "coveredText": "Hello World",
+                                "id": 66753,
+                            }
+                        ]
+                        # truncated #
+                    }
+                    # truncated #
+                ],
+            },
+            "errorMessages": [],
+        },
+    )
+    export = project.export_text_analysis(
+        document_sources="my_document_sources", process="my_process"
+    )
+    assert export["documentSourceName"] == "my_document_sources"

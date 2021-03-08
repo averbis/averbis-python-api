@@ -567,6 +567,25 @@ class Project:
         # noinspection PyProtectedMember
         return self.client._select(self.name, query, **kwargs)
 
+    @experimental_api
+    def export_text_analysis(
+        self, document_sources: str, process: str, annotation_types: str = None
+    ) -> dict:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear. Exports a given text analysis process as a json.
+
+        :return: The raw payload of the server response. Future versions of this library may return a better-suited
+         representation.
+        """
+        if self.client.spec_version.startswith("5."):
+            raise OperationNotSupported(
+                "Text analysis export is not supported for platform version 5.x, it is only supported from 6.x onwards."
+            )
+        # noinspection PyProtectedMember
+        return self.client._export_text_analysis(
+            self.name, document_sources, process, annotation_types
+        )
+
 
 class Client:
     def __init__(
@@ -1052,6 +1071,21 @@ class Client:
             f"/v1/search/projects/{project}/select",
             params={"q": q, **kwargs},
             headers={HEADER_CONTENT_TYPE: MEDIA_TYPE_TEXT_PLAIN_UTF8},
+        )
+        return response["payload"]
+
+    @experimental_api
+    def _export_text_analysis(
+        self, project: str, document_sources: str, process: str, annotation_types: str = None
+    ):
+        """
+        Use Project.export_text_analysis() instead.
+        """
+        response = self.__request(
+            "get",
+            f"/experimental/textanalysis/projects/{project}/documentSources/{document_sources}/processes/{process}/export",
+            params={"annotationTypes": annotation_types},
+            headers={HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_JSON},
         )
         return response["payload"]
 
