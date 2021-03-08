@@ -236,7 +236,11 @@ class Pipeline:
 
         :return: An iterator over the results produced by the pipeline.
         """
-        pipeline_instances = self.get_configuration()["analysisEnginePoolSize"]
+        if self.project.client.spec_version.startswith("5."):
+            pipeline_instances = self.get_configuration()["analysisEnginePoolSize"]
+        else:
+            pipeline_instances = self.get_configuration()["numberOfInstances"]
+
         if parallelism < 0:
             parallel_request_count = max(pipeline_instances + parallelism, 1)
         elif parallelism > 0:
@@ -471,15 +475,23 @@ class Project:
 
         :return: The pipeline.
         """
+
+        # The pipeline name parameter differs between schemaVersion 1.x ("name") and 2.x ("pipelineName")
+        if configuration["schemaVersion"].startswith("1."):
+            pipeline_name_key = "name"
+        else:
+            pipeline_name_key = "pipelineName"
+
         if name is not None:
             cfg = copy.deepcopy(configuration)
-            cfg["name"] = name
+            cfg[pipeline_name_key] = name
         else:
             cfg = configuration
+            name = cfg[pipeline_name_key]
 
         self.client._create_pipeline(self.name, cfg)
-        new_pipeline = Pipeline(self, cfg["name"])
-        self.__cached_pipelines[cfg["name"]] = new_pipeline
+        new_pipeline = Pipeline(self, name)
+        self.__cached_pipelines[name] = new_pipeline
         return new_pipeline
 
     def create_terminology(
@@ -555,12 +567,12 @@ class Client:
         self,
         url_or_id: str,
         api_token: str = None,
-        verify_ssl: Union[str, bool] = None,
+        verify_ssl: Union[str, bool] = True,
         settings: Union[str, Path, dict] = None,
     ):
         self.__logger = logging.getLogger(self.__class__.__module__ + "." + self.__class__.__name__)
-        self._api_token = None
-        self._verify_ssl = True
+        self._api_token = api_token
+        self._verify_ssl = verify_ssl
 
         if isinstance(settings, dict):
             self._settings = settings
@@ -574,11 +586,8 @@ class Client:
                 self._apply_profile("*")
             self._apply_profile(url_or_id)
 
-        if api_token:
-            self._api_token = api_token
-
-        if verify_ssl:
-            self.verify_ssl = api_token
+        self.build_info = self.get_build_info()
+        self.spec_version = self.build_info["specVersion"]
 
     def _exists_profile(self, profile: str):
         return (

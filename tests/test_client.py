@@ -19,8 +19,7 @@
 #
 import logging
 
-import pytest
-from averbis import Client, Pipeline, Project
+from averbis import Pipeline, Project
 from averbis.core import (
     OperationNotSupported,
     TERMINOLOGY_EXPORTER_OBO_1_4,
@@ -28,18 +27,12 @@ from averbis.core import (
     ENCODING_UTF_8,
     DOCUMENT_IMPORTER_TEXT,
 )
-import os
+from tests.fixtures import *
 
-URL_BASE = "http://localhost:8080"
-API_BASE = URL_BASE + "/rest/v1"
 TEST_API_TOKEN = "I-am-a-dummy-API-token"
-
-logging.basicConfig(level=logging.INFO)
 TEST_DIRECTORY = os.path.dirname(__file__)
 
-@pytest.fixture
-def client():
-    return Client(URL_BASE)
+logging.basicConfig(level=logging.INFO)
 
 
 def test_default_headers(client):
@@ -147,7 +140,7 @@ def test_get_build_info(client, requests_mock):
 
 
 def test_create_project(client, requests_mock):
-    def callback(request, context):
+    def callback(request, _):
         return {
             "payload": {
                 "id": 93498,
@@ -198,9 +191,29 @@ def test_create_pipeline(client, requests_mock):
         # ... truncated ...
     }
 
-    response = client._create_pipeline("LoadTesting", configuration)
+    new_pipeline = client._create_pipeline("LoadTesting", configuration)
 
-    assert response is None
+    assert new_pipeline is None
+
+
+def test_create_pipeline_schema_version_two(client, requests_mock):
+    requests_mock.post(
+        f"{API_BASE}/textanalysis/projects/LoadTesting/pipelines",
+        headers={"Content-Type": "application/json"},
+        json={"payload": None, "errorMessages": []},
+    )
+
+    configuration = {
+        "schemaVersion": "2.0",
+        "pipelineName": "discharge",
+        "description": None,
+        "numberOfInstances": 2,
+        # ... truncated ...
+    }
+
+    new_pipeline = client._create_pipeline("LoadTesting", configuration)
+
+    assert new_pipeline is None
 
 
 def test_delete_pipeline(client):
@@ -485,7 +498,7 @@ def test_analyse_text(client, requests_mock):
     assert response[0]["coveredText"] == "Appendizitis"
 
 
-def test_analyse_texts_with_some_working_and_some_failing(client, requests_mock):
+def test_analyse_texts_with_some_working_and_some_failing(client_version_5, requests_mock):
     requests_mock.get(
         f"{API_BASE}/textanalysis/projects/LoadTesting/pipelines/discharge/configuration",
         headers={"Content-Type": "application/json"},
@@ -495,7 +508,7 @@ def test_analyse_texts_with_some_working_and_some_failing(client, requests_mock)
         },
     )
 
-    def callback(request, context):
+    def callback(request, _):
         doc_text = request.text.read().decode("utf-8")
         if doc_text == "works":
             return {
@@ -522,7 +535,7 @@ def test_analyse_texts_with_some_working_and_some_failing(client, requests_mock)
         json=callback,
     )
 
-    pipeline = Pipeline(Project(client, "LoadTesting"), "discharge")
+    pipeline = Pipeline(Project(client_version_5, "LoadTesting"), "discharge")
     results = list(pipeline.analyse_texts(["works", "fails"]))
 
     assert results[0].successful() is True
@@ -613,25 +626,36 @@ def test_select(client, requests_mock):
     assert "solrResponse" in response
 
 
-def test_with_settings_file():
-    client = Client("localhost-hd", settings= os.path.join(TEST_DIRECTORY, "resources/settings/client-settings.json"))
+def test_with_settings_file(requests_mock_hd6):
+    client = Client(
+        "localhost-hd",
+        settings=os.path.join(TEST_DIRECTORY, "resources/settings/client-settings.json"),
+    )
 
     assert client._url == "https://localhost:8080/health-discovery"
     assert client._api_token == "dummy-token"
     assert client._verify_ssl is False
 
 
-def test_with_settings_file_with_defaults():
+def test_with_settings_file_with_defaults_hd(requests_mock_hd6):
     hd_client = Client(
-        "localhost-hd", settings= os.path.join(TEST_DIRECTORY, "resources/settings/client-settings-with-defaults.json")
+        "localhost-hd",
+        settings=os.path.join(
+            TEST_DIRECTORY, "resources/settings/client-settings-with-defaults.json"
+        ),
     )
 
     assert hd_client._url == "https://localhost:8080/health-discovery"
     assert hd_client._api_token == "dummy-token"
     assert hd_client._verify_ssl == "caRoot.pem"
 
+
+def test_with_settings_file_with_defaults_id(requests_mock_id6):
     id_client = Client(
-        "localhost-id", settings= os.path.join(TEST_DIRECTORY, "resources/settings/client-settings-with-defaults.json")
+        "localhost-id",
+        settings=os.path.join(
+            TEST_DIRECTORY, "resources/settings/client-settings-with-defaults.json"
+        ),
     )
 
     assert id_client._url == "https://localhost:8080/information-discovery"
