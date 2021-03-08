@@ -627,7 +627,10 @@ def test_select(client, requests_mock):
 
 
 def test_with_settings_file(requests_mock_hd6):
-    client = Client("localhost-hd", settings=os.path.join(TEST_DIRECTORY, "resources/settings/client-settings.json"))
+    client = Client(
+        "localhost-hd",
+        settings=os.path.join(TEST_DIRECTORY, "resources/settings/client-settings.json"),
+    )
 
     assert client._url == "https://localhost:8080/health-discovery"
     assert client._api_token == "dummy-token"
@@ -636,7 +639,10 @@ def test_with_settings_file(requests_mock_hd6):
 
 def test_with_settings_file_with_defaults_hd(requests_mock_hd6):
     hd_client = Client(
-        "localhost-hd", settings=os.path.join(TEST_DIRECTORY, "resources/settings/client-settings-with-defaults.json")
+        "localhost-hd",
+        settings=os.path.join(
+            TEST_DIRECTORY, "resources/settings/client-settings-with-defaults.json"
+        ),
     )
 
     assert hd_client._url == "https://localhost:8080/health-discovery"
@@ -646,7 +652,10 @@ def test_with_settings_file_with_defaults_hd(requests_mock_hd6):
 
 def test_with_settings_file_with_defaults_id(requests_mock_id6):
     id_client = Client(
-        "localhost-id", settings=os.path.join(TEST_DIRECTORY, "resources/settings/client-settings-with-defaults.json")
+        "localhost-id",
+        settings=os.path.join(
+            TEST_DIRECTORY, "resources/settings/client-settings-with-defaults.json"
+        ),
     )
 
     assert id_client._url == "https://localhost:8080/information-discovery"

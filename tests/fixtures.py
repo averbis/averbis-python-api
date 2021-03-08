@@ -31,6 +31,7 @@ TEST_DIRECTORY = os.path.dirname(__file__)
 
 ## Mock different platforms. The difference between the platforms is in the URL and in the specVersion number.
 
+
 @pytest.fixture()
 def requests_mock_hd5(requests_mock):
     requests_mock.get(
