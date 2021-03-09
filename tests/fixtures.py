@@ -27,7 +27,7 @@ URL_BASE_ID = "https://localhost:8080/information-discovery"
 URL_BASE_HD = "https://localhost:8080/health-discovery"
 API_BASE = URL_BASE_ID + "/rest/v1"
 TEST_DIRECTORY = os.path.dirname(__file__)
-
+TEST_API_TOKEN = "I-am-a-dummy-API-token"
 
 ## Mock different platforms. The difference between the platforms is in the URL and in the specVersion number.
 
@@ -78,16 +78,16 @@ def client(request, requests_mock):
         headers={"Content-Type": "application/json"},
         json={"payload": {"specVersion": request.param, "buildNumber": ""}, "errorMessages": []},
     )
-    return Client(URL_BASE_ID)
+    return Client(URL_BASE_ID, api_token=TEST_API_TOKEN)
 
 
 # Tests that should work in platform version 5
 @pytest.fixture
 def client_version_5(requests_mock_id5):
-    return Client(URL_BASE_ID)
+    return Client(URL_BASE_ID, api_token=TEST_API_TOKEN)
 
 
 # Tests that should work in platform version 6
 @pytest.fixture()
 def client_version_6(requests_mock_id6):
-    return Client(URL_BASE_ID)
+    return Client(URL_BASE_ID, api_token=TEST_API_TOKEN)

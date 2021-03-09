@@ -29,7 +29,7 @@ from averbis.core import (
 )
 from tests.fixtures import *
 
-TEST_API_TOKEN = "I-am-a-dummy-API-token"
+
 TEST_DIRECTORY = os.path.dirname(__file__)
 
 logging.basicConfig(level=logging.INFO)
