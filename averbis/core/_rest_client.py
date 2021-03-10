@@ -24,6 +24,7 @@ import logging
 from concurrent.futures.thread import ThreadPoolExecutor
 from functools import wraps
 from io import BytesIO
+from json import JSONDecodeError
 
 from time import sleep, time
 from typing import List, Union, IO, Iterable, Dict, TextIO, Iterator, Optional
@@ -594,7 +595,8 @@ class Client:
         api_token: str = None,
         verify_ssl: Union[str, bool] = True,
         settings: Union[str, Path, dict] = None,
-        regenerate_api_token: bool = False,
+        username: str = None,
+        password: str = None,
     ):
         self.__logger = logging.getLogger(self.__class__.__module__ + "." + self.__class__.__name__)
         self._api_token = api_token
@@ -613,15 +615,21 @@ class Client:
             self._apply_profile(url_or_id)
 
         if self._api_token is None:
-            if regenerate_api_token:
-                self.regenerate_api_token("admin", "admin")
+            if username is not None and password is not None:
+                self.regenerate_api_token(username, password)
             else:
                 raise Exception(
                     "An API Token is required for initializing the Client.\n"
                     + "You can either pass it directly with: Client(url,api_token=your_token) or you can\n"
-                    + "generate a new API token for the standard admin user with: Client(url, regenerate_api_token=True)."
+                    + "generate a new API token with: Client(url, username='your_user_name', password='your_password')."
                 )
-        self.build_info = self.get_build_info()
+
+        try:
+            self.build_info = self.get_build_info()
+        except JSONDecodeError:
+            raise ValueError(
+                "The Client could not get information about the platform. This is likely because your API Token has changed."
+            )
         self.spec_version = self.build_info["specVersion"]
 
     def _exists_profile(self, profile: str):
