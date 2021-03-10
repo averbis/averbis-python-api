@@ -29,7 +29,7 @@ from averbis.core import (
 )
 from tests.fixtures import *
 
-TEST_API_TOKEN = "I-am-a-dummy-API-token"
+
 TEST_DIRECTORY = os.path.dirname(__file__)
 
 logging.basicConfig(level=logging.INFO)
@@ -214,11 +214,6 @@ def test_create_pipeline_schema_version_two(client, requests_mock):
     new_pipeline = client._create_pipeline("LoadTesting", configuration)
 
     assert new_pipeline is None
-
-
-def test_delete_pipeline(client):
-    with pytest.raises(OperationNotSupported):
-        client._delete_pipeline("LoadTesting", "discharge")
 
 
 def test_start_pipeline(client, requests_mock):
