@@ -1,0 +1,58 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!--Averbis Solr Import file generated from: pubmed20n0999.xml-->
+<update>
+  <add>
+    <doc>
+      <field name="id">31353757</field>
+      <field name="document_name">31353757</field>
+      <field name="entity_year">2019</field>
+      <field name="entity_volume">25</field>
+      <field name="entity_issue">6</field>
+      <field name="entity_pages">877-880</field>
+      <field name="entity_journal">Skin research and technology : official journal of International Society for Bioengineering and the Skin (ISBS) [and] International Society for Digital Imaging of Skin 
+(ISDIS) [and] International Society for Skin Imaging (ISSI)</field>
+      <field name="entity_journalAbbr">Skin Res Technol</field>
+      <field name="title">Coexistence of steatocystoma multiplex and hidradenitis suppurativa: Assessment of this unique association by means of ultrasonography and Color Doppler.</field>
+      <field name="content">Steatocystoma multiplex (SM) is an uncommon skin disease manifesting as multiple sebum-containing cysts arising in pilosebaceous unit-rich body areas. Hidradenitis suppurativa (HS) is a debilitating chronic inflammatory disease affecting the apocrine gland-bearing skin and presenting with both pseudocystic and inflammatory nodules, abscesses and fistulas. Considering that genetics has been reported to play a role in both entities, the albeit rare association between them suggests a shared genetic background. Although histology remains the gold standard for the diagnosis of SM, ultrasonography can be an useful diagnostic tool. This method is largely used in combination with Color Doppler for assessing disease severity in HS.We report three cases of coexisting SM and HS and describe the ultrasonography and Color Doppler features of the two entities.SM lesions appeared on ultrasonography as hypoechoic nodules with well-defined hyperechoic borders and posterior acoustic enhancement, in the absence of Color Doppler signal. HS lesions had the ultrasonographic features of the fistulas, abscesses and pseudocystic nodules, some of which including hair fragments, with an intense Color Doppler signal within or around inflamed lesions.The combination of ultrasonography and Color Doppler proved to be a reliable instrument for differentiating between SM and HS lesions, particularly distinguishing HS pseudocystic nodules from true cysts of SM.</field>
+      <field name="entity_authors">Zussino M, Nazzaro G, Moltrasio C, Marzano AV</field>
+      <field name="entity_authorsLong">Zussino, Martina; Nazzaro, Gianluca; Moltrasio, Chiara; Marzano, Angelo V</field>
+      <field name="entity_affiliation"></field>
+      <field name="entity_firstAuthor">Zussino, Martina</field>
+      <field name="entity_pubType">Journal Article</field>
+    </doc>
+    <doc>
+      <field name="id">31353765</field>
+      <field name="document_name">31353765</field>
+      <field name="entity_year">2019</field>
+      <field name="entity_volume">24</field>
+      <field name="entity_issue">6</field>
+      <field name="entity_pages">e12676</field>
+      <field name="entity_journal">Annals of noninvasive electrocardiology : the official journal of the International Society for Holter and Noninvasive Electrocardiology, Inc</field>
+      <field name="entity_journalAbbr">Ann Noninvasive Electrocardiol</field>
+      <field name="title">Atrial fibrillation and risk of major arrhythmic events in Brugada syndrome: A meta-analysis.</field>
+      <field name="content">Brugada syndrome (BrS) is a common cause of sudden cardiac death (SCD). There is recent evidence that atrial fibrillation (AF) is associated with increased risk of SCD in general population. However, whether AF increases a risk of major arrhythmic events (MAE) in patients with BrS is still unclear. We performed a systematic review and meta-analysis to explore the effect of AF on MAE in BrS population.We searched the databases of MEDLINE and EMBASE from inception to March 2019. Included studies were published cohort studies reporting rates of MAE (ventricular fibrillation, sustained ventricular tachycardia, SCD, or sudden cardiac arrest) in BrS patients, with and without previous documented AF. Data from each study were combined using the random-effects model.Six studies from 1,703 patients were included. There was a significant association between AF and an increased risk of MAE in patients with BrS (pooled OR = 2.37, 95% CI = 1.36-4.13, p-value = .002, I2  = 40.3%).Our meta-analysis demonstrated that AF is associated with an increased risk of MAE in patients with BrS.</field>
+      <field name="entity_authors">Kewcharoen J, Rattanawong P, Kanitsoraphan C, Mekritthikrai R, Prasitlumkum N, Putthapiban P, Mekraksakit P, Pattison RJ, Vutthikraivit W</field>
+      <field name="entity_authorsLong">Kewcharoen, Jakrin; Rattanawong, Pattara; Kanitsoraphan, Chanavuth; Mekritthikrai, Raktham; Prasitlumkum, Narut; Putthapiban, Prapaipan; Mekraksakit, Poemlarp; Pattison, Robert J; Vutthikraivit, Wasawat</field>
+      <field name="entity_affiliation"></field>
+      <field name="entity_firstAuthor">Kewcharoen, Jakrin</field>
+      <field name="entity_pubType">Journal Article</field>
+    </doc>
+    <doc>
+      <field name="id">31354083</field>
+      <field name="document_name">31354083</field>
+      <field name="entity_year">2019</field>
+      <field name="entity_volume"></field>
+      <field name="entity_issue"></field>
+      <field name="entity_pages">1-17</field>
+      <field name="entity_journal">Disability and rehabilitation</field>
+      <field name="entity_journalAbbr">Disabil Rehabil</field>
+      <field name="title">Interventions and cognitive functioning in adults with traumatic spinal cord injuries: a systematic review and meta-analysis.</field>
+      <field name="content">Aim: This research synthesized scientific evidence on the impact of interventions for adults with traumatic spinal cord injury on cognition, to understand if current intervention approaches are appropriate in light of the risk of post-injury cognitive impairments. Method: Medline, Central, Embase, Scopus, PsycINFO and PubMed were searched for intervention in persons with SCI assessing cognition pre- and post-intervention. Study quality was completed using the National Institutes of Health quality assessment tools. Results were grouped by type of intervention. The meta-analysis involved calculation of pooled effect sizes for interventions utilizing the same cognitive measure. Results: Eleven studies of moderate quality discussed drug therapy, transcutaneous tibial nerve stimulation, diet modification and dietary supplements, and inpatient rehabilitation. Some aspects of cognition were negatively affected by drugs while diet modification and supplement use, and transcutaneous tibial nerve stimulation showed no evidence of a difference in cognitive scores when compared with no intervention. Inpatient rehabilitation revealed a small but beneficial effect, when results of seven studies were pooled. Conclusion: Evidence on the effects of interventions on cognitive functioning in patients with traumatic spinal cord injury is sparse and inconclusive, so work in this area is timely. It is valuable to know not only which interventions are effective for improving cognition, but also how other commonly used interventions, intended to treat other injury sequela, can affect cognition. PROSPERO: CRD42018087238. Implications for rehabilitation Historically, rehabilitation of patients with traumatic spinal cord injury has targeted physical impairments, with little attention to cognition; this research aimed to understand if current interventions are appropriate in light of the risk of patients' cognitive impairments. Evidence on the effects of drug therapy, diet and dietary supplements interventions on cognitive functioning in traumatic spinal cord injury is sparse and inconclusive. Combining multiple inpatient rehabilitation interventions shows a positive but heterogeneous effect on the cognitive functioning; interventions applied earlier show greater gains. A major challenge for clinicians is to select an outcome measure sensitive to change over time, and to relate the results to patients' change in cognitive abilities with intervention application Research to understand the functional effect of spinal cord injury on the widely distributed networks of the central and autonomic nervous systems subserving cognition, is timely.</field>
+      <field name="entity_authors">Pacheco N, Mollayeva S, Jacob B, Colantonio A, Mollayeva T</field>
+      <field name="entity_authorsLong">Pacheco, Nicole; Mollayeva, Shirin; Jacob, Binu; Colantonio, Angela; Mollayeva, Tatyana</field>
+      <field name="entity_affiliation"></field>
+      <field name="entity_firstAuthor">Pacheco, Nicole</field>
+      <field name="entity_pubType">Journal Article</field>
+    </doc>
+  </add>
+</update>
