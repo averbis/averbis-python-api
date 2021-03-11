@@ -18,25 +18,14 @@
 #
 #
 import logging
-import os
+import time
 from pathlib import Path
 
-import pytest
-import time
-
-from averbis import Client, Project, Pipeline
-from averbis.core import OperationTimeoutError
-
-URL_BASE = "http://localhost:8080"
-API_BASE = URL_BASE + "/rest/v1"
-TEST_DIRECTORY = os.path.dirname(__file__)
+from averbis import Project, Pipeline
+from averbis.core import OperationTimeoutError, OperationNotSupported
+from tests.fixtures import *
 
 logging.basicConfig(level=logging.INFO)
-
-
-@pytest.fixture
-def client() -> Client:
-    return Client(URL_BASE)
 
 
 @pytest.fixture
@@ -63,18 +52,24 @@ def pipeline_requests_mock(pipeline_endpoint_behavior_mock, requests_mock):
     )
 
 
-@pytest.fixture()
-def pipeline_analyse_text_mock(requests_mock):
+@pytest.fixture
+def pipeline_analyse_text_mock(client, requests_mock):
+    # In the pipeline configuration, the name for the number of instances differs between platform version 5 and 6.
+    if client.spec_version.startswith("5."):
+        payload = {"analysisEnginePoolSize": 4}
+    else:
+        payload = {"numberOfInstances": 4}
+
     requests_mock.get(
         f"{API_BASE}/textanalysis/projects/LoadTesting/pipelines/discharge/configuration",
         headers={"Content-Type": "application/json"},
         json={
-            "payload": {"analysisEnginePoolSize": 4},
+            "payload": payload,
             "errorMessages": [],
         },
     )
 
-    def callback(request, context):
+    def callback(request, _content):
         doc_text = request.text.read().decode("utf-8")
         return {
             "payload": [
@@ -171,7 +166,7 @@ class PipelineEndpointMock:
         self.state_locked = locked
         self.requested_state_pipeline_state_message = pipeline_state_message
 
-    def info_callback(self, request, context):
+    def info_callback(self, _request, _content):
         if (
             not self.state_locked
             and self.last_state_change_request + self.change_state_after < time.time()
@@ -194,12 +189,12 @@ class PipelineEndpointMock:
             "errorMessages": [],
         }
 
-    def start_callback(self, request, context):
+    def start_callback(self, _request, _content):
         self.last_state_change_request = time.time()
         self.requested_state = Pipeline.STATE_STARTED
         return {"payload": {}, "errorMessages": []}
 
-    def stop_callback(self, request, context):
+    def stop_callback(self, _request, _content):
         self.last_state_change_request = time.time()
         self.requested_state = Pipeline.STATE_STOPPED
         return {"payload": {}, "errorMessages": []}
@@ -234,3 +229,75 @@ def test_analyse_texts_with_files(client, pipeline_analyse_text_mock):
 
     assert sources[0].endswith("tests/resources/texts/text1.txt")
     assert sources[1].endswith("tests/resources/texts/text2.txt")
+
+
+def test_analyse_texts_(client, pipeline_analyse_text_mock):
+    pipeline = Pipeline(Project(client, "LoadTesting"), "discharge")
+    file1_path = os.path.join(TEST_DIRECTORY, "resources/texts/text1.txt")
+    file2_path = os.path.join(TEST_DIRECTORY, "resources/texts/text2.txt")
+
+    with open(file1_path, "rb") as file1, open(file2_path, "rb") as file2:
+        results = pipeline.analyse_texts([file1, file2])
+        sources = [result.source.replace(os.sep, "/") for result in results]
+
+    assert sources[0].endswith("tests/resources/texts/text1.txt")
+    assert sources[1].endswith("tests/resources/texts/text2.txt")
+
+
+def test_delete_pipeline_v5(client_version_5):
+    pipeline = Pipeline(Project(client_version_5, "LoadTesting"), "discharge")
+    with pytest.raises(OperationNotSupported):
+        pipeline.delete()
+
+
+def test_delete_pipeline_v6(client_version_6, requests_mock):
+    pipeline = Pipeline(Project(client_version_6, "LoadTesting"), "discharge")
+    requests_mock.delete(
+        f"{URL_BASE_ID}/rest/experimental/textanalysis/projects/LoadTesting/pipelines/discharge",
+        headers={"Content-Type": "application/json"},
+        json={"payload": None, "errorMessages": []},
+    )
+    pipeline.delete()
+
+
+def test_export_text_analysis_export_v5(client_version_5):
+    project = Project(client_version_5, "LoadTesting")
+    with pytest.raises(OperationNotSupported):
+        project.export_text_analysis(document_sources="my_document_sources", process="my_process")
+
+
+def test_export_text_analysis_export_v6(client_version_6, requests_mock):
+    project = Project(client_version_6, "LoadTesting")
+    requests_mock.get(
+        f"{URL_BASE_ID}/rest/experimental/textanalysis/projects/LoadTesting/documentSources/my_document_sources/processes/my_process/export",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": {
+                "projectName": "LoadTesting",
+                "documentSourceName": "my_document_sources",
+                "textAnalysisResultSetName": "my_process",
+                "pipelineName": "discharge",
+                "textAnalysisResultDtos": [
+                    {
+                        "documentName": "abcdef.txt",
+                        "annotationDtos": [
+                            {
+                                "begin": 0,
+                                "end": 12,
+                                "type": "uima.tcas.DocumentAnnotation",
+                                "coveredText": "Hello World",
+                                "id": 66753,
+                            }
+                        ]
+                        # truncated #
+                    }
+                    # truncated #
+                ],
+            },
+            "errorMessages": [],
+        },
+    )
+    export = project.export_text_analysis(
+        document_sources="my_document_sources", process="my_process"
+    )
+    assert export["documentSourceName"] == "my_document_sources"

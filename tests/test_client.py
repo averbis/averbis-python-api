@@ -19,8 +19,7 @@
 #
 import logging
 
-import pytest
-from averbis import Client, Pipeline, Project
+from averbis import Pipeline, Project
 from averbis.core import (
     OperationNotSupported,
     TERMINOLOGY_EXPORTER_OBO_1_4,
@@ -28,18 +27,12 @@ from averbis.core import (
     ENCODING_UTF_8,
     DOCUMENT_IMPORTER_TEXT,
 )
-import os
+from tests.fixtures import *
 
-URL_BASE = "http://localhost:8080"
-API_BASE = URL_BASE + "/rest/v1"
-TEST_API_TOKEN = "I-am-a-dummy-API-token"
 
-logging.basicConfig(level=logging.INFO)
 TEST_DIRECTORY = os.path.dirname(__file__)
 
-@pytest.fixture
-def client():
-    return Client(URL_BASE)
+logging.basicConfig(level=logging.INFO)
 
 
 def test_default_headers(client):
@@ -147,7 +140,7 @@ def test_get_build_info(client, requests_mock):
 
 
 def test_create_project(client, requests_mock):
-    def callback(request, context):
+    def callback(request, _):
         return {
             "payload": {
                 "id": 93498,
@@ -198,14 +191,29 @@ def test_create_pipeline(client, requests_mock):
         # ... truncated ...
     }
 
-    response = client._create_pipeline("LoadTesting", configuration)
+    new_pipeline = client._create_pipeline("LoadTesting", configuration)
 
-    assert response is None
+    assert new_pipeline is None
 
 
-def test_delete_pipeline(client):
-    with pytest.raises(OperationNotSupported):
-        client._delete_pipeline("LoadTesting", "discharge")
+def test_create_pipeline_schema_version_two(client, requests_mock):
+    requests_mock.post(
+        f"{API_BASE}/textanalysis/projects/LoadTesting/pipelines",
+        headers={"Content-Type": "application/json"},
+        json={"payload": None, "errorMessages": []},
+    )
+
+    configuration = {
+        "schemaVersion": "2.0",
+        "pipelineName": "discharge",
+        "description": None,
+        "numberOfInstances": 2,
+        # ... truncated ...
+    }
+
+    new_pipeline = client._create_pipeline("LoadTesting", configuration)
+
+    assert new_pipeline is None
 
 
 def test_start_pipeline(client, requests_mock):
@@ -303,6 +311,100 @@ def test_set_pipeline_configuration(client, requests_mock):
     }
 
     client._set_pipeline_configuration("LoadTesting", "discharge", configuration)
+
+
+def test_create_document_collection(client, requests_mock):
+    requests_mock.post(
+        f"{API_BASE}/importer/projects/LoadTesting/documentCollections",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": {"name": "collection0"},
+            "errorMessages": [],
+        },
+    )
+    response = client._create_document_collection("LoadTesting", "collection0")
+    assert response.name == "collection0"
+
+
+def test_list_document_collections(client, requests_mock):
+    requests_mock.get(
+        f"{API_BASE}/importer/projects/LoadTesting/documentCollections",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": [
+                {"name": "collection0", "numberOfDocuments": 5},
+                {"name": "collection1", "numberOfDocuments": 1},
+                {"name": "collection2", "numberOfDocuments": 20},
+            ],
+            "errorMessages": [],
+        },
+    )
+    response = client._list_document_collections("LoadTesting")
+
+    assert response[1]["name"] == "collection1"
+
+
+def test_get_documents_collection(client, requests_mock):
+    project = client.get_project("LoadTesting")
+    requests_mock.get(
+        f"{API_BASE}/importer/projects/LoadTesting/documentCollections/collection0",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": {"name": "collection0", "numberOfDocuments": 5},
+            "errorMessages": [],
+        },
+    )
+    response = client._get_document_collection(project.name, "collection0")
+    assert response["numberOfDocuments"] == 5
+
+
+def test_delete_document_collection(client, requests_mock):
+    project = client.get_project("LoadTesting")
+    requests_mock.delete(
+        f"{API_BASE}/importer/projects/LoadTesting/documentCollections/collection0",
+        json={
+            "payload": {},
+            "errorMessages": [],
+        },
+    )
+    client._delete_document_collection(project.name, "collection0")
+
+
+def test_import_txt_into_collection(client, requests_mock):
+    project = client.get_project("LoadTesting")
+    requests_mock.post(
+        f"{API_BASE}/importer/projects/LoadTesting/documentCollections/collection0/documents",
+        json={
+            "payload": {"original_document_name": "text1.txt", "document_name": "text1.txt"},
+            "errorMessages": [],
+        },
+    )
+    file_path = os.path.join(TEST_DIRECTORY, "resources/texts/text1.txt")
+    with open(file_path, "r", encoding="UTF-8") as input_io:
+        response = client._import_document(
+            project.name, "collection0", input_io, mime_type="text/plain"
+        )
+    assert response["original_document_name"] == "text1.txt"
+
+
+def test_import_solr_xml_into_collection(client, requests_mock):
+    project = client.get_project("LoadTesting")
+    requests_mock.post(
+        f"{API_BASE}/importer/projects/LoadTesting/documentCollections/collection0/documents",
+        json={
+            "payload": {
+                "original_document_name": "disease_solr.xml",
+                "document_name": "disease_solr.xml",
+            },
+            "errorMessages": [],
+        },
+    )
+    file_path = os.path.join(TEST_DIRECTORY, "resources/xml/disease_solr.xml")
+    with open(file_path, "r", encoding="UTF-8") as input_io:
+        response = client._import_document(
+            project.name, "collection0", input_io, mime_type="application/vnd.averbis.solr+xml"
+        )
+    assert response["original_document_name"] == "disease_solr.xml"
 
 
 def test_list_terminologies(client, requests_mock):
@@ -485,7 +587,7 @@ def test_analyse_text(client, requests_mock):
     assert response[0]["coveredText"] == "Appendizitis"
 
 
-def test_analyse_texts_with_some_working_and_some_failing(client, requests_mock):
+def test_analyse_texts_with_some_working_and_some_failing(client_version_5, requests_mock):
     requests_mock.get(
         f"{API_BASE}/textanalysis/projects/LoadTesting/pipelines/discharge/configuration",
         headers={"Content-Type": "application/json"},
@@ -495,7 +597,7 @@ def test_analyse_texts_with_some_working_and_some_failing(client, requests_mock)
         },
     )
 
-    def callback(request, context):
+    def callback(request, _):
         doc_text = request.text.read().decode("utf-8")
         if doc_text == "works":
             return {
@@ -522,7 +624,7 @@ def test_analyse_texts_with_some_working_and_some_failing(client, requests_mock)
         json=callback,
     )
 
-    pipeline = Pipeline(Project(client, "LoadTesting"), "discharge")
+    pipeline = Pipeline(Project(client_version_5, "LoadTesting"), "discharge")
     results = list(pipeline.analyse_texts(["works", "fails"]))
 
     assert results[0].successful() is True
@@ -613,25 +715,36 @@ def test_select(client, requests_mock):
     assert "solrResponse" in response
 
 
-def test_with_settings_file():
-    client = Client("localhost-hd", settings= os.path.join(TEST_DIRECTORY, "resources/settings/client-settings.json"))
+def test_with_settings_file(requests_mock_hd6):
+    client = Client(
+        "localhost-hd",
+        settings=os.path.join(TEST_DIRECTORY, "resources/settings/client-settings.json"),
+    )
 
     assert client._url == "https://localhost:8080/health-discovery"
     assert client._api_token == "dummy-token"
     assert client._verify_ssl is False
 
 
-def test_with_settings_file_with_defaults():
+def test_with_settings_file_with_defaults_hd(requests_mock_hd6):
     hd_client = Client(
-        "localhost-hd", settings= os.path.join(TEST_DIRECTORY, "resources/settings/client-settings-with-defaults.json")
+        "localhost-hd",
+        settings=os.path.join(
+            TEST_DIRECTORY, "resources/settings/client-settings-with-defaults.json"
+        ),
     )
 
     assert hd_client._url == "https://localhost:8080/health-discovery"
     assert hd_client._api_token == "dummy-token"
     assert hd_client._verify_ssl == "caRoot.pem"
 
+
+def test_with_settings_file_with_defaults_id(requests_mock_id6):
     id_client = Client(
-        "localhost-id", settings= os.path.join(TEST_DIRECTORY, "resources/settings/client-settings-with-defaults.json")
+        "localhost-id",
+        settings=os.path.join(
+            TEST_DIRECTORY, "resources/settings/client-settings-with-defaults.json"
+        ),
     )
 
     assert id_client._url == "https://localhost:8080/information-discovery"

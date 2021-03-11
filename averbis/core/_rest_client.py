@@ -22,12 +22,16 @@ import importlib
 import json
 import logging
 from concurrent.futures.thread import ThreadPoolExecutor
+from functools import wraps
 from io import BytesIO
+from json import JSONDecodeError
 
 from time import sleep, time
 from typing import List, Union, IO, Iterable, Dict, TextIO, Iterator, Optional
 from pathlib import Path
 import requests
+import typing
+import mimetypes
 
 ENCODING_UTF_8 = "utf-8"
 
@@ -38,6 +42,8 @@ MEDIA_TYPE_ANY = "*/*"
 MEDIA_TYPE_APPLICATION_XMI = "application/vnd.uima.cas+xmi"
 MEDIA_TYPE_APPLICATION_JSON = "application/json"
 MEDIA_TYPE_APPLICATION_XML = "application/xml"
+MEDIA_TYPE_APPLICATION_SOLR_XML = "application/vnd.averbis.solr+xml"
+MEDIA_TYPE_TEXT_PLAIN = "text/plain"
 MEDIA_TYPE_TEXT_PLAIN_UTF8 = "text/plain; charset=utf-8"
 MEDIA_TYPE_OCTET_STREAM = "application/octet-stream"
 
@@ -53,6 +59,7 @@ TERMINOLOGY_EXPORTER_CONCEPT_DICTIONARY_XML = "Concept Dictionary XML Exporter"
 
 
 def experimental_api(original_function):
+    @wraps(original_function)
     def new_function(*args, **kwargs):
         return original_function(*args, **kwargs)
 
@@ -198,15 +205,21 @@ class Pipeline:
         # noinspection PyProtectedMember
         return self.project.client._get_pipeline_info(self.project.name, self.name)
 
-    def delete(self) -> None:
+    @experimental_api
+    def delete(self) -> dict:
         """
-        Delete the pipeline from the server.
+        HIGHLY EXPERIMENTAL API - may soon change or disappear. Deletes an existing pipeline from the server.
 
         :return: The raw payload of the server response. Future versions of this library may return a better-suited
                  representation.
         """
+        if self.project.client.spec_version.startswith("5."):
+            raise OperationNotSupported(
+                "Deleting pipelines is not supported by the REST API in platform version 5.x, but only from 6.x onwards."
+            )
+
         # noinspection PyProtectedMember
-        self.project.client._delete_pipeline(self.project.name, self.name)
+        return self.project.client._delete_pipeline(self.project.name, self.name)
 
     def is_started(self) -> bool:
         """
@@ -234,7 +247,11 @@ class Pipeline:
 
         :return: An iterator over the results produced by the pipeline.
         """
-        pipeline_instances = self.get_configuration()["analysisEnginePoolSize"]
+        if self.project.client.spec_version.startswith("5."):
+            pipeline_instances = self.get_configuration()["analysisEnginePoolSize"]
+        else:
+            pipeline_instances = self.get_configuration()["numberOfInstances"]
+
         if parallelism < 0:
             parallel_request_count = max(pipeline_instances + parallelism, 1)
         elif parallelism > 0:
@@ -446,6 +463,46 @@ class Terminology:
         self.project.client._delete_terminology(self.project.name, self.name)
 
 
+class DocumentCollection:
+    def __init__(self, project: "Project", name: str):
+        self.project = project
+        self.name = name
+
+    def get_number_of_documents(self) -> int:
+        """
+        Returns the number of documents in that collection.
+        """
+        # noinspection PyProtectedMember
+        return self.project.client._get_document_collection(self.project.name, self.name)[
+            "numberOfDocuments"
+        ]
+
+    def delete(self) -> dict:
+        """
+        Deletes the document collection.
+        """
+        # noinspection PyProtectedMember
+        return self.project.client._delete_document_collection(self.project.name, self.name)
+
+    def import_documents(self, file: typing.IO, mime_type: str = None) -> dict:
+        """
+        Imports documents from a given file. Supported file content types are plain text (text/plain)
+        and Averbis Solr XML (application/vnd.averbis.solr+xml).
+        """
+        if mime_type is None:
+            # Infering MimeType if not set
+            mime_type = mimetypes.guess_type(url=file.name)[0]
+            if mime_type not in [MEDIA_TYPE_TEXT_PLAIN, MEDIA_TYPE_APPLICATION_SOLR_XML]:
+                raise ValueError(
+                    "Unable to guess a valid mime_type. Supported file content types are plain text (mime_type = 'text/plain') "
+                    + "and Averbis Solr XML (mime_type = 'application/vnd.averbis.solr+xml').\nPlease provide the correct mime_type with: "
+                    "`document_collection.import_documents(file, mime_type = ...)`."
+                )
+
+        # noinspection PyProtectedMember
+        return self.project.client._import_document(self.project.name, self.name, file, mime_type)
+
+
 class Project:
     def __init__(self, client: "Client", name: str):
         self.client = client
@@ -469,15 +526,23 @@ class Project:
 
         :return: The pipeline.
         """
+
+        # The pipeline name parameter differs between schemaVersion 1.x ("name") and 2.x ("pipelineName")
+        if configuration["schemaVersion"].startswith("1."):
+            pipeline_name_key = "name"
+        else:
+            pipeline_name_key = "pipelineName"
+
         if name is not None:
             cfg = copy.deepcopy(configuration)
-            cfg["name"] = name
+            cfg[pipeline_name_key] = name
         else:
             cfg = configuration
+            name = cfg[pipeline_name_key]
 
         self.client._create_pipeline(self.name, cfg)
-        new_pipeline = Pipeline(self, cfg["name"])
-        self.__cached_pipelines[cfg["name"]] = new_pipeline
+        new_pipeline = Pipeline(self, name)
+        self.__cached_pipelines[name] = new_pipeline
         return new_pipeline
 
     def create_terminology(
@@ -517,6 +582,34 @@ class Project:
         # noinspection PyProtectedMember
         return self.client._list_terminologies(self.name)
 
+    def create_document_collection(self, name: str) -> DocumentCollection:
+        """
+        Creates a new document collection.
+
+        :return: The document collection.
+        """
+        # noinspection PyProtectedMember
+        return self.client._create_document_collection(self.name, name)
+
+    def get_document_collection(self, collection: str) -> DocumentCollection:
+        """
+        Obtain an existing document collection.
+
+        :return: The document collection.
+        """
+        # noinspection PyProtectedMember
+        return DocumentCollection(self, collection)
+
+    def list_document_collections(self) -> List[DocumentCollection]:
+        """
+        Lists all document collections.
+
+        :return: List of DocumentCollection objects
+        """
+        # noinspection PyProtectedMember
+        collection = self.client._list_document_collections(self.name)
+        return [DocumentCollection(self, c["name"]) for c in collection]
+
     def delete(self) -> None:
         """
         Delete the project.
@@ -547,18 +640,39 @@ class Project:
         # noinspection PyProtectedMember
         return self.client._select(self.name, query, **kwargs)
 
+    @experimental_api
+    def export_text_analysis(
+        self, document_sources: str, process: str, annotation_types: str = None
+    ) -> dict:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear. Exports a given text analysis process as a json.
+
+        :return: The raw payload of the server response. Future versions of this library may return a better-suited
+         representation.
+        """
+        if self.client.spec_version.startswith("5."):
+            raise OperationNotSupported(
+                "Text analysis export is not supported for platform version 5.x, it is only supported from 6.x onwards."
+            )
+        # noinspection PyProtectedMember
+        return self.client._export_text_analysis(
+            self.name, document_sources, process, annotation_types
+        )
+
 
 class Client:
     def __init__(
         self,
         url_or_id: str,
         api_token: str = None,
-        verify_ssl: Union[str, bool] = None,
+        verify_ssl: Union[str, bool] = True,
         settings: Union[str, Path, dict] = None,
+        username: str = None,
+        password: str = None,
     ):
         self.__logger = logging.getLogger(self.__class__.__module__ + "." + self.__class__.__name__)
-        self._api_token = None
-        self._verify_ssl = True
+        self._api_token = api_token
+        self._verify_ssl = verify_ssl
 
         if isinstance(settings, dict):
             self._settings = settings
@@ -572,11 +686,23 @@ class Client:
                 self._apply_profile("*")
             self._apply_profile(url_or_id)
 
-        if api_token:
-            self._api_token = api_token
+        if self._api_token is None:
+            if username is not None and password is not None:
+                self.regenerate_api_token(username, password)
+            else:
+                raise Exception(
+                    "An API Token is required for initializing the Client.\n"
+                    + "You can either pass it directly with: Client(url,api_token=your_token) or you can\n"
+                    + "generate a new API token with: Client(url, username='your_user_name', password='your_password')."
+                )
 
-        if verify_ssl:
-            self.verify_ssl = api_token
+        try:
+            self.build_info = self.get_build_info()
+        except JSONDecodeError:
+            raise ValueError(
+                "The Client could not get information about the platform. This is likely because your API Token has changed."
+            )
+        self.spec_version = self.build_info["specVersion"]
 
     def _exists_profile(self, profile: str):
         return (
@@ -818,6 +944,55 @@ class Client:
         """
         raise OperationNotSupported("Deleting projects is not supported by the REST API yet")
 
+    def _list_document_collections(self, project: str) -> dict:
+        """
+        Use Project.list_document_collections() instead.
+        """
+        response = self.__request("get", f"/v1/importer/projects/{project}/documentCollections")
+
+        return response["payload"]
+
+    def _create_document_collection(self, project: str, collection_name: str) -> DocumentCollection:
+        """
+        Use Project.create_document_collection() instead.
+        """
+        response = self.__request(
+            "post",
+            f"/v1/importer/projects/{project}/documentCollections",
+            json={"name": collection_name},
+        )
+        return DocumentCollection(self.get_project(project), response["payload"]["name"])
+
+    def _get_document_collection(self, project: str, collection_name: str):
+        """
+        Use DocumentCollection.get_number_of_documents() instead.
+        """
+        response = self.__request(
+            "get", f"/v1/importer/projects/{project}/documentCollections/{collection_name}"
+        )
+
+        return response["payload"]
+
+    def _delete_document_collection(self, project: str, collection_name: str) -> dict:
+        """
+        Use DocumentCollection.delete() instead.
+        """
+        response = self.__request(
+            "delete", f"/v1/importer/projects/{project}/documentCollections/{collection_name}"
+        )
+        return response["payload"]
+
+    def _import_document(self, project: str, collection_name: str, file: typing.IO, mime_type):
+        """
+        Use DocumentCollection.import_document() instead.
+        """
+        response = self.__request(
+            "post",
+            f"/v1/importer/projects/{project}/documentCollections/{collection_name}/documents",
+            files={"documentFile": (file.name, file, mime_type)},
+        )
+        return response["payload"]
+
     def _list_terminologies(self, project: str) -> dict:
         """
         Use Project.list_terminologies() instead.
@@ -920,11 +1095,15 @@ class Client:
         )
         return response["payload"]
 
-    def _delete_pipeline(self, project: str, pipeline: str) -> None:
+    @experimental_api
+    def _delete_pipeline(self, project: str, pipeline: str) -> dict:
         """
         Use Pipeline.delete() instead.
         """
-        raise OperationNotSupported("Deleting pipelines is not supported by the REST API yet")
+        response = self.__request(
+            "delete", f"/experimental/textanalysis/projects/{project}/pipelines/{pipeline}"
+        )
+        return response["payload"]
 
     def _start_pipeline(self, project: str, pipeline: str) -> dict:
         response = self.__request(
@@ -1031,6 +1210,21 @@ class Client:
             f"/v1/search/projects/{project}/select",
             params={"q": q, **kwargs},
             headers={HEADER_CONTENT_TYPE: MEDIA_TYPE_TEXT_PLAIN_UTF8},
+        )
+        return response["payload"]
+
+    @experimental_api
+    def _export_text_analysis(
+        self, project: str, document_sources: str, process: str, annotation_types: str = None
+    ):
+        """
+        Use Project.export_text_analysis() instead.
+        """
+        response = self.__request(
+            "get",
+            f"/experimental/textanalysis/projects/{project}/documentSources/{document_sources}/processes/{process}/export",
+            params={"annotationTypes": annotation_types},
+            headers={HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_JSON},
         )
         return response["payload"]
 
