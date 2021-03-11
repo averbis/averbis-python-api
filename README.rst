@@ -41,6 +41,11 @@ Supported products are:
 
 - `Patent Monitor <https://averbis.com/patent-monitor/>`_
 
+Status
+------
+
+The Averbis Python API is currently in an open alpha development stage. We try to keep breaking changes minimal but they may happen on the way to the first stable release.
+
 Features
 --------
 
@@ -79,10 +84,10 @@ Connecting the client to a platform
 .. code:: python
 
   from averbis import Client
-  client = Client('http://localhost:8400/health-discovery')
-  client.regenerate_api_token('YOUR_USERNAME', 'YOUR_PASSWORD')
-  # or
+  # Use existing API Token
   client = Client('http://localhost:8400/health-discovery', api_token='YOUR_API_TOKEN')
+  # or generate new API Token based on your credentials (invalidates old API Token)
+  client = Client('http://localhost:8400/health-discovery', username = 'YOUR_USERNAME', password = 'YOUR_PASSWORD') 
 
 
 Connecting to a pipeline and assure that it is started
