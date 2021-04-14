@@ -682,7 +682,7 @@ class Project:
         if isinstance(file_or_path, str):
             file_or_path = Path(file_or_path)
         if isinstance(file_or_path, Path):
-            file = open(file_or_path)
+            file = open(file_or_path, 'rb')
         else:
             file = file_or_path
 
@@ -1320,7 +1320,7 @@ class Client:
         self.__request(
             "post",
             f"/experimental/textanalysis/projects/{project}/pearComponents",
-            files={"pearPackage": (file.name, file)},
+            files={"pearPackage": (file.name, file, "application/octet-stream")},
         )
         return None
 
