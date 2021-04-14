@@ -88,3 +88,37 @@ def test_list_pear_components(client_version_6, requests_mock):
     pear_components = project.list_pear_components()
 
     assert pear_components == expected_pears
+
+
+def test_delete_pear_component_success(client_version_6, requests_mock):
+    project = client_version_6.get_project("LoadTesting")
+    pear_identifier = 'pear0'
+    requests_mock.delete(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/LoadTesting/pearComponents/{pear_identifier}",
+        headers={"Content-Type": "application/json"},
+        json={"payload": None, "errorMessages": []},
+    )
+    project.delete_pear_component(pear_identifier)
+
+
+def test_delete_pear_component_pear_does_not_exist(client_version_6, requests_mock):
+    project = client_version_6.get_project("LoadTesting")
+    pear_identifier = 'pear0'
+    requests_mock.delete(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/LoadTesting/pearComponents/{pear_identifier}",
+        headers={"Content-Type": "application/json"},
+        status_code=404,
+        json={
+            "payload": None,
+            "errorMessages": [
+                "The requested resource could not be found."
+            ]
+        }
+    )
+
+    with pytest.raises(Exception) as ex:
+        project.delete_pear_component(pear_identifier)
+
+    # the assert needs to be on this level
+    expected_error_message = 'Unable to perform request: The requested resource could not be found.'
+    assert expected_error_message in str(ex.value)

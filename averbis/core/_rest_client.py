@@ -667,6 +667,14 @@ class Project:
         # noinspection PyProtectedMember
         return self.client._list_pear_components(self.name)
 
+    def delete_pear_component(self, pear_identifier: str) -> None:
+        """
+        Delete the pear component by identifier
+        """
+        # noinspection PyProtectedMember
+        self.client._delete_pear_component(self.name, pear_identifier)
+        return None
+
 
 class Client:
     def __init__(
@@ -1281,9 +1289,19 @@ class Client:
         response = self.__request("get", f"/experimental/textanalysis/projects/{project}/pearComponents")
         return response["payload"]
 
+    @experimental_api
+    def _delete_pear_component(self, project: str, pear_identifier):
+        """
+        Use Project.delete_pear_component instead.
+        """
+        self.__request("delete", f"/experimental/textanalysis/projects/{project}/pearComponents/{pear_identifier}")
+        return None
+
     @staticmethod
     def __handle_error(response):
         if response["errorMessages"] is None or len(response["errorMessages"]) == 0:
             return
 
         raise Exception("Unable to perform request: " + ", ".join(response["errorMessages"]))
+
+
