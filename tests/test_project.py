@@ -122,3 +122,60 @@ def test_delete_pear_component_pear_does_not_exist(client_version_6, requests_mo
     # the assert needs to be on this level
     expected_error_message = 'Unable to perform request: The requested resource could not be found.'
     assert expected_error_message in str(ex.value)
+
+
+def test_install_pear_component(client_version_6, requests_mock):
+    project = client_version_6.get_project("LoadTesting")
+    requests_mock.post(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/LoadTesting/pearComponents",
+        headers={"Content-Type": "application/json"},
+        status_code=200,
+        json={"payload": None, "errorMessages": []}
+    )
+    file_path = os.path.join(TEST_DIRECTORY, "resources/pears/xyz.pear")
+    project.install_pear_component(file_path)
+
+
+def test_install_pear_component_file_does_not_exist(client_version_6, requests_mock):
+    project = client_version_6.get_project("LoadTesting")
+    file_or_path = TEST_DIRECTORY + '/' + "resources/pears/nope.pear"
+    with pytest.raises(FileNotFoundError) as ex:
+        project.install_pear_component(file_or_path)
+
+    assert file_or_path in str(ex.value)
+    assert 'No such file or directory' in str(ex.value)
+
+
+def test_install_pear_component_file_is_not_a_pear(client_version_6, requests_mock):
+    project = client_version_6.get_project("LoadTesting")
+    file_or_path = TEST_DIRECTORY + '/' + "resources/pears/xyz.bear"
+
+    with pytest.raises(Exception) as ex:
+        project.install_pear_component(file_or_path)
+
+    assert file_or_path in str(ex.value)
+    assert "was not of type '.pear'" in str(ex.value)
+
+
+def test_install_pear_component_already_exists(client_version_6, requests_mock):
+    project = client_version_6.get_project("LoadTesting")
+    requests_mock.post(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/LoadTesting/pearComponents",
+        headers={"Content-Type": "application/json"},
+        status_code=404,
+        json={
+            "payload": None,
+            "errorMessages": [
+                "The PEAR component 'xyz.pear' could not be installed since another PEAR component with the ID 'xyz' "
+                "already exists. "
+            ]
+        }
+    )
+    file_path = os.path.join(TEST_DIRECTORY, "resources/pears/xyz.pear")
+
+    with pytest.raises(Exception) as ex:
+        project.install_pear_component(file_path)
+
+    expected_error_message = "Unable to perform request: The PEAR component 'xyz.pear' could not be installed since " \
+                             "another PEAR component with the ID 'xyz' already exists. "
+    assert expected_error_message in str(ex.value)

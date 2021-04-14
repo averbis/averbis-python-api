@@ -675,13 +675,24 @@ class Project:
         self.client._delete_pear_component(self.name, pear_identifier)
         return None
 
-    def install_pear_component(self, file: typing.IO) -> None:
+    def install_pear_component(self, file_or_path: Union[typing.IO, Path, str]) -> None:
         """
-        Install a pear component.
+        Install a pear component by file or path.
         """
+        if isinstance(file_or_path, str):
+            file_or_path = Path(file_or_path)
+        if isinstance(file_or_path, Path):
+            file = open(file_or_path)
+        else:
+            file = file_or_path
+
+        if not file.name.endswith('.pear'):
+            raise Exception(f"{file.name} was not of type '.pear'")
+
         # noinspection PyProtectedMember
-        self.client._install_pear_component(self.name, file: typing.IO)
+        self.client._install_pear_component(self.name, file)
         return None
+
 
 class Client:
     def __init__(
@@ -1311,6 +1322,7 @@ class Client:
             f"/experimental/textanalysis/projects/{project}/pearComponents",
             files={"pearPackage": (file.name, file)},
         )
+        return None
 
     @staticmethod
     def __handle_error(response):
