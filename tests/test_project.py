@@ -71,3 +71,20 @@ def test_that_get_pipeline_returns_same_instance_on_consecutive_calls(client):
     pipeline2 = project.get_pipeline("discharge")
 
     assert pipeline1 is pipeline2
+
+
+def test_list_pear_components(client_version_6, requests_mock):
+    project = client_version_6.get_project("LoadTesting")
+    expected_pears = [
+        'pear0',
+        'pear1',
+        'pear2'
+    ]
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/LoadTesting/pearComponents",
+        headers={"Content-Type": "application/json"},
+        json={"payload": expected_pears, "errorMessages": []},
+    )
+    pear_components = project.list_pear_components()
+
+    assert pear_components == expected_pears

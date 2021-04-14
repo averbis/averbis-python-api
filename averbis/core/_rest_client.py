@@ -659,6 +659,14 @@ class Project:
             self.name, document_sources, process, annotation_types
         )
 
+    def list_pear_components(self) -> List[str]:
+        """
+        List all existing pear components.
+        :return: The pear component list.
+        """
+        # noinspection PyProtectedMember
+        return self.client._list_pear_components(self.name)
+
 
 class Client:
     def __init__(
@@ -1264,6 +1272,14 @@ class Client:
             ),
             ENCODING_UTF_8,
         )
+
+    @experimental_api
+    def _list_pear_components(self, project: str) -> List[str]:
+        """
+        Use Project.list_pear_components() instead.
+        """
+        response = self.__request("get", f"/experimental/textanalysis/projects/{project}/pearComponents")
+        return response["payload"]
 
     @staticmethod
     def __handle_error(response):
