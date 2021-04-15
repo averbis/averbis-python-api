@@ -515,9 +515,9 @@ class PearComponent:
         # noinspection PyProtectedMember
         self.project.client._delete_pear_component(self.project.name, self.identifier)
 
-    def get_parameters(self) -> dict:
+    def get_default_configuration(self) -> dict:
         """
-        Gets the parameters of the PEAR component.
+        Get the default configuration of the PEAR component.
         """
         # noinspection PyProtectedMember
         return self.project.client._get_pear_component(self.project.name, self.identifier)
@@ -710,6 +710,13 @@ class Project:
         # noinspection PyProtectedMember
         pear_identifier = self.client._install_pear_component(self.name, file_or_path)
         return PearComponent(self, pear_identifier)
+
+    def get_pear_default_configuration(self, pear_identifier: str) -> dict:
+        """
+        Get the default configuration of the PEAR component.
+        """
+        # noinspection PyProtectedMember
+        return self.client._get_pear_component(self.name, pear_identifier)
 
 
 class Client:
@@ -1340,7 +1347,7 @@ class Client:
             f"/experimental/textanalysis/projects/{project}/pearComponents",
             files={"pearPackage": (file.name, file, "application/octet-stream")},
         )
-        return response["payload"]
+        return response["payload"][0]
 
     @experimental_api
     def _get_pear_component(self, project: str, pear_identifier: str) -> dict:

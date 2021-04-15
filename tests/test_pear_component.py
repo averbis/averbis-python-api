@@ -9,17 +9,17 @@ def pear_component(client) -> PearComponent:
 
 
 def test_get_parameter(pear_component, requests_mock):
-    parameters = {
+    configuration = {
         'param0': 'value0',
         'param1': 'value1'
     }
     requests_mock.get(
         f"{API_EXPERIMENTAL}/textanalysis/projects/LoadTesting/pearComponents/{pear_component.identifier}",
         json={
-            "payload": parameters,
+            "payload": configuration,
             "errorMessages": [],
-        },
+        }
     )
-    actual_parameters = pear_component.get_parameters()
-    assert parameters['param0'] == actual_parameters['param0']
-    assert parameters['param1'] == actual_parameters['param1']
+    actual_configuration = pear_component.get_default_configuration()
+    assert configuration['param0'] == actual_configuration['param0']
+    assert configuration['param1'] == actual_configuration['param1']
