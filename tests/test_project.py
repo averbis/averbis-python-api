@@ -130,7 +130,7 @@ def test_install_pear_component(client_version_6, requests_mock):
         f"{API_EXPERIMENTAL}/textanalysis/projects/LoadTesting/pearComponents",
         headers={"Content-Type": "application/json"},
         status_code=200,
-        json={"payload": "xyz-pear", "errorMessages": []}
+        json={"payload": ["xyz-pear"], "errorMessages": []}
     )
     file_path = os.path.join(TEST_DIRECTORY, "resources/pears/xyz.pear")
     pear_component = project.install_pear_component(file_path)
