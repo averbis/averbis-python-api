@@ -682,15 +682,13 @@ class Project:
         if isinstance(file_or_path, str):
             file_or_path = Path(file_or_path)
         if isinstance(file_or_path, Path):
-            file = open(file_or_path, 'rb')
-        else:
-            file = file_or_path
+            file_or_path = open(file_or_path, 'rb')
 
-        if not file.name.endswith('.pear'):
-            raise Exception(f"{file.name} was not of type '.pear'")
+        if not file_or_path.name.endswith('.pear'):
+            raise Exception(f"{file_or_path.name} was not of type '.pear'")
 
         # noinspection PyProtectedMember
-        self.client._install_pear_component(self.name, file)
+        self.client._install_pear_component(self.name, file_or_path)
         return None
 
 
