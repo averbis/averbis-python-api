@@ -503,6 +503,26 @@ class DocumentCollection:
         return self.project.client._import_document(self.project.name, self.name, file, mime_type)
 
 
+class PearComponent:
+    def __init__(self, project: "Project", identifier: str):
+        self.project = project
+        self.identifier = identifier
+
+    def delete(self):
+        """
+        Deletes the PEAR component.
+        """
+        # noinspection PyProtectedMember
+        self.project.client._delete_pear_component(self.project.name, self.identifier)
+
+    def get_parameters(self) -> dict:
+        """
+        Gets the parameters of the PEAR component.
+        """
+        # noinspection PyProtectedMember
+        return self.project.client._get_pear_component(self.project.name, self.identifier)
+
+
 class Project:
     def __init__(self, client: "Client", name: str):
         self.client = client
@@ -675,7 +695,7 @@ class Project:
         self.client._delete_pear_component(self.name, pear_identifier)
         return None
 
-    def install_pear_component(self, file_or_path: Union[typing.IO, Path, str]) -> None:
+    def install_pear_component(self, file_or_path: Union[typing.IO, Path, str]) -> PearComponent:
         """
         Install a pear component by file or path.
         """
@@ -688,8 +708,8 @@ class Project:
             raise Exception(f"{file_or_path.name} was not of type '.pear'")
 
         # noinspection PyProtectedMember
-        self.client._install_pear_component(self.name, file_or_path)
-        return None
+        pear_identifier = self.client._install_pear_component(self.name, file_or_path)
+        return PearComponent(self, pear_identifier)
 
 
 class Client:
@@ -1314,13 +1334,19 @@ class Client:
         return None
 
     @experimental_api
-    def _install_pear_component(self, project: str, file: typing.IO):
-        self.__request(
+    def _install_pear_component(self, project: str, file: typing.IO) -> str:
+        response = self.__request(
             "post",
             f"/experimental/textanalysis/projects/{project}/pearComponents",
             files={"pearPackage": (file.name, file, "application/octet-stream")},
         )
-        return None
+        return response["payload"]
+
+    @experimental_api
+    def _get_pear_component(self, project: str, pear_identifier: str) -> dict:
+        response = self.__request("get",
+                                  f"/experimental/textanalysis/projects/{project}/pearComponents/{pear_identifier}")
+        return response["payload"]
 
     @staticmethod
     def __handle_error(response):

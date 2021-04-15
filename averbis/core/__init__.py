@@ -28,6 +28,7 @@ from ._rest_client import (
     Pipeline,
     Project,
     DocumentCollection,
+    PearComponent,
     DOCUMENT_IMPORTER_CAS,
     DOCUMENT_IMPORTER_SOLR,
     DOCUMENT_IMPORTER_TEXT,

@@ -130,10 +130,11 @@ def test_install_pear_component(client_version_6, requests_mock):
         f"{API_EXPERIMENTAL}/textanalysis/projects/LoadTesting/pearComponents",
         headers={"Content-Type": "application/json"},
         status_code=200,
-        json={"payload": None, "errorMessages": []}
+        json={"payload": "xyz-pear", "errorMessages": []}
     )
     file_path = os.path.join(TEST_DIRECTORY, "resources/pears/xyz.pear")
-    project.install_pear_component(file_path)
+    pear_component = project.install_pear_component(file_path)
+    assert pear_component.identifier == 'xyz-pear'
 
 
 def test_install_pear_component_file_does_not_exist(client_version_6, requests_mock):
