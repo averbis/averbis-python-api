@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020 Averbis GmbH.
+# Copyright (c) 2021 Averbis GmbH.
 #
 # This file is part of Averbis Python API.
 # See https://www.averbis.com for further info.
@@ -17,8 +17,6 @@
 # limitations under the License.
 #
 #
-# !/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 # Note: To use the "upload" functionality of this file, you must:
 #   $ pip install twine
