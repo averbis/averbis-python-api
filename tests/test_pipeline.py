@@ -146,7 +146,6 @@ def test_ensure_started_failure_to_start(client, pipeline_endpoint_behavior_mock
     with pytest.raises(Exception) as ex:
         pipeline.ensure_started()
 
-    # the assert needs to be on this level
     assert error_message in str(ex.value)
 
 

@@ -47,7 +47,8 @@ test_dependencies = [
     "pytest-cov",
     "requests-mock",
     "mypy",
-    "licenseheaders"
+    "licenseheaders",
+    "tempfile"
 ]
 
 dev_dependencies = [

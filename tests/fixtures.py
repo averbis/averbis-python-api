@@ -18,7 +18,7 @@
 #
 #
 import os
-
+import tempfile
 import pytest
 
 from averbis import Client

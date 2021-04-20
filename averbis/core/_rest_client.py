@@ -503,7 +503,7 @@ class DocumentCollection:
         return self.project.client._import_document(self.project.name, self.name, file, mime_type)
 
 
-class PearComponent:
+class Pear:
     def __init__(self, project: "Project", identifier: str):
         self.project = project
         self.identifier = identifier
@@ -513,14 +513,14 @@ class PearComponent:
         Deletes the PEAR component.
         """
         # noinspection PyProtectedMember
-        self.project.client._delete_pear_component(self.project.name, self.identifier)
+        self.project.client._delete_pear(self.project.name, self.identifier)
 
     def get_default_configuration(self) -> dict:
         """
         Get the default configuration of the PEAR component.
         """
         # noinspection PyProtectedMember
-        return self.project.client._get_pear_component(self.project.name, self.identifier)
+        return self.project.client._get_default_pear_configuration(self.project.name, self.identifier)
 
 
 class Project:
@@ -679,44 +679,36 @@ class Project:
             self.name, document_sources, process, annotation_types
         )
 
-    def list_pear_components(self) -> List[str]:
+    def list_pears(self) -> List[str]:
         """
-        List all existing pear components.
-        :return: The pear component list.
+        List all existing pears by identifier.
+        :return: The list of pear identifiers.
         """
         # noinspection PyProtectedMember
-        return self.client._list_pear_components(self.name)
+        return self.client._list_pears(self.name)
 
-    def delete_pear_component(self, pear_identifier: str) -> None:
+    def delete_pear(self, pear_identifier: str) -> None:
         """
-        Delete the pear component by identifier.
+        Delete the pear by identifier.
         """
         # noinspection PyProtectedMember
-        self.client._delete_pear_component(self.name, pear_identifier)
+        self.client._delete_pear(self.name, pear_identifier)
         return None
 
-    def install_pear_component(self, file_or_path: Union[typing.IO, Path, str]) -> PearComponent:
+    def install_pear(self, file_or_path: Union[typing.IO, Path, str]) -> Pear:
         """
-        Install a pear component by file or path.
+        Install a pear by file or path.
         """
-        if isinstance(file_or_path, str):
-            file_or_path = Path(file_or_path)
-        if isinstance(file_or_path, Path):
-            file_or_path = open(file_or_path, 'rb')
-
-        if not file_or_path.name.endswith('.pear'):
-            raise Exception(f"{file_or_path.name} was not of type '.pear'")
-
         # noinspection PyProtectedMember
-        pear_identifier = self.client._install_pear_component(self.name, file_or_path)
-        return PearComponent(self, pear_identifier)
+        pear_identifier = self.client._install_pear(self.name, file_or_path)
+        return Pear(self, pear_identifier)
 
     def get_pear_default_configuration(self, pear_identifier: str) -> dict:
         """
         Get the default configuration of the PEAR component.
         """
         # noinspection PyProtectedMember
-        return self.client._get_pear_component(self.name, pear_identifier)
+        return self.client._get_default_pear_configuration(self.name, pear_identifier)
 
 
 class Client:
@@ -1325,7 +1317,7 @@ class Client:
         )
 
     @experimental_api
-    def _list_pear_components(self, project: str) -> List[str]:
+    def _list_pears(self, project: str) -> List[str]:
         """
         Use Project.list_pear_components() instead.
         """
@@ -1333,7 +1325,7 @@ class Client:
         return response["payload"]
 
     @experimental_api
-    def _delete_pear_component(self, project: str, pear_identifier: str):
+    def _delete_pear(self, project: str, pear_identifier: str):
         """
         Use Project.delete_pear_component instead.
         """
@@ -1341,16 +1333,25 @@ class Client:
         return None
 
     @experimental_api
-    def _install_pear_component(self, project: str, file: typing.IO) -> str:
+    def _install_pear(self, project: str, file_or_path: Union[typing.IO, Path, str]) -> str:
+
+        if isinstance(file_or_path, str):
+            file_or_path = Path(file_or_path)
+        if isinstance(file_or_path, Path):
+            file_or_path = open(file_or_path, 'rb')
+
+        if not file_or_path.name.endswith('.pear'):
+            raise Exception(f"{file_or_path.name} was not of type '.pear'")
+
         response = self.__request(
             "post",
             f"/experimental/textanalysis/projects/{project}/pearComponents",
-            files={"pearPackage": (file.name, file, "application/octet-stream")},
+            files={"pearPackage": (file_or_path.name, file_or_path, "application/octet-stream")},
         )
         return response["payload"][0]
 
     @experimental_api
-    def _get_pear_component(self, project: str, pear_identifier: str) -> dict:
+    def _get_default_pear_configuration(self, project: str, pear_identifier: str) -> dict:
         response = self.__request("get",
                                   f"/experimental/textanalysis/projects/{project}/pearComponents/{pear_identifier}")
         return response["payload"]
