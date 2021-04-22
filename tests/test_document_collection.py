@@ -18,7 +18,7 @@
 #
 #
 from averbis import DocumentCollection
-from fixtures import *
+from tests.fixtures import *
 
 
 @pytest.fixture()

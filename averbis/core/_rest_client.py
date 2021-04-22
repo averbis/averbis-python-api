@@ -484,7 +484,7 @@ class DocumentCollection:
         # noinspection PyProtectedMember
         return self.project.client._delete_document_collection(self.project.name, self.name)
 
-    def import_documents(self, file: typing.IO, mime_type: str = None) -> dict:
+    def import_documents(self, file: IO, mime_type: str = None) -> dict:
         """
         Imports documents from a given file. Supported file content types are plain text (text/plain)
         and Averbis Solr XML (application/vnd.averbis.solr+xml).
@@ -520,7 +520,9 @@ class Pear:
         Get the default configuration of the PEAR component.
         """
         # noinspection PyProtectedMember
-        return self.project.client._get_default_pear_configuration(self.project.name, self.identifier)
+        return self.project.client._get_default_pear_configuration(
+            self.project.name, self.identifier
+        )
 
 
 class Project:
@@ -695,20 +697,13 @@ class Project:
         self.client._delete_pear(self.name, pear_identifier)
         return None
 
-    def install_pear(self, file_or_path: Union[typing.IO, Path, str]) -> Pear:
+    def install_pear(self, file_or_path: Union[IO, Path, str]) -> Pear:
         """
         Install a pear by file or path.
         """
         # noinspection PyProtectedMember
         pear_identifier = self.client._install_pear(self.name, file_or_path)
         return Pear(self, pear_identifier)
-
-    def get_pear_default_configuration(self, pear_identifier: str) -> dict:
-        """
-        Get the default configuration of the PEAR component.
-        """
-        # noinspection PyProtectedMember
-        return self.client._get_default_pear_configuration(self.name, pear_identifier)
 
 
 class Client:
@@ -1033,7 +1028,7 @@ class Client:
         )
         return response["payload"]
 
-    def _import_document(self, project: str, collection_name: str, file: typing.IO, mime_type):
+    def _import_document(self, project: str, collection_name: str, file: IO, mime_type):
         """
         Use DocumentCollection.import_document() instead.
         """
@@ -1321,7 +1316,9 @@ class Client:
         """
         Use Project.list_pear_components() instead.
         """
-        response = self.__request("get", f"/experimental/textanalysis/projects/{project}/pearComponents")
+        response = self.__request(
+            "get", f"/experimental/textanalysis/projects/{project}/pearComponents"
+        )
         return response["payload"]
 
     @experimental_api
@@ -1329,18 +1326,21 @@ class Client:
         """
         Use Project.delete_pear_component instead.
         """
-        self.__request("delete", f"/experimental/textanalysis/projects/{project}/pearComponents/{pear_identifier}")
+        self.__request(
+            "delete",
+            f"/experimental/textanalysis/projects/{project}/pearComponents/{pear_identifier}",
+        )
         return None
 
     @experimental_api
-    def _install_pear(self, project: str, file_or_path: Union[typing.IO, Path, str]) -> str:
+    def _install_pear(self, project: str, file_or_path: Union[IO, Path, str]) -> str:
 
         if isinstance(file_or_path, str):
             file_or_path = Path(file_or_path)
         if isinstance(file_or_path, Path):
-            file_or_path = open(file_or_path, 'rb')
+            file_or_path = open(file_or_path, "rb")
 
-        if not file_or_path.name.endswith('.pear'):
+        if not file_or_path.name.endswith(".pear"):
             raise Exception(f"{file_or_path.name} was not of type '.pear'")
 
         response = self.__request(
@@ -1352,8 +1352,9 @@ class Client:
 
     @experimental_api
     def _get_default_pear_configuration(self, project: str, pear_identifier: str) -> dict:
-        response = self.__request("get",
-                                  f"/experimental/textanalysis/projects/{project}/pearComponents/{pear_identifier}")
+        response = self.__request(
+            "get", f"/experimental/textanalysis/projects/{project}/pearComponents/{pear_identifier}"
+        )
         return response["payload"]
 
     @staticmethod
@@ -1362,7 +1363,3 @@ class Client:
             return
 
         raise Exception("Unable to perform request: " + ", ".join(response["errorMessages"]))
-
-
-
-
