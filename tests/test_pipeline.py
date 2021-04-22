@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020 Averbis GmbH.
+# Copyright (c) 2021 Averbis GmbH.
 #
 # This file is part of Averbis Python API.
 # See https://www.averbis.com for further info.
@@ -145,7 +145,8 @@ def test_ensure_started_failure_to_start(client, pipeline_endpoint_behavior_mock
 
     with pytest.raises(Exception) as ex:
         pipeline.ensure_started()
-        assert error_message in str(ex.value)
+
+    assert error_message in str(ex.value)
 
 
 class PipelineEndpointMock:

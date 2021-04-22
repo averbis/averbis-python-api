@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020 Averbis GmbH.
+# Copyright (c) 2021 Averbis GmbH.
 #
 # This file is part of Averbis Python API.
 # See https://www.averbis.com for further info.
@@ -15,6 +15,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
 #
 
 """Utilities for highlighting annotations in text"""

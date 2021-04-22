@@ -18,7 +18,7 @@
 #
 #
 import os
-
+import tempfile
 import pytest
 
 from averbis import Client
@@ -26,6 +26,7 @@ from averbis import Client
 URL_BASE_ID = "https://localhost:8080/information-discovery"
 URL_BASE_HD = "https://localhost:8080/health-discovery"
 API_BASE = URL_BASE_ID + "/rest/v1"
+API_EXPERIMENTAL = URL_BASE_ID + "/rest/experimental"
 TEST_DIRECTORY = os.path.dirname(__file__)
 TEST_API_TOKEN = "I-am-a-dummy-API-token"
 

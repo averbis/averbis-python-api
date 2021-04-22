@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020 Averbis GmbH.
+# Copyright (c) 2021 Averbis GmbH.
 #
 # This file is part of Averbis Python API.
 # See https://www.averbis.com for further info.
@@ -18,6 +18,7 @@
 #
 #
 import logging
+import tempfile
 
 from tests.fixtures import *
 
@@ -71,3 +72,105 @@ def test_that_get_pipeline_returns_same_instance_on_consecutive_calls(client):
     pipeline2 = project.get_pipeline("discharge")
 
     assert pipeline1 is pipeline2
+
+
+def test_list_pear_components(client_version_6, requests_mock):
+    project = client_version_6.get_project("test-project")
+    expected_pears = ["pear0", "pear1", "pear2"]
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/test-project/pearComponents",
+        headers={"Content-Type": "application/json"},
+        json={"payload": expected_pears, "errorMessages": []},
+    )
+    pear_components = project.list_pears()
+
+    assert pear_components == expected_pears
+
+
+def test_delete_pear_success(client_version_6, requests_mock):
+    project = client_version_6.get_project("test-project")
+    pear_identifier = "pear0"
+    requests_mock.delete(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/test-project/pearComponents/{pear_identifier}",
+        headers={"Content-Type": "application/json"},
+        json={"payload": None, "errorMessages": []},
+    )
+    project.delete_pear(pear_identifier)
+
+
+def test_delete_pear_with_pear_does_not_exist(client_version_6, requests_mock):
+    project = client_version_6.get_project("test-project")
+    pear_identifier = "pear0"
+    requests_mock.delete(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/test-project/pearComponents/{pear_identifier}",
+        headers={"Content-Type": "application/json"},
+        status_code=404,
+        json={"payload": None, "errorMessages": ["The requested resource could not be found."]},
+    )
+
+    with pytest.raises(Exception) as ex:
+        project.delete_pear(pear_identifier)
+
+    # the assert needs to be on this level
+    expected_error_message = "Unable to perform request: The requested resource could not be found."
+    assert expected_error_message in str(ex.value)
+
+
+def test_install_pear(client_version_6, requests_mock):
+    project = client_version_6.get_project("test-project")
+    requests_mock.post(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/test-project/pearComponents",
+        headers={"Content-Type": "application/json"},
+        status_code=200,
+        json={"payload": ["xyz-pear"], "errorMessages": []},
+    )
+
+    with tempfile.NamedTemporaryFile(suffix="xyz.pear") as tf:
+        pear_component = project.install_pear(tf.name)
+        assert pear_component.identifier == "xyz-pear"
+
+
+def test_install_pear_with_file_does_not_exist(client_version_6, requests_mock):
+    project = client_version_6.get_project("test-project")
+    file_or_path = TEST_DIRECTORY + "/" + "resources/pears/nope.pear"
+    with pytest.raises(FileNotFoundError) as ex:
+        project.install_pear(file_or_path)
+
+    assert file_or_path in str(ex.value)
+    assert "No such file or directory" in str(ex.value)
+
+
+def test_install_pear_with_file_is_not_a_pear(client_version_6, requests_mock):
+    project = client_version_6.get_project("test-project")
+    with tempfile.NamedTemporaryFile(suffix="xyz.bear") as tf:
+
+        with pytest.raises(Exception) as ex:
+            project.install_pear(tf.name)
+
+        assert tf.name in str(ex.value)
+        assert "was not of type '.pear'" in str(ex.value)
+
+
+def test_install_pear_with_pear_already_exists(client_version_6, requests_mock):
+    project = client_version_6.get_project("test-project")
+    requests_mock.post(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/test-project/pearComponents",
+        headers={"Content-Type": "application/json"},
+        status_code=404,
+        json={
+            "payload": None,
+            "errorMessages": [
+                "The PEAR component 'xyz.pear' could not be installed since another PEAR component with the ID 'xyz' "
+                "already exists. "
+            ],
+        },
+    )
+    with tempfile.NamedTemporaryFile(suffix="xyz.pear") as tf:
+        with pytest.raises(Exception) as ex:
+            project.install_pear(tf.name)
+
+        expected_error_message = (
+            "Unable to perform request: The PEAR component 'xyz.pear' could not be installed "
+            "since another PEAR component with the ID 'xyz' already exists. "
+        )
+        assert expected_error_message in str(ex.value)

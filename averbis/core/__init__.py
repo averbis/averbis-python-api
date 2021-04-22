@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020 Averbis GmbH.
+# Copyright (c) 2021 Averbis GmbH.
 #
 # This file is part of Averbis Python API.
 # See https://www.averbis.com for further info.
@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+#
 
 """Access to core functionalities of Averbis products"""
 
@@ -28,6 +29,7 @@ from ._rest_client import (
     Pipeline,
     Project,
     DocumentCollection,
+    Pear,
     DOCUMENT_IMPORTER_CAS,
     DOCUMENT_IMPORTER_SOLR,
     DOCUMENT_IMPORTER_TEXT,
@@ -57,6 +59,7 @@ __all__ = [
     "Pipeline",
     "Project",
     "DocumentCollection",
+    "Pear",
     "DOCUMENT_IMPORTER_CAS",
     "DOCUMENT_IMPORTER_SOLR",
     "DOCUMENT_IMPORTER_TEXT",

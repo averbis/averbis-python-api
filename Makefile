@@ -9,4 +9,4 @@ html:
 	cd docs && make html
 
 license:
-	licenseheaders -t build/apache-2.tmpl -n "Averbis Python API" -y "2020" -o "Averbis GmbH" -u "https://www.averbis.com" -x ".*" "venv/*"
+	licenseheaders -t build/apache-2.tmpl -n "Averbis Python API" -y "2021" -o "Averbis GmbH" -u "https://www.averbis.com" -x ".*" "venv/*"
