@@ -982,7 +982,7 @@ class Client:
         return Project(self, name)
 
     @experimental_api
-    def list_projects(self) -> List[Project]:
+    def list_projects(self) -> dict:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
