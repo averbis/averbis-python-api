@@ -498,6 +498,19 @@ class DocumentCollection:
         )
 
     @experimental_api
+    def export_analysis_results(self, document_id: str, process_name: str) -> dict:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Export the results of a process on a document from a collection.
+        """
+
+        # noinspection PyProtectedMember
+        return self.project.client._export_analysis_results(
+            self.project.name, self.name, document_id, process_name
+        )
+
+    @experimental_api
     def list_documents(self) -> dict:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -1132,6 +1145,25 @@ class Client:
             return response["payload"]
         else:
             return [response["payload"]]
+
+    def _export_analysis_results(
+        self, project: str, collection_name: str, document_id: str, process_name: str
+    ) -> List[dict]:
+        """
+        Use DocumentCollection.import_document() instead.
+        """
+
+        return str(
+            self.__request_with_bytes_response(
+                "get",
+                f"/textanalysis/projects/{project}/documentCollections/{collection_name}/documents/{document_id}"
+                f"/processes/{process_name}/exportTextAnalysisResult",
+                headers={
+                    HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_XMI,
+                },
+            ),
+            ENCODING_UTF_8,
+        )
 
     def _list_terminologies(self, project: str) -> dict:
         """
