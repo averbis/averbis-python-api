@@ -1073,7 +1073,7 @@ class Client:
             mime_type = MEDIA_TYPE_TEXT_PLAIN
 
         if isinstance(source, Path) and filename is None:
-            filename = Path(source).name()
+            filename = Path(source).name
 
         if isinstance(source, IOBase) and hasattr(source, "name"):
             filename = source.name
@@ -1093,11 +1093,11 @@ class Client:
 
         if isinstance(source, Path):
             if mime_type == MEDIA_TYPE_TEXT_PLAIN:
-                with source.open("r", encoding=ENCODING_UTF_8) as file:
-                    source = file.read()
+                with source.open("r", encoding=ENCODING_UTF_8) as text_file:
+                    source = text_file.read()
             else:
-                with source.open("rb") as file:
-                    source = file.read()
+                with source.open("rb") as binary_file:
+                    source = BytesIO(binary_file.read())
 
         data: IO = BytesIO(source.encode(ENCODING_UTF_8)) if isinstance(source, str) else source
 
