@@ -1069,6 +1069,16 @@ class Client:
         """
         Use DocumentCollection.import_document() instead.
         """
+        def fetch_filename(source: Union[Path, IO, str], default_filename: str) -> str:
+            if isinstance(source, Path):
+                return Path(source).name
+
+            if isinstance(source, IOBase) and hasattr(source, "name"):
+                return source.name
+
+            if isinstance(source, str):
+                return default_filename
+
         if isinstance(source, str) and mime_type is None:
             mime_type = MEDIA_TYPE_TEXT_PLAIN
 
@@ -1078,15 +1088,11 @@ class Client:
             if filename is not None:
                 raise Exception(f"The filename parameter cannot be used in conjunction with multi-document file formats "
                                 f"such as {mime_type}")
+            # For multi-documents, the server still needs a filename with the proper extension, otherwise it refuses
+            # to parse the result
+            filename = fetch_filename(source, 'data.xml')
         else:
-            if filename is None and isinstance(source, Path):
-                filename = Path(source).name
-
-            if filename is None and isinstance(source, IOBase) and hasattr(source, "name"):
-                filename = source.name
-
-            if filename is None:
-                raise Exception("Must specify a filename if source is not a Path")
+            filename = filename or fetch_filename(source, 'document.txt')
 
             if mime_type is None:
                 # Inferring MimeType if not set
