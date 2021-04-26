@@ -17,6 +17,3 @@
 # limitations under the License.
 #
 #
-from .core import Client, Project, Pipeline, Result, Terminology, DocumentCollection, Pear
-
-__all__ = ["Client", "Project", "Pipeline", "Result", "Terminology", "DocumentCollection", "Pear"]
