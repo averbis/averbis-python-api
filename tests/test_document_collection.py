@@ -42,7 +42,7 @@ def test_infer_mime_type_for_plain_text(document_collection, requests_mock):
         # Please note that we do not set mime_type = plain/text here, but it is automatically inferred
         result = document_collection.import_documents(input_io)
 
-    assert result[0]['document_name'] == "text1.txt"
+    assert result[0]["document_name"] == "text1.txt"
 
 
 def test_infer_mime_type_for_solr_xml(client, requests_mock):
@@ -51,14 +51,15 @@ def test_infer_mime_type_for_solr_xml(client, requests_mock):
     requests_mock.post(
         f"{API_BASE}/importer/projects/LoadTesting/documentCollections/my_collection/documents",
         json={
-            "payload": [{
-                "original_document_name": "disease_solr-1.xml",
-                "document_name": "disease_solr-1.xml",
-            },
+            "payload": [
+                {
+                    "original_document_name": "disease_solr-1.xml",
+                    "document_name": "disease_solr-1.xml",
+                },
                 {
                     "original_document_name": "disease_solr-2.xml",
                     "document_name": "disease_solr-2.xml",
-                }
+                },
             ],
             "errorMessages": [],
         },
@@ -66,10 +67,12 @@ def test_infer_mime_type_for_solr_xml(client, requests_mock):
     file_path_xml = Path(TEST_DIRECTORY, "resources/xml/disease_solr.xml")
 
     # Please note that it only works for solr-xml, if we explicitly set the mime-type
-    result = document_collection.import_documents(file_path_xml, mime_type="application/vnd.averbis.solr+xml")
+    result = document_collection.import_documents(
+        file_path_xml, mime_type="application/vnd.averbis.solr+xml"
+    )
 
-    assert result[0]['document_name'] == "disease_solr-1.xml"
-    assert result[1]['document_name'] == "disease_solr-2.xml"
+    assert result[0]["document_name"] == "disease_solr-1.xml"
+    assert result[1]["document_name"] == "disease_solr-2.xml"
 
     # Otherwise, we get a ValueError
     with pytest.raises(ValueError):

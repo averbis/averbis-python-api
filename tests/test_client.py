@@ -425,7 +425,9 @@ def test_import_solr_xml_into_collection(client, requests_mock):
 
     # Otherwise, we get a ValueError
     with pytest.raises(Exception):
-        client._import_documents(Path("dummy"), mime_type="application/vnd.averbis.solr+xml", filename="Dummy.txt")
+        client._import_documents(
+            Path("dummy"), mime_type="application/vnd.averbis.solr+xml", filename="Dummy.txt"
+        )
 
 
 def test_list_terminologies(client, requests_mock):

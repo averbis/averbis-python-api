@@ -1069,6 +1069,7 @@ class Client:
         """
         Use DocumentCollection.import_document() instead.
         """
+
         def fetch_filename(src: Union[Path, IO, str], default_filename: str) -> str:
             if isinstance(src, Path):
                 return Path(src).name
@@ -1088,13 +1089,15 @@ class Client:
         # format, then the server is using the filenames stored within the multi-document
         if mime_type in [MEDIA_TYPE_APPLICATION_SOLR_XML]:
             if filename is not None:
-                raise Exception(f"The filename parameter cannot be used in conjunction with multi-document file formats "
-                                f"such as {mime_type}")
+                raise Exception(
+                    f"The filename parameter cannot be used in conjunction with multi-document file formats "
+                    f"such as {mime_type}"
+                )
             # For multi-documents, the server still needs a filename with the proper extension, otherwise it refuses
             # to parse the result
-            filename = fetch_filename(source, 'data.xml')
+            filename = fetch_filename(source, "data.xml")
         else:
-            filename = filename or fetch_filename(source, 'document.txt')
+            filename = filename or fetch_filename(source, "document.txt")
 
             if mime_type is None:
                 # Inferring MimeType if not set
