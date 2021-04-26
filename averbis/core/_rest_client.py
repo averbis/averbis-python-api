@@ -1079,6 +1079,8 @@ class Client:
             if isinstance(source, str):
                 return default_filename
 
+            raise ValueError("Unsupported source type - valid is [Path, IO, str]")
+
         if isinstance(source, str) and mime_type is None:
             mime_type = MEDIA_TYPE_TEXT_PLAIN
 
