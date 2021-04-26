@@ -1074,29 +1074,30 @@ class Client:
 
         # If the format is not a multi-document format, we need to have a filename. If it is a multi-document
         # format, then the server is using the filenames stored within the multi-document
-        if mime_type not in [MEDIA_TYPE_APPLICATION_SOLR_XML]:
-            if isinstance(source, Path) and filename is None:
+        if mime_type in [MEDIA_TYPE_APPLICATION_SOLR_XML]:
+            if filename is not None:
+                raise Exception(f"The filename parameter cannot be used in conjunction with multi-document file formats "
+                                f"such as {mime_type}")
+        else:
+            if filename is None and isinstance(source, Path):
                 filename = Path(source).name
 
-            if isinstance(source, IOBase) and hasattr(source, "name"):
+            if filename is None and isinstance(source, IOBase) and hasattr(source, "name"):
                 filename = source.name
 
             if filename is None:
                 raise Exception("Must specify a filename if source is not a Path")
-        elif filename is not None:
-            raise Exception(f"The filename parameter cannot be used in conjunction with multi-document file formats "
-                            f"such as {mime_type}")
 
-        if mime_type is None:
-            # Inferring MimeType if not set
-            mime_type = mimetypes.guess_type(url=filename)[0]
-            if mime_type not in [MEDIA_TYPE_TEXT_PLAIN, MEDIA_TYPE_APPLICATION_SOLR_XML]:
-                raise ValueError(
-                    f"Unable to guess a valid mime_type. Supported file content types are plain text (mime_type = "
-                    f"'{MEDIA_TYPE_TEXT_PLAIN}') and Averbis Solr XML (mime_type = '{MEDIA_TYPE_APPLICATION_SOLR_XML}')"
-                    f".\nPlease provide the correct mime_type with: `document_collection.import_documents(file, "
-                    f"mime_type = ...)`."
-                )
+            if mime_type is None:
+                # Inferring MimeType if not set
+                mime_type = mimetypes.guess_type(url=filename)[0]
+                if mime_type not in [MEDIA_TYPE_TEXT_PLAIN, MEDIA_TYPE_APPLICATION_SOLR_XML]:
+                    raise ValueError(
+                        f"Unable to guess a valid mime_type. Supported file content types are plain text (mime_type = "
+                        f"'{MEDIA_TYPE_TEXT_PLAIN}') and Averbis Solr XML (mime_type = '{MEDIA_TYPE_APPLICATION_SOLR_XML}')"
+                        f".\nPlease provide the correct mime_type with: `document_collection.import_documents(file, "
+                        f"mime_type = ...)`."
+                    )
 
         if isinstance(source, Path):
             if mime_type == MEDIA_TYPE_TEXT_PLAIN:
