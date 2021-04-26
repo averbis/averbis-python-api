@@ -1069,14 +1069,14 @@ class Client:
         """
         Use DocumentCollection.import_document() instead.
         """
-        def fetch_filename(source: Union[Path, IO, str], default_filename: str) -> str:
-            if isinstance(source, Path):
-                return Path(source).name
+        def fetch_filename(src: Union[Path, IO, str], default_filename: str) -> str:
+            if isinstance(src, Path):
+                return Path(src).name
 
-            if isinstance(source, IOBase) and hasattr(source, "name"):
-                return source.name
+            if isinstance(src, IOBase) and hasattr(src, "name"):
+                return src.name
 
-            if isinstance(source, str):
+            if isinstance(src, str):
                 return default_filename
 
             raise ValueError("Unsupported source type - valid is [Path, IO, str]")
