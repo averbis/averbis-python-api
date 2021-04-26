@@ -23,7 +23,7 @@ import json
 import logging
 from concurrent.futures.thread import ThreadPoolExecutor
 from functools import wraps
-from io import BytesIO
+from io import BytesIO, IOBase
 from json import JSONDecodeError
 
 from time import sleep, time
@@ -484,23 +484,28 @@ class DocumentCollection:
         # noinspection PyProtectedMember
         return self.project.client._delete_document_collection(self.project.name, self.name)
 
-    def import_documents(self, file: IO, mime_type: str = None) -> dict:
+    def import_documents(
+        self, source: Union[Path, IO, str], mime_type: str = None, filename: str = None
+    ) -> dict:
         """
         Imports documents from a given file. Supported file content types are plain text (text/plain)
         and Averbis Solr XML (application/vnd.averbis.solr+xml).
         """
-        if mime_type is None:
-            # Infering MimeType if not set
-            mime_type = mimetypes.guess_type(url=file.name)[0]
-            if mime_type not in [MEDIA_TYPE_TEXT_PLAIN, MEDIA_TYPE_APPLICATION_SOLR_XML]:
-                raise ValueError(
-                    "Unable to guess a valid mime_type. Supported file content types are plain text (mime_type = 'text/plain') "
-                    + "and Averbis Solr XML (mime_type = 'application/vnd.averbis.solr+xml').\nPlease provide the correct mime_type with: "
-                    "`document_collection.import_documents(file, mime_type = ...)`."
-                )
 
         # noinspection PyProtectedMember
-        return self.project.client._import_document(self.project.name, self.name, file, mime_type)
+        return self.project.client._import_document(
+            self.project.name, self.name, source, mime_type, filename
+        )
+
+    @experimental_api
+    def list_documents(self) -> dict:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Lists the documents in the collection.
+        """
+        # noinspection PyProtectedMember
+        return self.project.client._list_documents(self.project.name, self.name)
 
 
 class Pear:
@@ -1039,14 +1044,67 @@ class Client:
         )
         return response["payload"]
 
-    def _import_document(self, project: str, collection_name: str, file: IO, mime_type):
+    @experimental_api
+    def _list_documents(self, project: str, collection_name: str) -> dict:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Lists the documents in the collection.
+        """
+
+        response = self.__request(
+            "get",
+            f"/experimental/projects/{project}/documentCollections/{collection_name}/documents",
+        )
+        return response["payload"]
+
+    def _import_document(
+        self,
+        project: str,
+        collection_name: str,
+        source: Union[Path, IO, str],
+        mime_type: str = None,
+        filename: str = None,
+    ) -> dict:
         """
         Use DocumentCollection.import_document() instead.
         """
+        if isinstance(source, str) and mime_type is None:
+            mime_type = MEDIA_TYPE_TEXT_PLAIN
+
+        if isinstance(source, Path) and filename is None:
+            filename = Path(source).name()
+
+        if isinstance(source, IOBase) and hasattr(source, "name"):
+            filename = source.name
+
+        if filename is None:
+            raise Exception("Must specify a filename if source is not a Path")
+
+        if mime_type is None:
+            # Inferring MimeType if not set
+            mime_type = mimetypes.guess_type(url=filename)[0]
+            if mime_type not in [MEDIA_TYPE_TEXT_PLAIN, MEDIA_TYPE_APPLICATION_SOLR_XML]:
+                raise ValueError(
+                    "Unable to guess a valid mime_type. Supported file content types are plain text (mime_type = "
+                    "'text/plain') and Averbis Solr XML (mime_type = 'application/vnd.averbis.solr+xml').\nPlease "
+                    "provide the correct mime_type with: `document_collection.import_documents(file, mime_type = ...)`."
+                )
+
+        if isinstance(source, Path):
+            if mime_type == MEDIA_TYPE_TEXT_PLAIN:
+                with source.open("r", encoding=ENCODING_UTF_8) as file:
+                    source = file.read()
+            else:
+                with source.open("rb") as file:
+                    source = file.read()
+
+        data: IO = BytesIO(source.encode(ENCODING_UTF_8)) if isinstance(source, str) else source
+
         response = self.__request(
             "post",
             f"/v1/importer/projects/{project}/documentCollections/{collection_name}/documents",
-            files={"documentFile": (file.name, file, mime_type)},
+            files={"documentFile": (filename, data, mime_type)},
         )
         return response["payload"]
 
