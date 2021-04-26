@@ -486,14 +486,14 @@ class DocumentCollection:
 
     def import_documents(
         self, source: Union[Path, IO, str], mime_type: str = None, filename: str = None
-    ) -> dict:
+    ) -> List[dict]:
         """
         Imports documents from a given file. Supported file content types are plain text (text/plain)
         and Averbis Solr XML (application/vnd.averbis.solr+xml).
         """
 
         # noinspection PyProtectedMember
-        return self.project.client._import_document(
+        return self.project.client._import_documents(
             self.project.name, self.name, source, mime_type, filename
         )
 
@@ -1058,37 +1058,44 @@ class Client:
         )
         return response["payload"]
 
-    def _import_document(
+    def _import_documents(
         self,
         project: str,
         collection_name: str,
         source: Union[Path, IO, str],
         mime_type: str = None,
         filename: str = None,
-    ) -> dict:
+    ) -> List[dict]:
         """
         Use DocumentCollection.import_document() instead.
         """
         if isinstance(source, str) and mime_type is None:
             mime_type = MEDIA_TYPE_TEXT_PLAIN
 
-        if isinstance(source, Path) and filename is None:
-            filename = Path(source).name
+        # If the format is not a multi-document format, we need to have a filename. If it is a multi-document
+        # format, then the server is using the filenames stored within the multi-document
+        if mime_type not in [MEDIA_TYPE_APPLICATION_SOLR_XML]:
+            if isinstance(source, Path) and filename is None:
+                filename = Path(source).name
 
-        if isinstance(source, IOBase) and hasattr(source, "name"):
-            filename = source.name
+            if isinstance(source, IOBase) and hasattr(source, "name"):
+                filename = source.name
 
-        if filename is None:
-            raise Exception("Must specify a filename if source is not a Path")
+            if filename is None:
+                raise Exception("Must specify a filename if source is not a Path")
+        elif filename is not None:
+            raise Exception(f"The filename parameter cannot be used in conjunction with multi-document file formats "
+                            f"such as {mime_type}")
 
         if mime_type is None:
             # Inferring MimeType if not set
             mime_type = mimetypes.guess_type(url=filename)[0]
             if mime_type not in [MEDIA_TYPE_TEXT_PLAIN, MEDIA_TYPE_APPLICATION_SOLR_XML]:
                 raise ValueError(
-                    "Unable to guess a valid mime_type. Supported file content types are plain text (mime_type = "
-                    "'text/plain') and Averbis Solr XML (mime_type = 'application/vnd.averbis.solr+xml').\nPlease "
-                    "provide the correct mime_type with: `document_collection.import_documents(file, mime_type = ...)`."
+                    f"Unable to guess a valid mime_type. Supported file content types are plain text (mime_type = "
+                    f"'{MEDIA_TYPE_TEXT_PLAIN}') and Averbis Solr XML (mime_type = '{MEDIA_TYPE_APPLICATION_SOLR_XML}')"
+                    f".\nPlease provide the correct mime_type with: `document_collection.import_documents(file, "
+                    f"mime_type = ...)`."
                 )
 
         if isinstance(source, Path):
@@ -1106,7 +1113,13 @@ class Client:
             f"/v1/importer/projects/{project}/documentCollections/{collection_name}/documents",
             files={"documentFile": (filename, data, mime_type)},
         )
-        return response["payload"]
+
+        # When a multi-document file format is uploaded (e.g. SolrXML), we get an array as a result, otherwise we get
+        # an object. To have a uniform API we wrap the object in an array so we always get an array as a result.
+        if isinstance(response["payload"], list):
+            return response["payload"]
+        else:
+            return [response["payload"]]
 
     def _list_terminologies(self, project: str) -> dict:
         """
