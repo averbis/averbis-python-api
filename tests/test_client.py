@@ -165,9 +165,24 @@ def test_get_project(client):
     assert project.name == "LoadTesting"
 
 
-def test_list_projects(client):
-    with pytest.raises(OperationNotSupported):
-        client.list_projects()
+def test_list_projects(client, requests_mock):
+    def callback(request, _):
+        return {
+            "payload": [
+                {"name": "Jumble", "description": ""},
+                {"name": "Bumble", "description": ""},
+            ],
+            "errorMessages": [],
+        }
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/projects", headers={"Content-Type": "application/json"}, json=callback
+    )
+
+    project_list = client.list_projects()
+
+    assert project_list[0]["name"] == "Jumble"
+    assert project_list[1]["name"] == "Bumble"
 
 
 def test_delete_projects(client):
