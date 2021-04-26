@@ -981,11 +981,22 @@ class Client:
         """
         return Project(self, name)
 
+    @experimental_api
     def list_projects(self) -> List[Project]:
-        raise OperationNotSupported("Listing projects is not supported by the REST API yet")
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
+        Returns a list of the projects.
+        """
+
+        response = self.__request("get", f"/experimental/projects")
+        return response["payload"]
+
+    @experimental_api
     def _delete_project(self, name: str) -> None:
         """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
         Use Project.delete() instead.
         """
         raise OperationNotSupported("Deleting projects is not supported by the REST API yet")
@@ -1144,6 +1155,8 @@ class Client:
     @experimental_api
     def _delete_pipeline(self, project: str, pipeline: str) -> dict:
         """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
         Use Pipeline.delete() instead.
         """
         response = self.__request(
@@ -1264,6 +1277,8 @@ class Client:
         self, project: str, document_sources: str, process: str, annotation_types: str = None
     ):
         """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
         Use Project.export_text_analysis() instead.
         """
         response = self.__request(
@@ -1283,6 +1298,12 @@ class Client:
         annotation_types: str = None,
         language: str = "de",
     ) -> str:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Use Pipeline.analyse_text_to_cas() instead.
+        """
+
         data: IO = BytesIO(source.encode(ENCODING_UTF_8)) if isinstance(source, str) else source
 
         return str(
@@ -1301,6 +1322,12 @@ class Client:
 
     @experimental_api
     def _get_pipeline_type_system(self, project: str, pipeline: str) -> str:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Use Pipeline.get_type_system() instead.
+        """
+
         return str(
             self.__request_with_bytes_response(
                 "get",
@@ -1314,7 +1341,9 @@ class Client:
     @experimental_api
     def _list_pears(self, project: str) -> List[str]:
         """
-        Use Project.list_pear_components() instead.
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Use Project.list_pears() instead.
         """
         response = self.__request(
             "get", f"/experimental/textanalysis/projects/{project}/pearComponents"
@@ -1324,7 +1353,9 @@ class Client:
     @experimental_api
     def _delete_pear(self, project: str, pear_identifier: str):
         """
-        Use Project.delete_pear_component instead.
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Use Project.delete_pear() instead.
         """
         self.__request(
             "delete",
@@ -1334,6 +1365,11 @@ class Client:
 
     @experimental_api
     def _install_pear(self, project: str, file_or_path: Union[IO, Path, str]) -> str:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Use Project.install_pear() instead.
+        """
 
         if isinstance(file_or_path, str):
             file_or_path = Path(file_or_path)
@@ -1352,6 +1388,11 @@ class Client:
 
     @experimental_api
     def _get_default_pear_configuration(self, project: str, pear_identifier: str) -> dict:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Use Pear.get_default_configuration() instead.
+        """
         response = self.__request(
             "get", f"/experimental/textanalysis/projects/{project}/pearComponents/{pear_identifier}"
         )
