@@ -18,6 +18,7 @@
 #
 #
 import logging
+from pathlib import Path
 
 from averbis import Pipeline, Project
 from averbis.core import (
@@ -396,10 +397,10 @@ def test_import_txt_into_collection(client, requests_mock):
     )
     file_path = os.path.join(TEST_DIRECTORY, "resources/texts/text1.txt")
     with open(file_path, "r", encoding="UTF-8") as input_io:
-        response = client._import_document(
+        response = client._import_documents(
             project.name, "collection0", input_io, mime_type="text/plain"
         )
-    assert response["original_document_name"] == "text1.txt"
+    assert response[0]["original_document_name"] == "text1.txt"
 
 
 def test_import_solr_xml_into_collection(client, requests_mock):
@@ -416,10 +417,15 @@ def test_import_solr_xml_into_collection(client, requests_mock):
     )
     file_path = os.path.join(TEST_DIRECTORY, "resources/xml/disease_solr.xml")
     with open(file_path, "r", encoding="UTF-8") as input_io:
-        response = client._import_document(
+        response = client._import_documents(
             project.name, "collection0", input_io, mime_type="application/vnd.averbis.solr+xml"
         )
-    assert response["original_document_name"] == "disease_solr.xml"
+
+    assert response[0]["original_document_name"] == "disease_solr.xml"
+
+    # Otherwise, we get a ValueError
+    with pytest.raises(Exception):
+        client._import_documents(Path("dummy"), mime_type="application/vnd.averbis.solr+xml", filename="Dummy.txt")
 
 
 def test_list_terminologies(client, requests_mock):

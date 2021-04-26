@@ -17,6 +17,8 @@
 # limitations under the License.
 #
 #
+from pathlib import Path
+
 from averbis import DocumentCollection
 from tests.fixtures import *
 
@@ -38,7 +40,9 @@ def test_infer_mime_type_for_plain_text(document_collection, requests_mock):
     file_path = os.path.join(TEST_DIRECTORY, "resources/texts/text1.txt")
     with open(file_path, "r", encoding="UTF-8") as input_io:
         # Please note that we do not set mime_type = plain/text here, but it is automatically inferred
-        document_collection.import_documents(input_io)
+        result = document_collection.import_documents(input_io)
+
+    assert result[0]['document_name'] == "text1.txt"
 
 
 def test_infer_mime_type_for_solr_xml(client, requests_mock):
@@ -47,21 +51,29 @@ def test_infer_mime_type_for_solr_xml(client, requests_mock):
     requests_mock.post(
         f"{API_BASE}/importer/projects/LoadTesting/documentCollections/my_collection/documents",
         json={
-            "payload": {
-                "original_document_name": "disease_solr.xml",
-                "document_name": "disease_solr.xml",
+            "payload": [{
+                "original_document_name": "disease_solr-1.xml",
+                "document_name": "disease_solr-1.xml",
             },
+                {
+                    "original_document_name": "disease_solr-2.xml",
+                    "document_name": "disease_solr-2.xml",
+                }
+            ],
             "errorMessages": [],
         },
     )
-    file_path_xml = os.path.join(TEST_DIRECTORY, "resources/xml/disease_solr.xml")
-    with open(file_path_xml, "r", encoding="UTF-8") as input_io:
-        # Please note that it only works for solr-xml, if we explicitly set the mime-type
-        document_collection.import_documents(input_io, mime_type="application/vnd.averbis.solr+xml")
+    file_path_xml = Path(TEST_DIRECTORY, "resources/xml/disease_solr.xml")
 
-        # Otherwise, we get a ValueError
-        with pytest.raises(ValueError):
-            document_collection.import_documents(input_io)
+    # Please note that it only works for solr-xml, if we explicitly set the mime-type
+    result = document_collection.import_documents(file_path_xml, mime_type="application/vnd.averbis.solr+xml")
+
+    assert result[0]['document_name'] == "disease_solr-1.xml"
+    assert result[1]['document_name'] == "disease_solr-2.xml"
+
+    # Otherwise, we get a ValueError
+    with pytest.raises(ValueError):
+        document_collection.import_documents(file_path_xml)
 
 
 def test_list_document_collection(client, requests_mock):
