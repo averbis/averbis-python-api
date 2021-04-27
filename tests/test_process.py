@@ -23,14 +23,15 @@ from tests.fixtures import *
 
 @pytest.fixture()
 def process(client) -> Process:
-    project = client.get_project("LoadTesting")
+    project = client.get_project("test-project")
     return Process(project, "my_process", "my_doc_source", "my_pipeline", "IDLE", 12)
 
 
 def test_delete(process, requests_mock):
 
     requests_mock.delete(
-        f"{API_EXPERIMENTAL}/textanalysis/projects/LoadTesting/documentSources/{process.document_source_name}/processes/{process.name}",
+        f"{API_EXPERIMENTAL}/textanalysis/projects/test-project/"
+        f"documentSources/{process.document_source_name}/processes/{process.name}",
         headers={"Content-Type": "application/json"},
         json={"payload": None, "errorMessages": []},
     )
@@ -41,7 +42,8 @@ def test_delete(process, requests_mock):
 def test_reprocess(process, requests_mock):
 
     requests_mock.post(
-        f"{API_EXPERIMENTAL}/textanalysis/projects/LoadTesting/documentSources/{process.document_source_name}/processes/{process.name}/reprocess",
+        f"{API_EXPERIMENTAL}/textanalysis/projects/test-project/"
+        f"documentSources/{process.document_source_name}/processes/{process.name}/reprocess",
         headers={"Content-Type": "application/json"},
         json={"payload": None, "errorMessages": []},
     )

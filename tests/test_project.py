@@ -18,7 +18,6 @@
 #
 #
 import logging
-import tempfile
 
 from averbis import Process
 from tests.fixtures import *
@@ -27,9 +26,9 @@ logging.basicConfig(level=logging.INFO)
 
 
 def test_that_create_pipeline_accepts_name_override(client_version_5, requests_mock):
-    project = client_version_5.get_project("LoadTesting")
+    project = client_version_5.get_project("test-project")
     requests_mock.post(
-        f"{API_BASE}/textanalysis/projects/LoadTesting/pipelines",
+        f"{API_BASE}/textanalysis/projects/test-project/pipelines",
         headers={"Content-Type": "application/json"},
         json={"payload": None, "errorMessages": []},
     )
@@ -41,9 +40,9 @@ def test_that_create_pipeline_accepts_name_override(client_version_5, requests_m
 
 def test_that_create_pipeline_schema_1(client_version_5, requests_mock):
     # The pipeline name parameter is "name" in version 5 and "pipelineName" in version 6
-    project = client_version_5.get_project("LoadTesting")
+    project = client_version_5.get_project("test-project")
     requests_mock.post(
-        f"{API_BASE}/textanalysis/projects/LoadTesting/pipelines",
+        f"{API_BASE}/textanalysis/projects/test-project/pipelines",
         headers={"Content-Type": "application/json"},
         json={"payload": None, "errorMessages": []},
     )
@@ -55,9 +54,9 @@ def test_that_create_pipeline_schema_1(client_version_5, requests_mock):
 
 def test_that_create_pipeline_schema_2(client_version_6, requests_mock):
     # The pipeline name parameter is "name" in version 5 and "pipelineName" in version 6
-    project = client_version_6.get_project("LoadTesting")
+    project = client_version_6.get_project("test-project")
     requests_mock.post(
-        f"{API_BASE}/textanalysis/projects/LoadTesting/pipelines",
+        f"{API_BASE}/textanalysis/projects/test-project/pipelines",
         headers={"Content-Type": "application/json"},
         json={"payload": None, "errorMessages": []},
     )
@@ -68,7 +67,7 @@ def test_that_create_pipeline_schema_2(client_version_6, requests_mock):
 
 
 def test_that_get_pipeline_returns_same_instance_on_consecutive_calls(client):
-    project = client.get_project("LoadTesting")
+    project = client.get_project("test-project")
     pipeline1 = project.get_pipeline("discharge")
     pipeline2 = project.get_pipeline("discharge")
 
@@ -98,6 +97,7 @@ def test_delete_pear_success(client_version_6, requests_mock):
     )
     project.delete_pear(pear_identifier)
 
+
 def test_create_process(client_version_6, requests_mock):
     project = client_version_6.get_project("test-project")
     process_name = "my_process"
@@ -105,7 +105,7 @@ def test_create_process(client_version_6, requests_mock):
     pipeline_name = "my_pipeline_name"
 
     requests_mock.post(
-        f"{API_EXPERIMENTAL}/textanalysis/projects/test-project/documentSources/{document_source_name}/processes",
+        f"{API_EXPERIMENTAL}/textanalysis/projects/test-project/processes",
         headers={"Content-Type": "application/json"},
         json={"payload": None, "errorMessages": []},
     )
@@ -130,13 +130,19 @@ def test_get_process(client_version_6, requests_mock):
     }
 
     requests_mock.get(
-        f"{API_EXPERIMENTAL}/textanalysis/projects/test-project/documentSources/{document_source_name}/processes/{process_name}",
+        f"{API_EXPERIMENTAL}/textanalysis/projects/test-project/"
+        f"documentSources/{document_source_name}/processes/{process_name}",
         headers={"Content-Type": "application/json"},
         json={"payload": payload, "errorMessages": []},
     )
     actual = project.get_process(process_name, document_source_name)
 
-    assert expected_process == actual
+    assert expected_process.name == actual.name
+    assert expected_process.project.name == actual.project.name
+    assert expected_process.state == actual.state
+    assert expected_process.pipeline_name == actual.pipeline_name
+    assert expected_process.processed_documents == actual.processed_documents
+    assert expected_process.document_source_name == actual.document_source_name
 
 
 def test_get_processes(client_version_6, requests_mock):
@@ -154,8 +160,8 @@ def test_get_processes(client_version_6, requests_mock):
         json={"payload": expected_processes, "errorMessages": []},
     )
     actual_processes = project.list_processes()
-
-    assert expected_processes == actual_processes
+    assert len(expected_processes) == len(actual_processes)
+    assert all([a[0] == b[0] and a[1] == b[1] for a, b in zip(expected_processes, actual_processes)])
 
 
 def test_delete_pear_with_pear_does_not_exist(client_version_6, requests_mock):
@@ -203,7 +209,6 @@ def test_install_pear_with_file_does_not_exist(client_version_6, requests_mock):
 def test_install_pear_with_file_is_not_a_pear(client_version_6, requests_mock):
     project = client_version_6.get_project("test-project")
     with tempfile.NamedTemporaryFile(suffix="xyz.bear") as tf:
-
         with pytest.raises(Exception) as ex:
             project.install_pear(tf.name)
 
