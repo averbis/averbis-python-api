@@ -20,6 +20,7 @@
 import logging
 import tempfile
 
+from averbis import Process
 from tests.fixtures import *
 
 logging.basicConfig(level=logging.INFO)
@@ -96,6 +97,65 @@ def test_delete_pear_success(client_version_6, requests_mock):
         json={"payload": None, "errorMessages": []},
     )
     project.delete_pear(pear_identifier)
+
+def test_create_process(client_version_6, requests_mock):
+    project = client_version_6.get_project("test-project")
+    process_name = "my_process"
+    document_source_name = "my_document_source"
+    pipeline_name = "my_pipeline_name"
+
+    requests_mock.post(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/test-project/documentSources/{document_source_name}/processes",
+        headers={"Content-Type": "application/json"},
+        json={"payload": None, "errorMessages": []},
+    )
+    project.create_process(process_name, document_source_name, pipeline_name)
+
+
+def test_get_process(client_version_6, requests_mock):
+    project = client_version_6.get_project("test-project")
+    process_name = "my_process"
+    document_source_name = "my_document_source"
+    pipeline_name = "my_pipeline_name"
+    state = "IDLE"
+    number_of_documents = 12
+
+    expected_process = Process(project, process_name, document_source_name, pipeline_name, state, number_of_documents)
+    payload = {
+        "processName": process_name,
+        "pipelineName": pipeline_name,
+        "documentSourceName": document_source_name,
+        "state": state,
+        "processedDocuments": number_of_documents
+    }
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/test-project/documentSources/{document_source_name}/processes/{process_name}",
+        headers={"Content-Type": "application/json"},
+        json={"payload": payload, "errorMessages": []},
+    )
+    actual = project.get_process(process_name, document_source_name)
+
+    assert expected_process == actual
+
+
+def test_get_processes(client_version_6, requests_mock):
+    project = client_version_6.get_project("test-project")
+
+    expected_processes = [
+        ("process1", "document_source_1"),
+        ("process2", "document_source_2"),
+        ("process3", "document_source_3")
+    ]
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/test-project/processes",
+        headers={"Content-Type": "application/json"},
+        json={"payload": expected_processes, "errorMessages": []},
+    )
+    actual_processes = project.list_processes()
+
+    assert expected_processes == actual_processes
 
 
 def test_delete_pear_with_pear_does_not_exist(client_version_6, requests_mock):
