@@ -27,7 +27,7 @@ from io import BytesIO
 from json import JSONDecodeError
 
 from time import sleep, time
-from typing import List, Union, IO, Iterable, Dict, TextIO, Iterator, Optional
+from typing import List, Union, IO, Iterable, Dict, Iterator, Optional, Tuple
 from pathlib import Path
 import requests
 import typing
@@ -83,7 +83,7 @@ class OperationTimeoutError(Exception):
 
 class Result:
     def __init__(
-        self, data: Dict = None, exception: Exception = None, source: Union[Path, IO, str] = None
+            self, data: Dict = None, exception: Exception = None, source: Union[Path, IO, str] = None
     ):
         self.data = data
         self.exception = exception
@@ -240,7 +240,7 @@ class Pipeline:
         return self.project.client._analyse_text(self.project.name, self.name, source, **kwargs)
 
     def analyse_texts(
-        self, sources: Iterable[Union[Path, IO, str]], parallelism: int = 0, **kwargs
+            self, sources: Iterable[Union[Path, IO, str]], parallelism: int = 0, **kwargs
     ) -> Iterator[Result]:
         """
         Analyze the given texts or files using the pipeline. If feasible, multiple documents are processed in parallel.
@@ -314,7 +314,8 @@ class Pipeline:
         if was_running_before_configuration_change:
             self.ensure_started()
 
-    # Ignoring errors as linter (compiler) cannot resolve dynamically loaded lib (with type:ignore for mypy) and (noinspection PyProtectedMember for pycharm)
+    # Ignoring errors as linter (compiler) cannot resolve dynamically loaded lib
+    # (with type:ignore for mypy) and (noinspection PyProtectedMember for pycharm)
     @experimental_api
     def analyse_text_to_cas(self, source: Union[IO, str], **kwargs) -> "Cas":  # type: ignore
         """
@@ -327,7 +328,8 @@ class Pipeline:
             typesystem=self.get_type_system(),
         )
 
-    # Ignoring errors as linter (compiler) cannot resolve dynamically loaded lib (with type:ignore for mypy) and (noinspection PyProtectedMember for pycharm)
+    # Ignoring errors as linter (compiler) cannot resolve dynamically loaded lib
+    # (with type:ignore for mypy) and (noinspection PyProtectedMember for pycharm)
     @experimental_api
     def get_type_system(self) -> "TypeSystem":  # type: ignore
         """
@@ -390,7 +392,7 @@ class Terminology:
         return self.project.client._get_terminology_export_info(self.project.name, self.name)
 
     def start_import(
-        self, source: Union[IO, str], importer: str = TERMINOLOGY_IMPORTER_OBO
+            self, source: Union[IO, str], importer: str = TERMINOLOGY_IMPORTER_OBO
     ) -> None:
         """
         Upload the given terminology and trigger its import.
@@ -414,7 +416,7 @@ class Terminology:
         return self.project.client._get_terminology_import_info(self.project.name, self.name)
 
     def import_data(
-        self, source: Union[IO, str], importer: str = TERMINOLOGY_IMPORTER_OBO, timeout: int = 120
+            self, source: Union[IO, str], importer: str = TERMINOLOGY_IMPORTER_OBO, timeout: int = 120
     ) -> dict:
         """
         Imports the given terminology into the platform and waits for the import process to complete. If the import
@@ -496,7 +498,7 @@ class DocumentCollection:
                 raise ValueError(
                     "Unable to guess a valid mime_type. Supported file content types are plain text (mime_type = 'text/plain') "
                     + "and Averbis Solr XML (mime_type = 'application/vnd.averbis.solr+xml').\nPlease provide the correct mime_type with: "
-                    "`document_collection.import_documents(file, mime_type = ...)`."
+                      "`document_collection.import_documents(file, mime_type = ...)`."
                 )
 
         # noinspection PyProtectedMember
@@ -510,19 +512,49 @@ class Pear:
 
     def delete(self):
         """
-        Deletes the PEAR component.
+        Deletes the PEAR.
         """
         # noinspection PyProtectedMember
         self.project.client._delete_pear(self.project.name, self.identifier)
 
     def get_default_configuration(self) -> dict:
         """
-        Get the default configuration of the PEAR component.
+        Get the default configuration of the PEAR.
         """
         # noinspection PyProtectedMember
         return self.project.client._get_default_pear_configuration(
             self.project.name, self.identifier
         )
+
+
+class Process:
+    def __init__(self,
+                 project: "Project",
+                 name: str,
+                 document_source_name: str,
+                 pipeline_name: str,
+                 state: str,
+                 processed_documents: int):
+        self.project = project
+        self.name = name
+        self.document_source_name = document_source_name
+        self.pipeline_name = pipeline_name
+        self.state = state
+        self.processed_documents = processed_documents
+
+    def delete(self):
+        """
+        Deletes the Process.
+        """
+        # noinspection PyProtectedMember
+        self.project.client._delete_process(self.project.name, self.name, self.document_source_name)
+
+    def reprocess(self):
+        """
+        Triggers reprocessing.
+        """
+        # noinspection PyProtectedMember
+        self.project.client._reprocess(self.project.name, self.name, self.document_source_name)
 
 
 class Project:
@@ -562,19 +594,20 @@ class Project:
             cfg = configuration
             name = cfg[pipeline_name_key]
 
+        # noinspection PyProtectedMember
         self.client._create_pipeline(self.name, cfg)
         new_pipeline = Pipeline(self, name)
         self.__cached_pipelines[name] = new_pipeline
         return new_pipeline
 
     def create_terminology(
-        self,
-        terminology_name: str,
-        label: str,
-        languages: List[str],
-        concept_type: str = "de.averbis.extraction.types.Concept",
-        version: str = "",
-        hierarchical: bool = True,
+            self,
+            terminology_name: str,
+            label: str,
+            languages: List[str],
+            concept_type: str = "de.averbis.extraction.types.Concept",
+            version: str = "",
+            hierarchical: bool = True,
     ) -> Terminology:
         """
         Create a new terminology.
@@ -664,7 +697,7 @@ class Project:
 
     @experimental_api
     def export_text_analysis(
-        self, document_sources: str, process: str, annotation_types: str = None
+            self, document_sources: str, process: str, annotation_types: str = None
     ) -> dict:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear. Exports a given text analysis process as a json.
@@ -681,6 +714,7 @@ class Project:
             self.name, document_sources, process, annotation_types
         )
 
+    @experimental_api
     def list_pears(self) -> List[str]:
         """
         List all existing pears by identifier.
@@ -689,6 +723,7 @@ class Project:
         # noinspection PyProtectedMember
         return self.client._list_pears(self.name)
 
+    @experimental_api
     def delete_pear(self, pear_identifier: str) -> None:
         """
         Delete the pear by identifier.
@@ -697,6 +732,7 @@ class Project:
         self.client._delete_pear(self.name, pear_identifier)
         return None
 
+    @experimental_api
     def install_pear(self, file_or_path: Union[IO, Path, str]) -> Pear:
         """
         Install a pear by file or path.
@@ -705,16 +741,43 @@ class Project:
         pear_identifier = self.client._install_pear(self.name, file_or_path)
         return Pear(self, pear_identifier)
 
+    @experimental_api
+    def create_process(self, process_name: str, document_source_name: str, pipeline_name: str) -> None:
+        """
+        Create a process
+        :return: The created process
+        """
+        # noinspection PyProtectedMember
+        self.client._create_process(self.name, process_name, document_source_name, pipeline_name)
+
+    @experimental_api
+    def get_process(self, process_name: str, document_source_name: str) -> Process:
+        """
+        Get a process
+        :return: The process
+        """
+        # noinspection PyProtectedMember
+        return self.client._get_process(self, process_name, document_source_name)
+
+    @experimental_api
+    def list_processes(self) -> List[Tuple[str, str]]:
+        """
+        List all existing processes by name and document source name.
+        :return: The list of processes.
+        """
+        # noinspection PyProtectedMember
+        return self.client._list_processes(self.name)
+
 
 class Client:
     def __init__(
-        self,
-        url_or_id: str,
-        api_token: str = None,
-        verify_ssl: Union[str, bool] = True,
-        settings: Union[str, Path, dict] = None,
-        username: str = None,
-        password: str = None,
+            self,
+            url_or_id: str,
+            api_token: str = None,
+            verify_ssl: Union[str, bool] = True,
+            settings: Union[str, Path, dict] = None,
+            username: str = None,
+            password: str = None,
     ):
         self.__logger = logging.getLogger(self.__class__.__module__ + "." + self.__class__.__name__)
         self._api_token = api_token
@@ -752,9 +815,9 @@ class Client:
 
     def _exists_profile(self, profile: str):
         return (
-            self._settings
-            and "profiles" in self._settings
-            and profile in self._settings["profiles"]
+                self._settings
+                and "profiles" in self._settings
+                and profile in self._settings["profiles"]
         )
 
     def _apply_profile(self, profile: str):
@@ -850,7 +913,6 @@ class Client:
 
     def __request(self, method: str, endpoint: str, **kwargs) -> dict:
         raw_response = self._run_request(method, endpoint, **kwargs)
-
         response = raw_response.json()
         self.__handle_error(response)
         return response
@@ -1047,14 +1109,14 @@ class Client:
         return response["payload"]
 
     def _create_terminology(
-        self,
-        project: str,
-        terminology: str,
-        label: str,
-        languages: List[str],
-        concept_type: str = "de.averbis.extraction.types.Concept",
-        version: str = "",
-        hierarchical: bool = True,
+            self,
+            project: str,
+            terminology: str,
+            label: str,
+            languages: List[str],
+            concept_type: str = "de.averbis.extraction.types.Concept",
+            version: str = "",
+            hierarchical: bool = True,
     ) -> dict:
         """
         Use Project.create_terminology() instead.
@@ -1100,7 +1162,7 @@ class Client:
         return response["payload"]
 
     def _start_terminology_import(
-        self, project: str, terminology: str, importer: str, source: Union[IO, str]
+            self, project: str, terminology: str, importer: str, source: Union[IO, str]
     ) -> None:
         """
         Use Terminology.start_import() instead.
@@ -1183,11 +1245,11 @@ class Client:
         )
 
     def _classify_document(
-        self,
-        project: str,
-        data,
-        classification_set: str = "Default",
-        data_format=DOCUMENT_IMPORTER_TEXT,
+            self,
+            project: str,
+            data,
+            classification_set: str = "Default",
+            data_format=DOCUMENT_IMPORTER_TEXT,
     ) -> dict:
         def get_media_type_for_format() -> str:
             if data_format == DOCUMENT_IMPORTER_TEXT:
@@ -1205,12 +1267,12 @@ class Client:
         return response["payload"]
 
     def _analyse_text(
-        self,
-        project: str,
-        pipeline: str,
-        source: Union[Path, IO, str],
-        annotation_types: str = None,
-        language: str = None,
+            self,
+            project: str,
+            pipeline: str,
+            source: Union[Path, IO, str],
+            annotation_types: str = None,
+            language: str = None,
     ) -> dict:
         if isinstance(source, Path):
             with source.open("r", encoding=ENCODING_UTF_8) as file:
@@ -1228,12 +1290,12 @@ class Client:
         return response["payload"]
 
     def _analyse_html(
-        self,
-        project: str,
-        pipeline: str,
-        source: Union[Path, IO, str],
-        annotation_types: str = None,
-        language: str = None,
+            self,
+            project: str,
+            pipeline: str,
+            source: Union[Path, IO, str],
+            annotation_types: str = None,
+            language: str = None,
     ) -> dict:
         if isinstance(source, Path):
             with source.open("r", encoding=ENCODING_UTF_8) as file:
@@ -1261,7 +1323,7 @@ class Client:
 
     @experimental_api
     def _export_text_analysis(
-        self, project: str, document_sources: str, process: str, annotation_types: str = None
+            self, project: str, document_sources: str, process: str, annotation_types: str = None
     ):
         """
         Use Project.export_text_analysis() instead.
@@ -1276,12 +1338,12 @@ class Client:
 
     @experimental_api
     def _analyse_text_xmi(
-        self,
-        project: str,
-        pipeline: str,
-        source: Union[IO, str],
-        annotation_types: str = None,
-        language: str = "de",
+            self,
+            project: str,
+            pipeline: str,
+            source: Union[IO, str],
+            annotation_types: str = None,
+            language: str = "de",
     ) -> str:
         data: IO = BytesIO(source.encode(ENCODING_UTF_8)) if isinstance(source, str) else source
 
@@ -1314,7 +1376,7 @@ class Client:
     @experimental_api
     def _list_pears(self, project: str) -> List[str]:
         """
-        Use Project.list_pear_components() instead.
+        Use Project.list_pears() instead.
         """
         response = self.__request(
             "get", f"/experimental/textanalysis/projects/{project}/pearComponents"
@@ -1324,7 +1386,7 @@ class Client:
     @experimental_api
     def _delete_pear(self, project: str, pear_identifier: str):
         """
-        Use Project.delete_pear_component instead.
+        Use Pear.delete() instead.
         """
         self.__request(
             "delete",
@@ -1356,6 +1418,75 @@ class Client:
             "get", f"/experimental/textanalysis/projects/{project}/pearComponents/{pear_identifier}"
         )
         return response["payload"]
+
+    @experimental_api
+    def _list_processes(self, project: str) -> List[Tuple[str, str]]:
+        """
+        Use Project.list_processes() instead.
+        """
+        response = self.__request(
+            "get", f"/experimental/textanalysis/projects/{project}/processes"
+        )
+        return response["payload"]
+
+    @experimental_api
+    def _create_process(self, project: str, process_name: str, document_source_name: str, pipeline_name: str) -> None:
+        """
+        Use Project.create_process() instead.
+        """
+        create_process_dto = {
+            'processName': process_name,
+            'documentSourceName': document_source_name,
+            'pipelineName': pipeline_name
+        }
+        self.__request(
+            "post",
+            f"/experimental/textanalysis/projects/{project}/processes",
+            json=create_process_dto
+        )
+
+    @experimental_api
+    def _get_process(self, project: "Project", process_name: str, document_source_name: str) -> Process:
+        """
+        Use Project.get_process() instead.
+        """
+        response = self.__request(
+            "get",
+            f"/experimental/textanalysis/projects/{project.name}/documentSources/{document_source_name}/processes/{process_name}"
+        )
+        process_details_dto = response["payload"]
+        return Process(
+            project=project,
+            name=process_details_dto['processName'],
+            pipeline_name=process_details_dto['pipelineName'],
+            document_source_name=process_details_dto['documentSourceName'],
+            state=process_details_dto['state'],
+            processed_documents=process_details_dto['processedDocuments']
+        )
+
+    @experimental_api
+    def _delete_process(self, project_name: str, process_name: str, document_source_name: str) -> None:
+        """
+        Use Process.delete() instead.
+        """
+        self.__request(
+            "delete",
+            f"/experimental/textanalysis/projects/{project_name}/"
+            f"documentSources/{document_source_name}/processes/{process_name}",
+        )
+        return None
+
+    @experimental_api
+    def _reprocess(self, project_name: str, process_name: str, document_source_name: str) -> None:
+        """
+        Use Process.reprocess() instead.
+        """
+        self.__request(
+            "post",
+            f"/experimental/textanalysis/projects/{project_name}/"
+            f"documentSources/{document_source_name}/processes/{process_name}/reprocess",
+        )
+        return None
 
     @staticmethod
     def __handle_error(response):
