@@ -83,7 +83,7 @@ class OperationTimeoutError(Exception):
 
 class Result:
     def __init__(
-            self, data: Dict = None, exception: Exception = None, source: Union[Path, IO, str] = None
+        self, data: Dict = None, exception: Exception = None, source: Union[Path, IO, str] = None
     ):
         self.data = data
         self.exception = exception
@@ -240,7 +240,7 @@ class Pipeline:
         return self.project.client._analyse_text(self.project.name, self.name, source, **kwargs)
 
     def analyse_texts(
-            self, sources: Iterable[Union[Path, IO, str]], parallelism: int = 0, **kwargs
+        self, sources: Iterable[Union[Path, IO, str]], parallelism: int = 0, **kwargs
     ) -> Iterator[Result]:
         """
         Analyze the given texts or files using the pipeline. If feasible, multiple documents are processed in parallel.
@@ -392,7 +392,7 @@ class Terminology:
         return self.project.client._get_terminology_export_info(self.project.name, self.name)
 
     def start_import(
-            self, source: Union[IO, str], importer: str = TERMINOLOGY_IMPORTER_OBO
+        self, source: Union[IO, str], importer: str = TERMINOLOGY_IMPORTER_OBO
     ) -> None:
         """
         Upload the given terminology and trigger its import.
@@ -416,7 +416,7 @@ class Terminology:
         return self.project.client._get_terminology_import_info(self.project.name, self.name)
 
     def import_data(
-            self, source: Union[IO, str], importer: str = TERMINOLOGY_IMPORTER_OBO, timeout: int = 120
+        self, source: Union[IO, str], importer: str = TERMINOLOGY_IMPORTER_OBO, timeout: int = 120
     ) -> dict:
         """
         Imports the given terminology into the platform and waits for the import process to complete. If the import
@@ -539,13 +539,15 @@ class Pear:
 
 
 class Process:
-    def __init__(self,
-                 project: "Project",
-                 name: str,
-                 document_source_name: str,
-                 pipeline_name: str,
-                 state: str,
-                 processed_documents: int):
+    def __init__(
+        self,
+        project: "Project",
+        name: str,
+        document_source_name: str,
+        pipeline_name: str,
+        state: str,
+        processed_documents: int,
+    ):
         self.project = project
         self.name = name
         self.document_source_name = document_source_name
@@ -618,13 +620,13 @@ class Project:
         return new_pipeline
 
     def create_terminology(
-            self,
-            terminology_name: str,
-            label: str,
-            languages: List[str],
-            concept_type: str = "de.averbis.extraction.types.Concept",
-            version: str = "",
-            hierarchical: bool = True,
+        self,
+        terminology_name: str,
+        label: str,
+        languages: List[str],
+        concept_type: str = "de.averbis.extraction.types.Concept",
+        version: str = "",
+        hierarchical: bool = True,
     ) -> Terminology:
         """
         Create a new terminology.
@@ -714,7 +716,7 @@ class Project:
 
     @experimental_api
     def export_text_analysis(
-            self, document_sources: str, process: str, annotation_types: str = None
+        self, document_sources: str, process: str, annotation_types: str = None
     ) -> dict:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear. Exports a given text analysis process as a json.
@@ -765,7 +767,9 @@ class Project:
         return Pear(self, pear_identifier)
 
     @experimental_api
-    def create_process(self, process_name: str, document_source_name: str, pipeline_name: str) -> None:
+    def create_process(
+        self, process_name: str, document_source_name: str, pipeline_name: str
+    ) -> None:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
@@ -800,13 +804,13 @@ class Project:
 
 class Client:
     def __init__(
-            self,
-            url_or_id: str,
-            api_token: str = None,
-            verify_ssl: Union[str, bool] = True,
-            settings: Union[str, Path, dict] = None,
-            username: str = None,
-            password: str = None,
+        self,
+        url_or_id: str,
+        api_token: str = None,
+        verify_ssl: Union[str, bool] = True,
+        settings: Union[str, Path, dict] = None,
+        username: str = None,
+        password: str = None,
     ):
         self.__logger = logging.getLogger(self.__class__.__module__ + "." + self.__class__.__name__)
         self._api_token = api_token
@@ -844,9 +848,9 @@ class Client:
 
     def _exists_profile(self, profile: str):
         return (
-                self._settings
-                and "profiles" in self._settings
-                and profile in self._settings["profiles"]
+            self._settings
+            and "profiles" in self._settings
+            and profile in self._settings["profiles"]
         )
 
     def _apply_profile(self, profile: str):
@@ -1227,14 +1231,14 @@ class Client:
         return response["payload"]
 
     def _create_terminology(
-            self,
-            project: str,
-            terminology: str,
-            label: str,
-            languages: List[str],
-            concept_type: str = "de.averbis.extraction.types.Concept",
-            version: str = "",
-            hierarchical: bool = True,
+        self,
+        project: str,
+        terminology: str,
+        label: str,
+        languages: List[str],
+        concept_type: str = "de.averbis.extraction.types.Concept",
+        version: str = "",
+        hierarchical: bool = True,
     ) -> dict:
         """
         Use Project.create_terminology() instead.
@@ -1280,7 +1284,7 @@ class Client:
         return response["payload"]
 
     def _start_terminology_import(
-            self, project: str, terminology: str, importer: str, source: Union[IO, str]
+        self, project: str, terminology: str, importer: str, source: Union[IO, str]
     ) -> None:
         """
         Use Terminology.start_import() instead.
@@ -1365,11 +1369,11 @@ class Client:
         )
 
     def _classify_document(
-            self,
-            project: str,
-            data,
-            classification_set: str = "Default",
-            data_format=DOCUMENT_IMPORTER_TEXT,
+        self,
+        project: str,
+        data,
+        classification_set: str = "Default",
+        data_format=DOCUMENT_IMPORTER_TEXT,
     ) -> dict:
         def get_media_type_for_format() -> str:
             if data_format == DOCUMENT_IMPORTER_TEXT:
@@ -1387,12 +1391,12 @@ class Client:
         return response["payload"]
 
     def _analyse_text(
-            self,
-            project: str,
-            pipeline: str,
-            source: Union[Path, IO, str],
-            annotation_types: str = None,
-            language: str = None,
+        self,
+        project: str,
+        pipeline: str,
+        source: Union[Path, IO, str],
+        annotation_types: str = None,
+        language: str = None,
     ) -> dict:
         if isinstance(source, Path):
             with source.open("r", encoding=ENCODING_UTF_8) as file:
@@ -1410,12 +1414,12 @@ class Client:
         return response["payload"]
 
     def _analyse_html(
-            self,
-            project: str,
-            pipeline: str,
-            source: Union[Path, IO, str],
-            annotation_types: str = None,
-            language: str = None,
+        self,
+        project: str,
+        pipeline: str,
+        source: Union[Path, IO, str],
+        annotation_types: str = None,
+        language: str = None,
     ) -> dict:
         if isinstance(source, Path):
             with source.open("r", encoding=ENCODING_UTF_8) as file:
@@ -1443,7 +1447,7 @@ class Client:
 
     @experimental_api
     def _export_text_analysis(
-            self, project: str, document_sources: str, process: str, annotation_types: str = None
+        self, project: str, document_sources: str, process: str, annotation_types: str = None
     ):
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -1460,12 +1464,12 @@ class Client:
 
     @experimental_api
     def _analyse_text_xmi(
-            self,
-            project: str,
-            pipeline: str,
-            source: Union[IO, str],
-            annotation_types: str = None,
-            language: str = "de",
+        self,
+        project: str,
+        pipeline: str,
+        source: Union[IO, str],
+        annotation_types: str = None,
+        language: str = "de",
     ) -> str:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -1574,31 +1578,33 @@ class Client:
 
         Use Project.list_processes() instead.
         """
-        response = self.__request(
-            "get", f"/experimental/textanalysis/projects/{project}/processes"
-        )
+        response = self.__request("get", f"/experimental/textanalysis/projects/{project}/processes")
         return response["payload"]
 
     @experimental_api
-    def _create_process(self, project: str, process_name: str, document_source_name: str, pipeline_name: str) -> None:
+    def _create_process(
+        self, project: str, process_name: str, document_source_name: str, pipeline_name: str
+    ) -> None:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
         Use Project.create_process() instead.
         """
         create_process_dto = {
-            'processName': process_name,
-            'documentSourceName': document_source_name,
-            'pipelineName': pipeline_name
+            "processName": process_name,
+            "documentSourceName": document_source_name,
+            "pipelineName": pipeline_name,
         }
         self.__request(
             "post",
             f"/experimental/textanalysis/projects/{project}/processes",
-            json=create_process_dto
+            json=create_process_dto,
         )
 
     @experimental_api
-    def _get_process(self, project: "Project", process_name: str, document_source_name: str) -> Process:
+    def _get_process(
+        self, project: "Project", process_name: str, document_source_name: str
+    ) -> Process:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
@@ -1606,20 +1612,22 @@ class Client:
         """
         response = self.__request(
             "get",
-            f"/experimental/textanalysis/projects/{project.name}/documentSources/{document_source_name}/processes/{process_name}"
+            f"/experimental/textanalysis/projects/{project.name}/documentSources/{document_source_name}/processes/{process_name}",
         )
         process_details_dto = response["payload"]
         return Process(
             project=project,
-            name=process_details_dto['processName'],
-            pipeline_name=process_details_dto['pipelineName'],
-            document_source_name=process_details_dto['documentSourceName'],
-            state=process_details_dto['state'],
-            processed_documents=process_details_dto['processedDocuments']
+            name=process_details_dto["processName"],
+            pipeline_name=process_details_dto["pipelineName"],
+            document_source_name=process_details_dto["documentSourceName"],
+            state=process_details_dto["state"],
+            processed_documents=process_details_dto["processedDocuments"],
         )
 
     @experimental_api
-    def _delete_process(self, project_name: str, process_name: str, document_source_name: str) -> None:
+    def _delete_process(
+        self, project_name: str, process_name: str, document_source_name: str
+    ) -> None:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
@@ -1636,7 +1644,7 @@ class Client:
     def _reprocess(self, project_name: str, process_name: str, document_source_name: str) -> None:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
-        
+
         Use Process.reprocess() instead.
         """
         self.__request(

@@ -120,13 +120,15 @@ def test_get_process(client_version_6, requests_mock):
     state = "IDLE"
     number_of_documents = 12
 
-    expected_process = Process(project, process_name, document_source_name, pipeline_name, state, number_of_documents)
+    expected_process = Process(
+        project, process_name, document_source_name, pipeline_name, state, number_of_documents
+    )
     payload = {
         "processName": process_name,
         "pipelineName": pipeline_name,
         "documentSourceName": document_source_name,
         "state": state,
-        "processedDocuments": number_of_documents
+        "processedDocuments": number_of_documents,
     }
 
     requests_mock.get(
@@ -151,7 +153,7 @@ def test_get_processes(client_version_6, requests_mock):
     expected_processes = [
         ("process1", "document_source_1"),
         ("process2", "document_source_2"),
-        ("process3", "document_source_3")
+        ("process3", "document_source_3"),
     ]
 
     requests_mock.get(
@@ -161,7 +163,9 @@ def test_get_processes(client_version_6, requests_mock):
     )
     actual_processes = project.list_processes()
     assert len(expected_processes) == len(actual_processes)
-    assert all([a[0] == b[0] and a[1] == b[1] for a, b in zip(expected_processes, actual_processes)])
+    assert all(
+        [a[0] == b[0] and a[1] == b[1] for a, b in zip(expected_processes, actual_processes)]
+    )
 
 
 def test_delete_pear_with_pear_does_not_exist(client_version_6, requests_mock):

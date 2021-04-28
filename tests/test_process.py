@@ -49,4 +49,3 @@ def test_reprocess(process, requests_mock):
     )
 
     process.reprocess()
-

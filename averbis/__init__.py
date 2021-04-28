@@ -19,4 +19,13 @@
 #
 from .core import Client, Project, Pipeline, Result, Terminology, DocumentCollection, Pear, Process
 
-__all__ = ["Client", "Project", "Pipeline", "Result", "Terminology", "DocumentCollection", "Pear", "Process"]
+__all__ = [
+    "Client",
+    "Project",
+    "Pipeline",
+    "Result",
+    "Terminology",
+    "DocumentCollection",
+    "Pear",
+    "Process",
+]
