@@ -515,15 +515,21 @@ class Pear:
         self.project = project
         self.identifier = identifier
 
+    @experimental_api
     def delete(self):
         """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
         Deletes the PEAR.
         """
         # noinspection PyProtectedMember
         self.project.client._delete_pear(self.project.name, self.identifier)
 
+    @experimental_api
     def get_default_configuration(self) -> dict:
         """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
         Get the default configuration of the PEAR.
         """
         # noinspection PyProtectedMember
@@ -547,15 +553,21 @@ class Process:
         self.state = state
         self.processed_documents = processed_documents
 
+    @experimental_api
     def delete(self):
         """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
         Deletes the Process.
         """
         # noinspection PyProtectedMember
         self.project.client._delete_process(self.project.name, self.name, self.document_source_name)
 
+    @experimental_api
     def reprocess(self):
         """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
         Triggers reprocessing.
         """
         # noinspection PyProtectedMember
@@ -722,6 +734,8 @@ class Project:
     @experimental_api
     def list_pears(self) -> List[str]:
         """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
         List all existing pears by identifier.
         :return: The list of pear identifiers.
         """
@@ -731,6 +745,8 @@ class Project:
     @experimental_api
     def delete_pear(self, pear_identifier: str) -> None:
         """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
         Delete the pear by identifier.
         """
         # noinspection PyProtectedMember
@@ -740,6 +756,8 @@ class Project:
     @experimental_api
     def install_pear(self, file_or_path: Union[IO, Path, str]) -> Pear:
         """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
         Install a pear by file or path.
         """
         # noinspection PyProtectedMember
@@ -749,6 +767,8 @@ class Project:
     @experimental_api
     def create_process(self, process_name: str, document_source_name: str, pipeline_name: str) -> None:
         """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
         Create a process
         :return: The created process
         """
@@ -758,6 +778,8 @@ class Project:
     @experimental_api
     def get_process(self, process_name: str, document_source_name: str) -> Process:
         """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
         Get a process
         :return: The process
         """
@@ -767,6 +789,8 @@ class Project:
     @experimental_api
     def list_processes(self) -> List[Tuple[str, str]]:
         """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
         List all existing processes by name and document source name.
         :return: The list of processes.
         """
@@ -1546,6 +1570,8 @@ class Client:
     @experimental_api
     def _list_processes(self, project: str) -> List[Tuple[str, str]]:
         """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
         Use Project.list_processes() instead.
         """
         response = self.__request(
@@ -1556,6 +1582,8 @@ class Client:
     @experimental_api
     def _create_process(self, project: str, process_name: str, document_source_name: str, pipeline_name: str) -> None:
         """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
         Use Project.create_process() instead.
         """
         create_process_dto = {
@@ -1572,6 +1600,8 @@ class Client:
     @experimental_api
     def _get_process(self, project: "Project", process_name: str, document_source_name: str) -> Process:
         """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
         Use Project.get_process() instead.
         """
         response = self.__request(
@@ -1591,6 +1621,8 @@ class Client:
     @experimental_api
     def _delete_process(self, project_name: str, process_name: str, document_source_name: str) -> None:
         """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
         Use Process.delete() instead.
         """
         self.__request(
@@ -1603,6 +1635,8 @@ class Client:
     @experimental_api
     def _reprocess(self, project_name: str, process_name: str, document_source_name: str) -> None:
         """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+        
         Use Process.reprocess() instead.
         """
         self.__request(
