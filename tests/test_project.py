@@ -138,34 +138,67 @@ def test_get_process(client_version_6, requests_mock):
         json={"payload": payload, "errorMessages": []},
     )
     actual = project.get_process(process_name, document_source_name)
+    assert_process_equal(expected_process, actual)
 
+
+def assert_process_equal(expected_process, actual):
     assert expected_process.name == actual.name
     assert expected_process.project.name == actual.project.name
-    assert expected_process.state == actual.state
     assert expected_process.pipeline_name == actual.pipeline_name
-    assert expected_process.processed_documents == actual.processed_documents
     assert expected_process.document_source_name == actual.document_source_name
+    assert expected_process._process_state.state == actual._process_state.state
+    assert expected_process._process_state.processed_documents == actual._process_state.processed_documents
 
 
 def test_get_processes(client_version_6, requests_mock):
     project = client_version_6.get_project("test-project")
+    pipeline_name = "my_pipeline_name"
+    state = "IDLE"
 
-    expected_processes = [
-        ("process1", "document_source_1"),
-        ("process2", "document_source_2"),
-        ("process3", "document_source_3"),
+    expected_processes_payload = [
+        {'processName': 'process1', 'documentSourceName': 'document_source_1'},
+        {'processName': 'process2', 'documentSourceName': 'document_source_2'},
+        {'processName': 'process3', 'documentSourceName': 'document_source_3'}
     ]
+
+    expected_processes = []
+    for i, item in enumerate(expected_processes_payload):
+        process_name = item['processName']
+        document_source_name = item['documentSourceName']
+        p = Process(project=project,
+                    state=state,
+                    processed_documents=i,
+                    name=process_name,
+                    document_source_name=document_source_name,
+                    pipeline_name=pipeline_name)
+        expected_processes.append(p)
 
     requests_mock.get(
         f"{API_EXPERIMENTAL}/textanalysis/projects/test-project/processes",
         headers={"Content-Type": "application/json"},
-        json={"payload": expected_processes, "errorMessages": []},
+        json={"payload": expected_processes_payload, "errorMessages": []},
     )
+
+    for i, item in enumerate(expected_processes_payload):
+        process_name = item['processName']
+        document_source_name = item['documentSourceName']
+        payload = {
+            "processName": process_name,
+            "pipelineName": pipeline_name,
+            "documentSourceName": document_source_name,
+            "state": state,
+            "processedDocuments": i,
+        }
+        requests_mock.get(
+            f"{API_EXPERIMENTAL}/textanalysis/projects/test-project/"
+            f"documentSources/{document_source_name}/processes/{process_name}",
+            headers={"Content-Type": "application/json"},
+            json={"payload": payload, "errorMessages": []},
+        )
+
     actual_processes = project.list_processes()
-    assert len(expected_processes) == len(actual_processes)
-    assert all(
-        [a[0] == b[0] and a[1] == b[1] for a, b in zip(expected_processes, actual_processes)]
-    )
+    assert len(expected_processes_payload) == len(actual_processes)
+    [assert_process_equal(a, b) for a, b in zip(expected_processes, actual_processes)]
 
 
 def test_delete_pear_with_pear_does_not_exist(client_version_6, requests_mock):
@@ -181,7 +214,6 @@ def test_delete_pear_with_pear_does_not_exist(client_version_6, requests_mock):
     with pytest.raises(Exception) as ex:
         project.delete_pear(pear_identifier)
 
-    # the assert needs to be on this level
     expected_error_message = "Unable to perform request: The requested resource could not be found."
     assert expected_error_message in str(ex.value)
 

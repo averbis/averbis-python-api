@@ -27,10 +27,9 @@ from io import BytesIO, IOBase
 from json import JSONDecodeError
 
 from time import sleep, time
-from typing import List, Union, IO, Iterable, Dict, Iterator, Optional, Tuple
+from typing import List, Union, IO, Iterable, Dict, Iterator, Optional
 from pathlib import Path
 import requests
-import typing
 import mimetypes
 
 ENCODING_UTF_8 = "utf-8"
@@ -552,8 +551,18 @@ class Process:
         self.name = name
         self.document_source_name = document_source_name
         self.pipeline_name = pipeline_name
-        self.state = state
-        self.processed_documents = processed_documents
+        self._process_state = Process.ProcessState(self, state, processed_documents)
+
+    class ProcessState:
+        def __init__(
+                self,
+                process: "Process",
+                state: str,
+                processed_documents: int,
+        ):
+            self.process = process
+            self.state = state
+            self.processed_documents = processed_documents
 
     @experimental_api
     def delete(self):
@@ -574,6 +583,11 @@ class Process:
         """
         # noinspection PyProtectedMember
         self.project.client._reprocess(self.project.name, self.name, self.document_source_name)
+
+    @experimental_api
+    def get_process_state(self):
+        # noinspection PyProtectedMember
+        return self.project.get_process(self.name, self.document_source_name)._process_state
 
 
 class Project:
@@ -791,7 +805,7 @@ class Project:
         return self.client._get_process(self, process_name, document_source_name)
 
     @experimental_api
-    def list_processes(self) -> List[Tuple[str, str]]:
+    def list_processes(self) -> List[Process]:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
@@ -799,7 +813,7 @@ class Project:
         :return: The list of processes.
         """
         # noinspection PyProtectedMember
-        return self.client._list_processes(self.name)
+        return self.client._list_processes(self)
 
 
 class Client:
@@ -1572,14 +1586,17 @@ class Client:
         return response["payload"]
 
     @experimental_api
-    def _list_processes(self, project: str) -> List[Tuple[str, str]]:
+    def _list_processes(self, project: "Project") -> List[Process]:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
         Use Project.list_processes() instead.
         """
-        response = self.__request("get", f"/experimental/textanalysis/projects/{project}/processes")
-        return response["payload"]
+        response = self.__request("get", f"/experimental/textanalysis/projects/{project.name}/processes")
+        processes = []
+        for item in response["payload"]:
+            processes.append(self._get_process(project, item['processName'], item['documentSourceName']))
+        return processes
 
     @experimental_api
     def _create_process(
@@ -1612,7 +1629,8 @@ class Client:
         """
         response = self.__request(
             "get",
-            f"/experimental/textanalysis/projects/{project.name}/documentSources/{document_source_name}/processes/{process_name}",
+            f"/experimental/textanalysis/projects/{project.name}/"
+            f"documentSources/{document_source_name}/processes/{process_name}"
         )
         process_details_dto = response["payload"]
         return Process(
