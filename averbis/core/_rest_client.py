@@ -562,17 +562,18 @@ class Process:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
-        Deletes the Process.
+        Deletes the process as soon as it becomes IDLE. All document analysis results will be deleted.
         """
         # noinspection PyProtectedMember
         self.project.client._delete_process(self.project.name, self.name, self.document_source_name)
 
     @experimental_api
-    def reprocess(self):
+    def rerun(self):
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
-        Triggers reprocessing.
+        Triggers a rerun if the process is IDLE.
+        All current results will be deleted and the documents will be reprocessed.
         """
         # noinspection PyProtectedMember
         self.project.client._reprocess(self.project.name, self.name, self.document_source_name)
@@ -779,17 +780,19 @@ class Project:
         return Pear(self, pear_identifier)
 
     @experimental_api
-    def create_process(
+    def create_and_run_process(
         self, process_name: str, document_source_name: str, pipeline_name: str
     ) -> None:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
-        Create a process
+        Creates a process and runs the document analysis.
         :return: The created process
         """
         # noinspection PyProtectedMember
-        self.client._create_process(self.name, process_name, document_source_name, pipeline_name)
+        self.client._create_and_run_process(
+            self.name, process_name, document_source_name, pipeline_name
+        )
 
     @experimental_api
     def get_process(self, process_name: str, document_source_name: str) -> Process:
@@ -1601,13 +1604,13 @@ class Client:
         return processes
 
     @experimental_api
-    def _create_process(
+    def _create_and_run_process(
         self, project: str, process_name: str, document_source_name: str, pipeline_name: str
     ) -> None:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
-        Use Project.create_process() instead.
+        Use Project.create_and_run_process() instead.
         """
         create_process_dto = {
             "processName": process_name,
@@ -1682,7 +1685,7 @@ class Client:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
-        Use Process.reprocess() instead.
+        Use Process.rerun() instead.
         """
         self.__request(
             "post",

@@ -98,7 +98,7 @@ def test_delete_pear_success(client_version_6, requests_mock):
     project.delete_pear(pear_identifier)
 
 
-def test_create_process(client_version_6, requests_mock):
+def test_create_and_run_process(client_version_6, requests_mock):
     project = client_version_6.get_project("test-project")
     process_name = "my_process"
     document_source_name = "my_document_source"
@@ -109,7 +109,7 @@ def test_create_process(client_version_6, requests_mock):
         headers={"Content-Type": "application/json"},
         json={"payload": None, "errorMessages": []},
     )
-    project.create_process(process_name, document_source_name, pipeline_name)
+    project.create_and_run_process(process_name, document_source_name, pipeline_name)
 
 
 def test_get_process(client_version_6, requests_mock):

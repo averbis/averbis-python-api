@@ -39,7 +39,7 @@ def test_delete(process, requests_mock):
     process.delete()
 
 
-def test_reprocess(process, requests_mock):
+def test_rerun(process, requests_mock):
 
     requests_mock.post(
         f"{API_EXPERIMENTAL}/textanalysis/projects/test-project/"
@@ -48,7 +48,7 @@ def test_reprocess(process, requests_mock):
         json={"payload": None, "errorMessages": []},
     )
 
-    process.reprocess()
+    process.rerun()
 
 
 def test_process_state(process, requests_mock):
