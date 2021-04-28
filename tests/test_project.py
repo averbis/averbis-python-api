@@ -120,9 +120,8 @@ def test_get_process(client_version_6, requests_mock):
     state = "IDLE"
     number_of_documents = 12
 
-    expected_process = Process(
-        project, process_name, document_source_name, pipeline_name, state, number_of_documents
-    )
+    expected_process = Process(project, process_name, document_source_name, pipeline_name)
+
     payload = {
         "processName": process_name,
         "pipelineName": pipeline_name,
@@ -146,11 +145,6 @@ def assert_process_equal(expected_process, actual):
     assert expected_process.project.name == actual.project.name
     assert expected_process.pipeline_name == actual.pipeline_name
     assert expected_process.document_source_name == actual.document_source_name
-    assert expected_process._process_state.state == actual._process_state.state
-    assert (
-        expected_process._process_state.processed_documents
-        == actual._process_state.processed_documents
-    )
 
 
 def test_get_processes(client_version_6, requests_mock):
@@ -170,8 +164,6 @@ def test_get_processes(client_version_6, requests_mock):
         document_source_name = item["documentSourceName"]
         p = Process(
             project=project,
-            state=state,
-            processed_documents=i,
             name=process_name,
             document_source_name=document_source_name,
             pipeline_name=pipeline_name,

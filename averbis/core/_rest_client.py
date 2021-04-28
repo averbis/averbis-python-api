@@ -539,19 +539,12 @@ class Pear:
 
 class Process:
     def __init__(
-        self,
-        project: "Project",
-        name: str,
-        document_source_name: str,
-        pipeline_name: str,
-        state: str,
-        processed_documents: int,
+        self, project: "Project", name: str, document_source_name: str, pipeline_name: str
     ):
         self.project = project
         self.name = name
         self.document_source_name = document_source_name
         self.pipeline_name = pipeline_name
-        self._process_state = Process.ProcessState(self, state, processed_documents)
 
     class ProcessState:
         def __init__(
@@ -585,9 +578,14 @@ class Process:
         self.project.client._reprocess(self.project.name, self.name, self.document_source_name)
 
     @experimental_api
-    def get_process_state(self):
+    def get_process_state(self) -> ProcessState:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Returns the current process state.
+        """
         # noinspection PyProtectedMember
-        return self.project.get_process(self.name, self.document_source_name)._process_state
+        return self.project.client._get_process_state(self.project, self)
 
 
 class Project:
@@ -1642,6 +1640,23 @@ class Client:
             name=process_details_dto["processName"],
             pipeline_name=process_details_dto["pipelineName"],
             document_source_name=process_details_dto["documentSourceName"],
+        )
+
+    @experimental_api
+    def _get_process_state(self, project: "Project", process: "Process") -> Process.ProcessState:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Use Project.get_process() instead.
+        """
+        response = self.__request(
+            "get",
+            f"/experimental/textanalysis/projects/{project.name}/"
+            f"documentSources/{process.document_source_name}/processes/{process.name}",
+        )
+        process_details_dto = response["payload"]
+        return Process.ProcessState(
+            process=process,
             state=process_details_dto["state"],
             processed_documents=process_details_dto["processedDocuments"],
         )
