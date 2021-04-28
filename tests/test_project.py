@@ -147,7 +147,10 @@ def assert_process_equal(expected_process, actual):
     assert expected_process.pipeline_name == actual.pipeline_name
     assert expected_process.document_source_name == actual.document_source_name
     assert expected_process._process_state.state == actual._process_state.state
-    assert expected_process._process_state.processed_documents == actual._process_state.processed_documents
+    assert (
+        expected_process._process_state.processed_documents
+        == actual._process_state.processed_documents
+    )
 
 
 def test_get_processes(client_version_6, requests_mock):
@@ -156,21 +159,23 @@ def test_get_processes(client_version_6, requests_mock):
     state = "IDLE"
 
     expected_processes_payload = [
-        {'processName': 'process1', 'documentSourceName': 'document_source_1'},
-        {'processName': 'process2', 'documentSourceName': 'document_source_2'},
-        {'processName': 'process3', 'documentSourceName': 'document_source_3'}
+        {"processName": "process1", "documentSourceName": "document_source_1"},
+        {"processName": "process2", "documentSourceName": "document_source_2"},
+        {"processName": "process3", "documentSourceName": "document_source_3"},
     ]
 
     expected_processes = []
     for i, item in enumerate(expected_processes_payload):
-        process_name = item['processName']
-        document_source_name = item['documentSourceName']
-        p = Process(project=project,
-                    state=state,
-                    processed_documents=i,
-                    name=process_name,
-                    document_source_name=document_source_name,
-                    pipeline_name=pipeline_name)
+        process_name = item["processName"]
+        document_source_name = item["documentSourceName"]
+        p = Process(
+            project=project,
+            state=state,
+            processed_documents=i,
+            name=process_name,
+            document_source_name=document_source_name,
+            pipeline_name=pipeline_name,
+        )
         expected_processes.append(p)
 
     requests_mock.get(
@@ -180,8 +185,8 @@ def test_get_processes(client_version_6, requests_mock):
     )
 
     for i, item in enumerate(expected_processes_payload):
-        process_name = item['processName']
-        document_source_name = item['documentSourceName']
+        process_name = item["processName"]
+        document_source_name = item["documentSourceName"]
         payload = {
             "processName": process_name,
             "pipelineName": pipeline_name,

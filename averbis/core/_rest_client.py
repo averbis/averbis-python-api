@@ -555,10 +555,10 @@ class Process:
 
     class ProcessState:
         def __init__(
-                self,
-                process: "Process",
-                state: str,
-                processed_documents: int,
+            self,
+            process: "Process",
+            state: str,
+            processed_documents: int,
         ):
             self.process = process
             self.state = state
@@ -1592,10 +1592,14 @@ class Client:
 
         Use Project.list_processes() instead.
         """
-        response = self.__request("get", f"/experimental/textanalysis/projects/{project.name}/processes")
+        response = self.__request(
+            "get", f"/experimental/textanalysis/projects/{project.name}/processes"
+        )
         processes = []
         for item in response["payload"]:
-            processes.append(self._get_process(project, item['processName'], item['documentSourceName']))
+            processes.append(
+                self._get_process(project, item["processName"], item["documentSourceName"])
+            )
         return processes
 
     @experimental_api
@@ -1630,7 +1634,7 @@ class Client:
         response = self.__request(
             "get",
             f"/experimental/textanalysis/projects/{project.name}/"
-            f"documentSources/{document_source_name}/processes/{process_name}"
+            f"documentSources/{document_source_name}/processes/{process_name}",
         )
         process_details_dto = response["payload"]
         return Process(
