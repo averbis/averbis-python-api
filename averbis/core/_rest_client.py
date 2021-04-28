@@ -1392,7 +1392,7 @@ class Client:
         return str(
             self.__request_with_bytes_response(
                 "post",
-                f"/experimental/textanalysis/projects/{project}/pipelines/{pipeline}/debugAnalyseText",
+                f"/experimental/textanalysis/projects/{project}/pipelines/{pipeline}/analyzeTextToCas",
                 data=data,
                 params={"annotationTypes": annotation_types, "language": language},
                 headers={
@@ -1414,7 +1414,7 @@ class Client:
         return str(
             self.__request_with_bytes_response(
                 "get",
-                f"/experimental/textanalysis/projects/{project}/pipelines/{pipeline}/debugTypesystem",
+                f"/experimental/textanalysis/projects/{project}/pipelines/{pipeline}/exportTypesystem",
                 params={"annotationTypes": "*"},
                 headers={HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_XML},
             ),
