@@ -23,7 +23,7 @@ import json
 import logging
 from concurrent.futures.thread import ThreadPoolExecutor
 from functools import wraps
-from io import BytesIO
+from io import BytesIO, IOBase
 from json import JSONDecodeError
 
 from time import sleep, time
@@ -486,23 +486,28 @@ class DocumentCollection:
         # noinspection PyProtectedMember
         return self.project.client._delete_document_collection(self.project.name, self.name)
 
-    def import_documents(self, file: IO, mime_type: str = None) -> dict:
+    def import_documents(
+        self, source: Union[Path, IO, str], mime_type: str = None, filename: str = None
+    ) -> List[dict]:
         """
         Imports documents from a given file. Supported file content types are plain text (text/plain)
         and Averbis Solr XML (application/vnd.averbis.solr+xml).
         """
-        if mime_type is None:
-            # Infering MimeType if not set
-            mime_type = mimetypes.guess_type(url=file.name)[0]
-            if mime_type not in [MEDIA_TYPE_TEXT_PLAIN, MEDIA_TYPE_APPLICATION_SOLR_XML]:
-                raise ValueError(
-                    "Unable to guess a valid mime_type. Supported file content types are plain text (mime_type = 'text/plain') "
-                    + "and Averbis Solr XML (mime_type = 'application/vnd.averbis.solr+xml').\nPlease provide the correct mime_type with: "
-                      "`document_collection.import_documents(file, mime_type = ...)`."
-                )
 
         # noinspection PyProtectedMember
-        return self.project.client._import_document(self.project.name, self.name, file, mime_type)
+        return self.project.client._import_documents(
+            self.project.name, self.name, source, mime_type, filename
+        )
+
+    @experimental_api
+    def list_documents(self) -> dict:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Lists the documents in the collection.
+        """
+        # noinspection PyProtectedMember
+        return self.project.client._list_documents(self.project.name, self.name)
 
 
 class Pear:
@@ -1043,11 +1048,22 @@ class Client:
         """
         return Project(self, name)
 
-    def list_projects(self) -> List[Project]:
-        raise OperationNotSupported("Listing projects is not supported by the REST API yet")
+    @experimental_api
+    def list_projects(self) -> dict:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
+        Returns a list of the projects.
+        """
+
+        response = self.__request("get", f"/experimental/projects")
+        return response["payload"]
+
+    @experimental_api
     def _delete_project(self, name: str) -> None:
         """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
         Use Project.delete() instead.
         """
         raise OperationNotSupported("Deleting projects is not supported by the REST API yet")
@@ -1090,16 +1106,94 @@ class Client:
         )
         return response["payload"]
 
-    def _import_document(self, project: str, collection_name: str, file: IO, mime_type):
+    @experimental_api
+    def _list_documents(self, project: str, collection_name: str) -> dict:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Lists the documents in the collection.
+        """
+
+        response = self.__request(
+            "get",
+            f"/experimental/projects/{project}/documentCollections/{collection_name}/documents",
+        )
+        return response["payload"]
+
+    def _import_documents(
+        self,
+        project: str,
+        collection_name: str,
+        source: Union[Path, IO, str],
+        mime_type: str = None,
+        filename: str = None,
+    ) -> List[dict]:
         """
         Use DocumentCollection.import_document() instead.
         """
+
+        def fetch_filename(src: Union[Path, IO, str], default_filename: str) -> str:
+            if isinstance(src, Path):
+                return Path(src).name
+
+            if isinstance(src, IOBase) and hasattr(src, "name"):
+                return src.name
+
+            if isinstance(src, str):
+                return default_filename
+
+            raise ValueError("Unsupported source type - valid is [Path, IO, str]")
+
+        if isinstance(source, str) and mime_type is None:
+            mime_type = MEDIA_TYPE_TEXT_PLAIN
+
+        # If the format is not a multi-document format, we need to have a filename. If it is a multi-document
+        # format, then the server is using the filenames stored within the multi-document
+        if mime_type in [MEDIA_TYPE_APPLICATION_SOLR_XML]:
+            if filename is not None:
+                raise Exception(
+                    f"The filename parameter cannot be used in conjunction with multi-document file formats "
+                    f"such as {mime_type}"
+                )
+            # For multi-documents, the server still needs a filename with the proper extension, otherwise it refuses
+            # to parse the result
+            filename = fetch_filename(source, "data.xml")
+        else:
+            filename = filename or fetch_filename(source, "document.txt")
+
+            if mime_type is None:
+                # Inferring MimeType if not set
+                mime_type = mimetypes.guess_type(url=filename)[0]
+                if mime_type not in [MEDIA_TYPE_TEXT_PLAIN, MEDIA_TYPE_APPLICATION_SOLR_XML]:
+                    raise ValueError(
+                        f"Unable to guess a valid mime_type. Supported file content types are plain text (mime_type = "
+                        f"'{MEDIA_TYPE_TEXT_PLAIN}') and Averbis Solr XML (mime_type = '{MEDIA_TYPE_APPLICATION_SOLR_XML}')"
+                        f".\nPlease provide the correct mime_type with: `document_collection.import_documents(file, "
+                        f"mime_type = ...)`."
+                    )
+
+        if isinstance(source, Path):
+            if mime_type == MEDIA_TYPE_TEXT_PLAIN:
+                with source.open("r", encoding=ENCODING_UTF_8) as text_file:
+                    source = text_file.read()
+            else:
+                with source.open("rb") as binary_file:
+                    source = BytesIO(binary_file.read())
+
+        data: IO = BytesIO(source.encode(ENCODING_UTF_8)) if isinstance(source, str) else source
+
         response = self.__request(
             "post",
             f"/v1/importer/projects/{project}/documentCollections/{collection_name}/documents",
-            files={"documentFile": (file.name, file, mime_type)},
+            files={"documentFile": (filename, data, mime_type)},
         )
-        return response["payload"]
+
+        # When a multi-document file format is uploaded (e.g. SolrXML), we get an array as a result, otherwise we get
+        # an object. To have a uniform API we wrap the object in an array so we always get an array as a result.
+        if isinstance(response["payload"], list):
+            return response["payload"]
+        else:
+            return [response["payload"]]
 
     def _list_terminologies(self, project: str) -> dict:
         """
@@ -1206,6 +1300,8 @@ class Client:
     @experimental_api
     def _delete_pipeline(self, project: str, pipeline: str) -> dict:
         """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
         Use Pipeline.delete() instead.
         """
         response = self.__request(
@@ -1326,6 +1422,8 @@ class Client:
             self, project: str, document_sources: str, process: str, annotation_types: str = None
     ):
         """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
         Use Project.export_text_analysis() instead.
         """
         response = self.__request(
@@ -1345,6 +1443,12 @@ class Client:
             annotation_types: str = None,
             language: str = "de",
     ) -> str:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Use Pipeline.analyse_text_to_cas() instead.
+        """
+
         data: IO = BytesIO(source.encode(ENCODING_UTF_8)) if isinstance(source, str) else source
 
         return str(
@@ -1363,6 +1467,12 @@ class Client:
 
     @experimental_api
     def _get_pipeline_type_system(self, project: str, pipeline: str) -> str:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Use Pipeline.get_type_system() instead.
+        """
+
         return str(
             self.__request_with_bytes_response(
                 "get",
@@ -1376,6 +1486,8 @@ class Client:
     @experimental_api
     def _list_pears(self, project: str) -> List[str]:
         """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
         Use Project.list_pears() instead.
         """
         response = self.__request(
@@ -1386,7 +1498,9 @@ class Client:
     @experimental_api
     def _delete_pear(self, project: str, pear_identifier: str):
         """
-        Use Pear.delete() instead.
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Use Project.delete_pear() instead.
         """
         self.__request(
             "delete",
@@ -1396,6 +1510,11 @@ class Client:
 
     @experimental_api
     def _install_pear(self, project: str, file_or_path: Union[IO, Path, str]) -> str:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Use Project.install_pear() instead.
+        """
 
         if isinstance(file_or_path, str):
             file_or_path = Path(file_or_path)
@@ -1414,6 +1533,11 @@ class Client:
 
     @experimental_api
     def _get_default_pear_configuration(self, project: str, pear_identifier: str) -> dict:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Use Pear.get_default_configuration() instead.
+        """
         response = self.__request(
             "get", f"/experimental/textanalysis/projects/{project}/pearComponents/{pear_identifier}"
         )
