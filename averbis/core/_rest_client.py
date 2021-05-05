@@ -27,10 +27,9 @@ from io import BytesIO, IOBase
 from json import JSONDecodeError
 
 from time import sleep, time
-from typing import List, Union, IO, Iterable, Dict, TextIO, Iterator, Optional
+from typing import List, Union, IO, Iterable, Dict, Iterator, Optional
 from pathlib import Path
 import requests
-import typing
 import mimetypes
 
 ENCODING_UTF_8 = "utf-8"
@@ -314,7 +313,8 @@ class Pipeline:
         if was_running_before_configuration_change:
             self.ensure_started()
 
-    # Ignoring errors as linter (compiler) cannot resolve dynamically loaded lib (with type:ignore for mypy) and (noinspection PyProtectedMember for pycharm)
+    # Ignoring errors as linter (compiler) cannot resolve dynamically loaded lib
+    # (with type:ignore for mypy) and (noinspection PyProtectedMember for pycharm)
     @experimental_api
     def analyse_text_to_cas(self, source: Union[IO, str], **kwargs) -> "Cas":  # type: ignore
         """
@@ -327,7 +327,8 @@ class Pipeline:
             typesystem=self.get_type_system(),
         )
 
-    # Ignoring errors as linter (compiler) cannot resolve dynamically loaded lib (with type:ignore for mypy) and (noinspection PyProtectedMember for pycharm)
+    # Ignoring errors as linter (compiler) cannot resolve dynamically loaded lib
+    # (with type:ignore for mypy) and (noinspection PyProtectedMember for pycharm)
     @experimental_api
     def get_type_system(self) -> "TypeSystem":  # type: ignore
         """
@@ -513,21 +514,79 @@ class Pear:
         self.project = project
         self.identifier = identifier
 
+    @experimental_api
     def delete(self):
         """
-        Deletes the PEAR component.
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Deletes the PEAR.
         """
         # noinspection PyProtectedMember
         self.project.client._delete_pear(self.project.name, self.identifier)
 
+    @experimental_api
     def get_default_configuration(self) -> dict:
         """
-        Get the default configuration of the PEAR component.
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Get the default configuration of the PEAR.
         """
         # noinspection PyProtectedMember
         return self.project.client._get_default_pear_configuration(
             self.project.name, self.identifier
         )
+
+
+class Process:
+    def __init__(
+        self, project: "Project", name: str, document_source_name: str, pipeline_name: str
+    ):
+        self.project = project
+        self.name = name
+        self.document_source_name = document_source_name
+        self.pipeline_name = pipeline_name
+
+    class ProcessState:
+        def __init__(
+            self,
+            process: "Process",
+            state: str,
+            processed_documents: int,
+        ):
+            self.process = process
+            self.state = state
+            self.processed_documents = processed_documents
+
+    @experimental_api
+    def delete(self):
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Deletes the process as soon as it becomes IDLE. All document analysis results will be deleted.
+        """
+        # noinspection PyProtectedMember
+        self.project.client._delete_process(self.project.name, self.name, self.document_source_name)
+
+    @experimental_api
+    def rerun(self):
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Triggers a rerun if the process is IDLE.
+        All current results will be deleted and the documents will be reprocessed.
+        """
+        # noinspection PyProtectedMember
+        self.project.client._reprocess(self.project.name, self.name, self.document_source_name)
+
+    @experimental_api
+    def get_process_state(self) -> ProcessState:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Returns the current process state.
+        """
+        # noinspection PyProtectedMember
+        return self.project.client._get_process_state(self.project, self)
 
 
 class Project:
@@ -567,6 +626,7 @@ class Project:
             cfg = configuration
             name = cfg[pipeline_name_key]
 
+        # noinspection PyProtectedMember
         self.client._create_pipeline(self.name, cfg)
         new_pipeline = Pipeline(self, name)
         self.__cached_pipelines[name] = new_pipeline
@@ -686,29 +746,75 @@ class Project:
             self.name, document_sources, process, annotation_types
         )
 
+    @experimental_api
     def list_pears(self) -> List[str]:
         """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
         List all existing pears by identifier.
         :return: The list of pear identifiers.
         """
         # noinspection PyProtectedMember
         return self.client._list_pears(self.name)
 
+    @experimental_api
     def delete_pear(self, pear_identifier: str) -> None:
         """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
         Delete the pear by identifier.
         """
         # noinspection PyProtectedMember
         self.client._delete_pear(self.name, pear_identifier)
         return None
 
+    @experimental_api
     def install_pear(self, file_or_path: Union[IO, Path, str]) -> Pear:
         """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
         Install a pear by file or path.
         """
         # noinspection PyProtectedMember
         pear_identifier = self.client._install_pear(self.name, file_or_path)
         return Pear(self, pear_identifier)
+
+    @experimental_api
+    def create_and_run_process(
+        self, process_name: str, document_source_name: str, pipeline_name: str
+    ) -> None:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Creates a process and runs the document analysis.
+        :return: The created process
+        """
+        # noinspection PyProtectedMember
+        self.client._create_and_run_process(
+            self.name, process_name, document_source_name, pipeline_name
+        )
+
+    @experimental_api
+    def get_process(self, process_name: str, document_source_name: str) -> Process:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Get a process
+        :return: The process
+        """
+        # noinspection PyProtectedMember
+        return self.client._get_process(self, process_name, document_source_name)
+
+    @experimental_api
+    def list_processes(self) -> List[Process]:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        List all existing processes by name and document source name.
+        :return: The list of processes.
+        """
+        # noinspection PyProtectedMember
+        return self.client._list_processes(self)
 
 
 class Client:
@@ -855,7 +961,6 @@ class Client:
 
     def __request(self, method: str, endpoint: str, **kwargs) -> dict:
         raw_response = self._run_request(method, endpoint, **kwargs)
-
         response = raw_response.json()
         self.__handle_error(response)
         return response
@@ -1480,6 +1585,114 @@ class Client:
             "get", f"/experimental/textanalysis/projects/{project}/pearComponents/{pear_identifier}"
         )
         return response["payload"]
+
+    @experimental_api
+    def _list_processes(self, project: "Project") -> List[Process]:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Use Project.list_processes() instead.
+        """
+        response = self.__request(
+            "get", f"/experimental/textanalysis/projects/{project.name}/processes"
+        )
+        processes = []
+        for item in response["payload"]:
+            processes.append(
+                self._get_process(project, item["processName"], item["documentSourceName"])
+            )
+        return processes
+
+    @experimental_api
+    def _create_and_run_process(
+        self, project: str, process_name: str, document_source_name: str, pipeline_name: str
+    ) -> None:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Use Project.create_and_run_process() instead.
+        """
+        create_process_dto = {
+            "processName": process_name,
+            "documentSourceName": document_source_name,
+            "pipelineName": pipeline_name,
+        }
+        self.__request(
+            "post",
+            f"/experimental/textanalysis/projects/{project}/processes",
+            json=create_process_dto,
+        )
+
+    @experimental_api
+    def _get_process(
+        self, project: "Project", process_name: str, document_source_name: str
+    ) -> Process:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Use Project.get_process() instead.
+        """
+        response = self.__request(
+            "get",
+            f"/experimental/textanalysis/projects/{project.name}/"
+            f"documentSources/{document_source_name}/processes/{process_name}",
+        )
+        process_details_dto = response["payload"]
+        return Process(
+            project=project,
+            name=process_details_dto["processName"],
+            pipeline_name=process_details_dto["pipelineName"],
+            document_source_name=process_details_dto["documentSourceName"],
+        )
+
+    @experimental_api
+    def _get_process_state(self, project: "Project", process: "Process") -> Process.ProcessState:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Use Project.get_process() instead.
+        """
+        response = self.__request(
+            "get",
+            f"/experimental/textanalysis/projects/{project.name}/"
+            f"documentSources/{process.document_source_name}/processes/{process.name}",
+        )
+        process_details_dto = response["payload"]
+        return Process.ProcessState(
+            process=process,
+            state=process_details_dto["state"],
+            processed_documents=process_details_dto["processedDocuments"],
+        )
+
+    @experimental_api
+    def _delete_process(
+        self, project_name: str, process_name: str, document_source_name: str
+    ) -> None:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Use Process.delete() instead.
+        """
+        self.__request(
+            "delete",
+            f"/experimental/textanalysis/projects/{project_name}/"
+            f"documentSources/{document_source_name}/processes/{process_name}",
+        )
+        return None
+
+    @experimental_api
+    def _reprocess(self, project_name: str, process_name: str, document_source_name: str) -> None:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Use Process.rerun() instead.
+        """
+        self.__request(
+            "post",
+            f"/experimental/textanalysis/projects/{project_name}/"
+            f"documentSources/{document_source_name}/processes/{process_name}/reprocess",
+        )
+        return None
 
     @staticmethod
     def __handle_error(response):
