@@ -44,6 +44,12 @@ def test_default_headers(client):
     assert TEST_API_TOKEN == headers["api-token"]
 
 
+def test_build_url(client):
+    client._url = 'http://some-machine/health-discovery/'
+    print(client.__build_url('v1/some-endpoint/'))
+    # assert test_client.__build_url('v1/some-endpoint/') ==
+
+
 def test_default_headers_with_override(client):
     headers = client._default_headers({"Content-Type": "text/plain"})
 
