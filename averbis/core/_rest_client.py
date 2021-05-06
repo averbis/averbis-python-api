@@ -952,14 +952,14 @@ class Client:
 
         kwargs["verify"] = self._verify_ssl
 
-        url = self.__build_url(endpoint)
+        url = self._build_url(endpoint)
         raw_response = requests.request(method, url, **kwargs)
         self.__logger.debug(
             "Response for %s %s: %s -- %s", method, url, raw_response, raw_response.content
         )
         return raw_response
 
-    def __build_url(self, endpoint):
+    def _build_url(self, endpoint):
         return f"{self._url.rstrip('/')}/rest/{endpoint.lstrip('/')}"
 
     def __request(self, method: str, endpoint: str, **kwargs) -> dict:
