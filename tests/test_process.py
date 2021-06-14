@@ -88,7 +88,7 @@ def test_process_state(process, requests_mock):
         "numberOfSuccessfulDocuments": 6871,
         "numberOfUnsuccessfulDocuments": 0,
         "errorMessages": [],
-        "precedingProcessName": "precedingProcessName"
+        "precedingProcessName": "precedingProcessName",
     }
 
     requests_mock.get(
@@ -100,7 +100,5 @@ def test_process_state(process, requests_mock):
 
     process_dto = process.get_process_state()
     assert process_dto.processed_documents is None
-    assert process_dto.preceding_process_name == 'precedingProcessName'
-    assert process_dto.state == 'IDLE'
-
-
+    assert process_dto.preceding_process_name == "precedingProcessName"
+    assert process_dto.state == "IDLE"

@@ -548,7 +548,9 @@ class Process:
 
     class ProcessState:
         def __init__(
-            self, *args, **kwargs,
+            self,
+            *args,
+            **kwargs,
         ):
             # todo: use these parameters instead of kwargs when v6 is released
             # process: "Process",
@@ -559,14 +561,14 @@ class Process:
             # number_of_unsuccessful_documents: int,
             # error_messages: List[str],
             # preceding_process_name: str
-            self.process = kwargs.get('process')
-            self.state = kwargs.get('state')
-            self.processed_documents = kwargs.get('processed_documents')
-            self.number_of_total_documents = kwargs.get('number_of_total_documents')
-            self.number_of_successful_documents = kwargs.get('number_of_successful_documents')
-            self.number_of_unsuccessful_documents = kwargs.get('number_of_unsuccessful_documents')
-            self.error_messages = kwargs.get('error_messages')
-            self.preceding_process_name = kwargs.get('preceding_process_name')
+            self.process = kwargs.get("process")
+            self.state = kwargs.get("state")
+            self.processed_documents = kwargs.get("processed_documents")
+            self.number_of_total_documents = kwargs.get("number_of_total_documents")
+            self.number_of_successful_documents = kwargs.get("number_of_successful_documents")
+            self.number_of_unsuccessful_documents = kwargs.get("number_of_unsuccessful_documents")
+            self.error_messages = kwargs.get("error_messages")
+            self.preceding_process_name = kwargs.get("preceding_process_name")
 
     @experimental_api
     def delete(self):
@@ -1683,12 +1685,14 @@ class Client:
         else:
             return Process.ProcessState(
                 process=process,
-                state=process_details_dto['state'],
-                number_of_total_documents=process_details_dto['numberOfTotalDocuments'],
-                number_of_successful_documents=process_details_dto['numberOfSuccessfulDocuments'],
-                number_of_unsuccessful_documents=process_details_dto['numberOfUnsuccessfulDocuments'],
-                error_messages=process_details_dto['errorMessages'],
-                preceding_process_name=process_details_dto['precedingProcessName']
+                state=process_details_dto["state"],
+                number_of_total_documents=process_details_dto["numberOfTotalDocuments"],
+                number_of_successful_documents=process_details_dto["numberOfSuccessfulDocuments"],
+                number_of_unsuccessful_documents=process_details_dto[
+                    "numberOfUnsuccessfulDocuments"
+                ],
+                error_messages=process_details_dto["errorMessages"],
+                preceding_process_name=process_details_dto["precedingProcessName"],
             )
 
     @experimental_api
