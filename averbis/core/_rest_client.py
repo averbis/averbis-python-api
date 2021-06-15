@@ -555,7 +555,6 @@ class Process:
             # todo: use these parameters instead of kwargs when v6 is released
             # process: "Process",
             # state: str,
-            # processed_documents: int,
             # number_of_total_documents: int,
             # number_of_successful_documents: int,
             # number_of_unsuccessful_documents: int,
