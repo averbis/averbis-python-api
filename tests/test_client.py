@@ -45,8 +45,11 @@ def test_default_headers(client):
 
 
 def test_build_url(client):
-    client._url = 'http://some-machine/health-discovery/'
-    assert client._build_url('v1/some-endpoint/') == 'http://some-machine/health-discovery/rest/v1/some-endpoint/'
+    client._url = "http://some-machine/health-discovery/"
+    assert (
+        client._build_url("v1/some-endpoint/")
+        == "http://some-machine/health-discovery/rest/v1/some-endpoint/"
+    )
 
 
 def test_default_headers_with_override(client):

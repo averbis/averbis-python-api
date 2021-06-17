@@ -562,13 +562,25 @@ class Process:
     class ProcessState:
         def __init__(
             self,
-            process: "Process",
-            state: str,
-            processed_documents: int,
+            *args,
+            **kwargs,
         ):
-            self.process = process
-            self.state = state
-            self.processed_documents = processed_documents
+            # todo: use these parameters instead of kwargs when v6 is released
+            # process: "Process",
+            # state: str,
+            # number_of_total_documents: int,
+            # number_of_successful_documents: int,
+            # number_of_unsuccessful_documents: int,
+            # error_messages: List[str],
+            # preceding_process_name: str
+            self.process = kwargs.get("process")
+            self.state = kwargs.get("state")
+            self.processed_documents = kwargs.get("processed_documents")
+            self.number_of_total_documents = kwargs.get("number_of_total_documents")
+            self.number_of_successful_documents = kwargs.get("number_of_successful_documents")
+            self.number_of_unsuccessful_documents = kwargs.get("number_of_unsuccessful_documents")
+            self.error_messages = kwargs.get("error_messages")
+            self.preceding_process_name = kwargs.get("preceding_process_name")
 
     @experimental_api
     def delete(self):
@@ -1693,11 +1705,26 @@ class Client:
             f"documentSources/{process.document_source_name}/processes/{process.name}",
         )
         process_details_dto = response["payload"]
-        return Process.ProcessState(
-            process=process,
-            state=process_details_dto["state"],
-            processed_documents=process_details_dto["processedDocuments"],
-        )
+
+        if "processedDocuments" in process_details_dto:
+            # todo: delete this if condition when v6 is released
+            return Process.ProcessState(
+                process=process,
+                state=process_details_dto["state"],
+                processed_documents=process_details_dto["processedDocuments"],
+            )
+        else:
+            return Process.ProcessState(
+                process=process,
+                state=process_details_dto["state"],
+                number_of_total_documents=process_details_dto["numberOfTotalDocuments"],
+                number_of_successful_documents=process_details_dto["numberOfSuccessfulDocuments"],
+                number_of_unsuccessful_documents=process_details_dto[
+                    "numberOfUnsuccessfulDocuments"
+                ],
+                error_messages=process_details_dto["errorMessages"],
+                preceding_process_name=process_details_dto["precedingProcessName"],
+            )
 
     @experimental_api
     def _delete_process(
