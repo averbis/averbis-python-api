@@ -51,7 +51,8 @@ def test_rerun(process, requests_mock):
     process.rerun()
 
 
-def test_process_state(process, requests_mock):
+def test_deprecated_process_state(process, requests_mock):
+    # todo: delete me when v6 is released
 
     state = "IDLE"
     number_of_documents = 12
@@ -71,4 +72,33 @@ def test_process_state(process, requests_mock):
         json={"payload": payload, "errorMessages": []},
     )
 
-    process.get_process_state()
+    process_dto = process.get_process_state()
+    assert process_dto.processed_documents == 12
+
+
+def test_process_state(process, requests_mock):
+    state = "IDLE"
+
+    payload = {
+        "processName": process.name,
+        "pipelineName": process.pipeline_name,
+        "documentSourceName": process.document_source_name,
+        "state": state,
+        "numberOfTotalDocuments": 6871,
+        "numberOfSuccessfulDocuments": 6871,
+        "numberOfUnsuccessfulDocuments": 0,
+        "errorMessages": [],
+        "precedingProcessName": "precedingProcessName",
+    }
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/test-project/"
+        f"documentSources/{process.document_source_name}/processes/{process.name}",
+        headers={"Content-Type": "application/json"},
+        json={"payload": payload, "errorMessages": []},
+    )
+
+    process_dto = process.get_process_state()
+    assert process_dto.processed_documents is None
+    assert process_dto.preceding_process_name == "precedingProcessName"
+    assert process_dto.state == "IDLE"
