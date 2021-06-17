@@ -130,6 +130,42 @@ Restricting returned annotation types
       annotation_types='*Diagnosis') # will return only annotations that end with 'Diagnosis'
 
 
+Connection profiles
+~~~~~~~~~~~~~~~~~~~
+
+To avoid storing API keys in the Python scripts or constantly re-generating them, it is
+possible to store the keys for commonly used servers in a configuration file. This file
+must be called :code:`client-settings.json` and it must be located either in the working directory
+of the script or in the user's home folder in :code:`.averbis/client-settings.json`.
+
+Each profile has three settings:
+
+- :code:`url`: the base URL of the server application
+- :code:`api-token`: the API token
+- :code:`verify-ssl`: the path to a PEM file used to validate the server certificate if SSL is used
+
+Default settings which should be applied to all profiles can be stored in the special profile :code:`*` (star).
+
+.. code:: json
+
+  {
+    "profiles": {
+      "*": {
+        "verify-ssl": "caRoot.pem"
+      },
+      "localhost-hd": {
+        "url": "https://localhost:8080/health-discovery",
+        "api-token": "dummy-token"
+      },
+      "localhost-id": {
+        "url": "https://localhost:8080/information-discovery",
+        "api-token": "dummy-token",
+        "verify-ssl": "id.pem"
+      }
+    }
+  }
+
+
 Development
 ------------
 
