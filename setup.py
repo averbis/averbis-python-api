@@ -35,7 +35,8 @@ AUTHOR = "Averbis GmbH"
 REQUIRES_PYTHON = ">=3.6.0"
 
 install_requires = [
-    "requests"
+    "requests",
+    "types-requests"
 ]
 
 test_dependencies = [
