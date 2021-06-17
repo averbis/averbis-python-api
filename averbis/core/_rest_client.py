@@ -650,7 +650,7 @@ class Project:
         response = self.client._create_terminology(
             self.name, terminology_name, label, languages, concept_type, version, hierarchical
         )
-        return Terminology(self, response["payload"]["terminology_name"])
+        return Terminology(self, response["terminologyName"])
 
     def get_terminology(self, terminology: str) -> Terminology:
         """
