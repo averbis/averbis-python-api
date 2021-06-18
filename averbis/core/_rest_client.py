@@ -1118,6 +1118,17 @@ class Client:
         return response["payload"]
 
     @experimental_api
+    def exists_project(self, name: str) -> bool:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Checks if a project exists.
+        """
+
+        projects = self.list_projects()
+        return bool(next((p for p in projects if p["name"] == name), None))
+
+    @experimental_api
     def _delete_project(self, name: str) -> None:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
