@@ -464,92 +464,6 @@ class Terminology:
         self.project.client._delete_terminology(self.project.name, self.name)
 
 
-class DocumentCollection:
-    def __init__(self, project: "Project", name: str):
-        self.project = project
-        self.name = name
-
-    def get_number_of_documents(self) -> int:
-        """
-        Returns the number of documents in that collection.
-        """
-        # noinspection PyProtectedMember
-        return self.project.client._get_document_collection(self.project.name, self.name)[
-            "numberOfDocuments"
-        ]
-
-    def delete(self) -> dict:
-        """
-        Deletes the document collection.
-        """
-        # noinspection PyProtectedMember
-        return self.project.client._delete_document_collection(self.project.name, self.name)
-
-    def import_documents(
-        self, source: Union[Path, IO, str], mime_type: str = None, filename: str = None
-    ) -> List[dict]:
-        """
-        Imports documents from a given file. Supported file content types are plain text (text/plain)
-        and Averbis Solr XML (application/vnd.averbis.solr+xml).
-        """
-
-        # noinspection PyProtectedMember
-        return self.project.client._import_documents(
-            self.project.name, self.name, source, mime_type, filename
-        )
-
-    @experimental_api
-    def export_analysis_results(self, document_id: str, process_name: str) -> dict:
-        """
-        HIGHLY EXPERIMENTAL API - may soon change or disappear.
-
-        Export the results of a process on a document from a collection.
-        """
-
-        # noinspection PyProtectedMember
-        return self.project.client._export_analysis_results(
-            self.project.name, self.name, document_id, process_name
-        )
-
-    @experimental_api
-    def list_documents(self) -> dict:
-        """
-        HIGHLY EXPERIMENTAL API - may soon change or disappear.
-
-        Lists the documents in the collection.
-        """
-        # noinspection PyProtectedMember
-        return self.project.client._list_documents(self.project.name, self.name)
-
-
-class Pear:
-    def __init__(self, project: "Project", identifier: str):
-        self.project = project
-        self.identifier = identifier
-
-    @experimental_api
-    def delete(self):
-        """
-        HIGHLY EXPERIMENTAL API - may soon change or disappear.
-
-        Deletes the PEAR.
-        """
-        # noinspection PyProtectedMember
-        self.project.client._delete_pear(self.project.name, self.identifier)
-
-    @experimental_api
-    def get_default_configuration(self) -> dict:
-        """
-        HIGHLY EXPERIMENTAL API - may soon change or disappear.
-
-        Get the default configuration of the PEAR.
-        """
-        # noinspection PyProtectedMember
-        return self.project.client._get_default_pear_configuration(
-            self.project.name, self.identifier
-        )
-
-
 class Process:
     def __init__(
         self, project: "Project", name: str, document_source_name: str, pipeline_name: str
@@ -612,6 +526,92 @@ class Process:
         """
         # noinspection PyProtectedMember
         return self.project.client._get_process_state(self.project, self)
+
+
+class DocumentCollection:
+    def __init__(self, project: "Project", name: str):
+        self.project = project
+        self.name = name
+
+    def get_number_of_documents(self) -> int:
+        """
+        Returns the number of documents in that collection.
+        """
+        # noinspection PyProtectedMember
+        return self.project.client._get_document_collection(self.project.name, self.name)[
+            "numberOfDocuments"
+        ]
+
+    def delete(self) -> dict:
+        """
+        Deletes the document collection.
+        """
+        # noinspection PyProtectedMember
+        return self.project.client._delete_document_collection(self.project.name, self.name)
+
+    def import_documents(
+        self, source: Union[Path, IO, str], mime_type: str = None, filename: str = None
+    ) -> List[dict]:
+        """
+        Imports documents from a given file. Supported file content types are plain text (text/plain)
+        and Averbis Solr XML (application/vnd.averbis.solr+xml).
+        """
+
+        # noinspection PyProtectedMember
+        return self.project.client._import_documents(
+            self.project.name, self.name, source, mime_type, filename
+        )
+
+    @experimental_api
+    def export_analysis_results(self, document_id: str, process: Union[Process, str]) -> dict:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Export the results of a process on a document from a collection.
+        """
+
+        # noinspection PyProtectedMember
+        return self.project.client._export_analysis_results(
+            self.project.name, self.name, document_id, process
+        )
+
+    @experimental_api
+    def list_documents(self) -> dict:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Lists the documents in the collection.
+        """
+        # noinspection PyProtectedMember
+        return self.project.client._list_documents(self.project.name, self.name)
+
+
+class Pear:
+    def __init__(self, project: "Project", identifier: str):
+        self.project = project
+        self.identifier = identifier
+
+    @experimental_api
+    def delete(self):
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Deletes the PEAR.
+        """
+        # noinspection PyProtectedMember
+        self.project.client._delete_pear(self.project.name, self.identifier)
+
+    @experimental_api
+    def get_default_configuration(self) -> dict:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Get the default configuration of the PEAR.
+        """
+        # noinspection PyProtectedMember
+        return self.project.client._get_default_pear_configuration(
+            self.project.name, self.identifier
+        )
 
 
 class Project:
@@ -719,8 +719,18 @@ class Project:
         :return: List of DocumentCollection objects
         """
         # noinspection PyProtectedMember
-        collection = self.client._list_document_collections(self.name)
-        return [DocumentCollection(self, c["name"]) for c in collection]
+        collections = self.client._list_document_collections(self.name)
+        return [DocumentCollection(self, c["name"]) for c in collections]
+
+    def exists_document_collection(self, name: str):
+        """
+        Checks if a document collection exists.
+
+        :return: Whether the collection exists
+        """
+        # noinspection PyProtectedMember
+        collections = self.client._list_document_collections(self.name)
+        return bool(next((c for c in collections if c["name"] == name), None))
 
     def delete(self) -> None:
         """
@@ -806,8 +816,11 @@ class Project:
 
     @experimental_api
     def create_and_run_process(
-        self, process_name: str, document_source_name: str, pipeline_name: str
-    ) -> None:
+        self,
+        process_name: str,
+        document_collection: Union[str, DocumentCollection],
+        pipeline: Union[str, Pipeline],
+    ) -> Process:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
@@ -815,12 +828,14 @@ class Project:
         :return: The created process
         """
         # noinspection PyProtectedMember
-        self.client._create_and_run_process(
-            self.name, process_name, document_source_name, pipeline_name
-        )
+        self.client._create_and_run_process(self.name, process_name, document_collection, pipeline)
+
+        return self.get_process(process_name, document_collection)
 
     @experimental_api
-    def get_process(self, process_name: str, document_source_name: str) -> Process:
+    def get_process(
+        self, process_name: str, document_collection: Union[str, DocumentCollection]
+    ) -> Process:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
@@ -828,7 +843,7 @@ class Project:
         :return: The process
         """
         # noinspection PyProtectedMember
-        return self.client._get_process(self, process_name, document_source_name)
+        return self.client._get_process(self, process_name, document_collection)
 
     @experimental_api
     def list_processes(self) -> List[Process]:
@@ -1003,7 +1018,7 @@ class Client:
             HEADER_CONTENT_TYPE, ""
         )
         if is_actually_json_response:
-            raise TypeError(f"Expected the return content to be bytes, but got json.")
+            raise TypeError(f"Expected the return content to be bytes, but got JSON: {raw_response}")
 
         raw_response.raise_for_status()
         return raw_response.content
@@ -1278,16 +1293,18 @@ class Client:
             return [response["payload"]]
 
     def _export_analysis_results(
-        self, project: str, collection_name: str, document_id: str, process_name: str
+        self, project: str, collection_name: str, document_id: str, process: Union[Process, str]
     ) -> List[dict]:
         """
         Use DocumentCollection.import_document() instead.
         """
 
+        process_name = self.__process_name(process)
+
         return str(
             self.__request_with_bytes_response(
                 "get",
-                f"/textanalysis/projects/{project}/documentCollections/{collection_name}/documents/{document_id}"
+                f"/experimental/textanalysis/projects/{project}/documentCollections/{collection_name}/documents/{document_id}"
                 f"/processes/{process_name}/exportTextAnalysisResult",
                 headers={
                     HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_XMI,
@@ -1663,39 +1680,56 @@ class Client:
 
     @experimental_api
     def _create_and_run_process(
-        self, project: str, process_name: str, document_source_name: str, pipeline_name: str
-    ) -> None:
+        self,
+        project: str,
+        process_name: str,
+        document_collection: Union[str, DocumentCollection],
+        pipeline: Union[str, Pipeline],
+    ) -> dict:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
         Use Project.create_and_run_process() instead.
         """
+        document_collection_name = self.__document_collection_name(document_collection)
+        pipeline_name = self.__pipeline_name(pipeline)
+
         create_process_dto = {
             "processName": process_name,
-            "documentSourceName": document_source_name,
+            "documentSourceName": document_collection_name,
             "pipelineName": pipeline_name,
         }
-        self.__request(
+
+        response = self.__request(
             "post",
             f"/experimental/textanalysis/projects/{project}/processes",
             json=create_process_dto,
         )
 
+        return response["payload"]
+
     @experimental_api
     def _get_process(
-        self, project: "Project", process_name: str, document_source_name: str
+        self,
+        project: "Project",
+        process_name: str,
+        document_collection: Union[str, DocumentCollection],
     ) -> Process:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
         Use Project.get_process() instead.
         """
+        document_collection_name = self.__document_collection_name(document_collection)
+
         response = self.__request(
             "get",
             f"/experimental/textanalysis/projects/{project.name}/"
-            f"documentSources/{document_source_name}/processes/{process_name}",
+            f"documentSources/{document_collection_name}/processes/{process_name}",
         )
+
         process_details_dto = response["payload"]
+
         return Process(
             project=project,
             name=process_details_dto["processName"],
@@ -1721,20 +1755,20 @@ class Client:
             # todo: delete this if condition when v6 is released
             return Process.ProcessState(
                 process=process,
-                state=process_details_dto["state"],
-                processed_documents=process_details_dto["processedDocuments"],
+                state=process_details_dto.get("state"),
+                processed_documents=process_details_dto.get("processedDocuments"),
             )
         else:
             return Process.ProcessState(
                 process=process,
-                state=process_details_dto["state"],
-                number_of_total_documents=process_details_dto["numberOfTotalDocuments"],
-                number_of_successful_documents=process_details_dto["numberOfSuccessfulDocuments"],
-                number_of_unsuccessful_documents=process_details_dto[
+                state=process_details_dto.get("state"),
+                number_of_total_documents=process_details_dto.get("numberOfTotalDocuments"),
+                number_of_successful_documents=process_details_dto.get("numberOfSuccessfulDocuments"),
+                number_of_unsuccessful_documents=process_details_dto.get(
                     "numberOfUnsuccessfulDocuments"
-                ],
-                error_messages=process_details_dto["errorMessages"],
-                preceding_process_name=process_details_dto["precedingProcessName"],
+                ),
+                error_messages=process_details_dto.get("errorMessages"),
+                preceding_process_name=process_details_dto.get("precedingProcessName"),
             )
 
     @experimental_api
@@ -1773,3 +1807,19 @@ class Client:
             return
 
         raise Exception("Unable to perform request: " + ", ".join(response["errorMessages"]))
+
+    @staticmethod
+    def __process_name(process: Union[str, Process]):
+        return process.name if isinstance(process, Process) else process
+
+    @staticmethod
+    def __pipeline_name(pipeline: Union[str, Pipeline]):
+        return pipeline.name if isinstance(pipeline, Pipeline) else pipeline
+
+    @staticmethod
+    def __document_collection_name(document_collection: Union[str, DocumentCollection]):
+        return (
+            document_collection.name
+            if isinstance(document_collection, DocumentCollection)
+            else document_collection
+        )
