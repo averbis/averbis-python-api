@@ -1100,7 +1100,7 @@ class Client:
         response = self.__request("get", f"/v1/buildInfo")
         return response["payload"]
 
-    def create_project(self, name: str, description: str) -> Project:
+    def create_project(self, name: str, description: str = "") -> Project:
         """
         Creates a new project.
 
