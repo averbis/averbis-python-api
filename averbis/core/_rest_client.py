@@ -1126,7 +1126,7 @@ class Client:
         """
 
         projects = self.list_projects()
-        return next((p for p in projects if p["name"] == name), None)
+        return next((p for p in projects if p["name"] == name), False)
 
     @experimental_api
     def _delete_project(self, name: str) -> None:
