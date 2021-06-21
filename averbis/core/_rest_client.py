@@ -585,7 +585,7 @@ class DocumentCollection:
         return self.project.client._delete_document_collection(self.project.name, self.name)
 
     def import_documents(
-        self, source: Union[Path, IO, str], mime_type: str = None, filename: str = None
+        self, source: Union[Path, IO, str], mime_type: str = None, filename: str = None, typesystem: "TypeSystem" = None
     ) -> List[dict]:
         """
         Imports documents from a given file. Supported file content types are plain text (text/plain)
@@ -594,7 +594,7 @@ class DocumentCollection:
 
         # noinspection PyProtectedMember
         return self.project.client._import_documents(
-            self.project.name, self.name, source, mime_type, filename
+            self.project.name, self.name, source, mime_type, filename, typesystem
         )
 
     @experimental_api
@@ -1229,6 +1229,7 @@ class Client:
         source: Union[Path, IO, str],
         mime_type: str = None,
         filename: str = None,
+        typesystem: "TypeSystem" = None
     ) -> List[dict]:
         """
         Use DocumentCollection.import_document() instead.
@@ -1284,10 +1285,14 @@ class Client:
 
         data: IO = BytesIO(source.encode(ENCODING_UTF_8)) if isinstance(source, str) else source
 
+        files = {"documentFile": (filename, data, mime_type)}
+        if typesystem:
+            files["typesystemFile"] = ("typesystem.xml", typesystem.to_xml(), MEDIA_TYPE_APPLICATION_XML)
+
         response = self.__request(
             "post",
             f"/v1/importer/projects/{project}/documentCollections/{collection_name}/documents",
-            files={"documentFile": (filename, data, mime_type)},
+            files=files,
         )
 
         # When a multi-document file format is uploaded (e.g. SolrXML), we get an array as a result, otherwise we get
