@@ -563,7 +563,7 @@ class DocumentCollection:
         )
 
     @experimental_api
-    def export_analysis_results(self, document_id: str, process: Union[Process, str]) -> dict:
+    def export_analysis_results(self, document_id: str, process: Union[Process, str]) -> str:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
@@ -1296,7 +1296,7 @@ class Client:
 
     def _export_analysis_results(
         self, project: str, collection_name: str, document_id: str, process: Union[Process, str]
-    ) -> List[dict]:
+    ) -> str:
         """
         Use DocumentCollection.import_document() instead.
         """
