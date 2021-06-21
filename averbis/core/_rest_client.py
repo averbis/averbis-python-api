@@ -1526,7 +1526,7 @@ class Client:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
-        Use Project.export_text_analysis() instead.
+        Use Process.export_text_analysis() instead.
         """
         response = self.__request(
             "get",
@@ -1543,7 +1543,7 @@ class Client:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
-        Use DocumentCollection.export_text_analysis_to_cas() instead.
+        Use Process.export_text_analysis_to_cas() instead.
         """
 
         if self.spec_version.startswith("5."):
