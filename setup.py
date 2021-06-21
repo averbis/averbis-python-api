@@ -46,7 +46,8 @@ test_dependencies = [
     "pytest-cov",
     "requests-mock",
     "mypy",
-    "licenseheaders"
+    "licenseheaders",
+    "dkpro-cassis"
 ]
 
 dev_dependencies = [
