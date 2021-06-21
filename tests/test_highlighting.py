@@ -17,13 +17,14 @@
 # limitations under the License.
 #
 #
+import re
+
 from averbis.highlighting import (
     highlight_match,
     highlight_matches,
     highlight_annotation,
     highlight_annotations,
 )
-import re
 
 
 def test_highlight_match(capfd):
