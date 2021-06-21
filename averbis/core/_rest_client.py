@@ -479,7 +479,7 @@ class Process:
             *args,
             **kwargs,
         ):
-            # todo: use these parameters instead of kwargs when v6 is released
+            # TODO: We have a different set of parameters per platform version. Right now, all parameters are supported. If v6 is released, only the following subset should be kept.
             # process: "Process",
             # state: str,
             # number_of_total_documents: int,
@@ -487,14 +487,15 @@ class Process:
             # number_of_unsuccessful_documents: int,
             # error_messages: List[str],
             # preceding_process_name: str
-            self.process = kwargs.get("process")
-            self.state = kwargs.get("state")
-            self.processed_documents = kwargs.get("processed_documents")
-            self.number_of_total_documents = kwargs.get("number_of_total_documents")
-            self.number_of_successful_documents = kwargs.get("number_of_successful_documents")
-            self.number_of_unsuccessful_documents = kwargs.get("number_of_unsuccessful_documents")
-            self.error_messages = kwargs.get("error_messages")
-            self.preceding_process_name = kwargs.get("preceding_process_name")
+            self.process: Process = kwargs.get("process")
+            self.state: str = kwargs.get("state")
+            self.processed_documents: int = kwargs.get("processed_documents")
+            self.number_of_total_documents: int = kwargs.get("number_of_total_documents")
+            self.number_of_successful_documents: int = kwargs.get("number_of_successful_documents")
+            self.number_of_unsuccessful_documents: int\
+                = kwargs.get("number_of_unsuccessful_documents")
+            self.error_messages: List[str] = kwargs.get("error_messages")
+            self.preceding_process_name: str = kwargs.get("preceding_process_name")
 
     @experimental_api
     def delete(self):
