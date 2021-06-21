@@ -1536,6 +1536,7 @@ class Client:
         )
         return response["payload"]
 
+    @experimental_api
     def _export_analysis_results_as_cas(
         self, project: str, collection_name: str, document_id: str, process: Union[Process, str]
     ) -> str:
