@@ -18,7 +18,8 @@
 #
 #
 import copy
-import importlib
+
+from cassis import Cas, TypeSystem, load_cas_from_xmi, load_typesystem  # type: ignore
 import json
 import logging
 from concurrent.futures.thread import ThreadPoolExecutor
@@ -316,13 +317,13 @@ class Pipeline:
     # Ignoring errors as linter (compiler) cannot resolve dynamically loaded lib
     # (with type:ignore for mypy) and (noinspection PyProtectedMember for pycharm)
     @experimental_api
-    def analyse_text_to_cas(self, source: Union[IO, str], **kwargs) -> "Cas":  # type: ignore
+    def analyse_text_to_cas(self, source: Union[IO, str], **kwargs) -> Cas:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear. Processes text using a pipeline and returns the result
-        as a UIMA CAS. Calling this method requires that the DKPro Cassis Python library has been installed.
+        as a UIMA CAS.
         """
         # noinspection PyProtectedMember
-        return importlib.import_module("cassis").load_cas_from_xmi(  # type: ignore
+        return load_cas_from_xmi(
             self.project.client._analyse_text_xmi(self.project.name, self.name, source, **kwargs),
             typesystem=self.get_type_system(),
         )
@@ -330,14 +331,14 @@ class Pipeline:
     # Ignoring errors as linter (compiler) cannot resolve dynamically loaded lib
     # (with type:ignore for mypy) and (noinspection PyProtectedMember for pycharm)
     @experimental_api
-    def get_type_system(self) -> "TypeSystem":  # type: ignore
+    def get_type_system(self) -> TypeSystem:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear. Processes text using a pipeline and returns the result
-        as a UIMA CAS. Calling this method requires that the DKPro Cassis Python library has been installed.
+        as a UIMA CAS.
         """
         if self.cached_type_system is None:
             # noinspection PyProtectedMember
-            self.cached_type_system = importlib.import_module("cassis").load_typesystem(  # type: ignore
+            self.cached_type_system = load_typesystem(
                 self.project.client._get_pipeline_type_system(self.project.name, self.name)
             )
         return self.cached_type_system
@@ -464,6 +465,106 @@ class Terminology:
         self.project.client._delete_terminology(self.project.name, self.name)
 
 
+class Process:
+    def __init__(
+        self, project: "Project", name: str, document_source_name: str, pipeline_name: str
+    ):
+        self.project = project
+        self.name = name
+        self.document_source_name = document_source_name
+        self.pipeline_name = pipeline_name
+
+    class ProcessState:
+        def __init__(
+            self,
+            *args,
+            **kwargs,
+        ):
+            # TODO: We have a different set of parameters per platform version. Right now, all parameters are supported. If v6 is released, only the following subset should be kept.
+            # process: "Process",
+            # state: str,
+            # number_of_total_documents: int,
+            # number_of_successful_documents: int,
+            # number_of_unsuccessful_documents: int,
+            # error_messages: List[str],
+            # preceding_process_name: str
+            self.process: Process = kwargs.get("process")
+            self.state: str = kwargs.get("state")
+            self.processed_documents: int = kwargs.get("processed_documents")
+            self.number_of_total_documents: int = kwargs.get("number_of_total_documents")
+            self.number_of_successful_documents: int = kwargs.get("number_of_successful_documents")
+            self.number_of_unsuccessful_documents: int = kwargs.get(
+                "number_of_unsuccessful_documents"
+            )
+            self.error_messages: List[str] = kwargs.get("error_messages")
+            self.preceding_process_name: str = kwargs.get("preceding_process_name")
+
+    @experimental_api
+    def delete(self):
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Deletes the process as soon as it becomes IDLE. All document analysis results will be deleted.
+        """
+        # noinspection PyProtectedMember
+        self.project.client._delete_process(self.project.name, self.name, self.document_source_name)
+
+    @experimental_api
+    def rerun(self):
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Triggers a rerun if the process is IDLE.
+        All current results will be deleted and the documents will be reprocessed.
+        """
+        # noinspection PyProtectedMember
+        self.project.client._reprocess(self.project.name, self.name, self.document_source_name)
+
+    @experimental_api
+    def get_process_state(self) -> ProcessState:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Returns the current process state.
+        """
+        # noinspection PyProtectedMember
+        return self.project.client._get_process_state(self.project, self)
+
+    @experimental_api
+    def export_text_analysis(self, annotation_types: str = None) -> dict:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear. Exports a given text analysis process as a json.
+
+        :return: The raw payload of the server response. Future versions of this library may return a better-suited
+         representation.
+        """
+        if self.project.client.spec_version.startswith("5."):
+            raise OperationNotSupported(
+                "Text analysis export is not supported for platform version 5.x, it is only supported from 6.x onwards."
+            )
+
+        # noinspection PyProtectedMember
+        return self.project.client._export_text_analysis(
+            self.project.name, self.document_source_name, self.name, annotation_types
+        )
+
+    @experimental_api
+    def export_text_analysis_to_cas(self, document_id: str) -> Cas:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Returns an analysis as a UIMA CAS.
+        """
+
+        # noinspection PyProtectedMember
+        return load_cas_from_xmi(
+            self.project.client._export_analysis_results_to_xmi(
+                self.project.name, self.document_source_name, document_id, self
+            ),
+            typesystem=self.project.get_pipeline(self.pipeline_name).get_type_system(),
+        )
+
+
 class DocumentCollection:
     def __init__(self, project: "Project", name: str):
         self.project = project
@@ -535,70 +636,6 @@ class Pear:
         return self.project.client._get_default_pear_configuration(
             self.project.name, self.identifier
         )
-
-
-class Process:
-    def __init__(
-        self, project: "Project", name: str, document_source_name: str, pipeline_name: str
-    ):
-        self.project = project
-        self.name = name
-        self.document_source_name = document_source_name
-        self.pipeline_name = pipeline_name
-
-    class ProcessState:
-        def __init__(
-            self,
-            *args,
-            **kwargs,
-        ):
-            # todo: use these parameters instead of kwargs when v6 is released
-            # process: "Process",
-            # state: str,
-            # number_of_total_documents: int,
-            # number_of_successful_documents: int,
-            # number_of_unsuccessful_documents: int,
-            # error_messages: List[str],
-            # preceding_process_name: str
-            self.process = kwargs.get("process")
-            self.state = kwargs.get("state")
-            self.processed_documents = kwargs.get("processed_documents")
-            self.number_of_total_documents = kwargs.get("number_of_total_documents")
-            self.number_of_successful_documents = kwargs.get("number_of_successful_documents")
-            self.number_of_unsuccessful_documents = kwargs.get("number_of_unsuccessful_documents")
-            self.error_messages = kwargs.get("error_messages")
-            self.preceding_process_name = kwargs.get("preceding_process_name")
-
-    @experimental_api
-    def delete(self):
-        """
-        HIGHLY EXPERIMENTAL API - may soon change or disappear.
-
-        Deletes the process as soon as it becomes IDLE. All document analysis results will be deleted.
-        """
-        # noinspection PyProtectedMember
-        self.project.client._delete_process(self.project.name, self.name, self.document_source_name)
-
-    @experimental_api
-    def rerun(self):
-        """
-        HIGHLY EXPERIMENTAL API - may soon change or disappear.
-
-        Triggers a rerun if the process is IDLE.
-        All current results will be deleted and the documents will be reprocessed.
-        """
-        # noinspection PyProtectedMember
-        self.project.client._reprocess(self.project.name, self.name, self.document_source_name)
-
-    @experimental_api
-    def get_process_state(self) -> ProcessState:
-        """
-        HIGHLY EXPERIMENTAL API - may soon change or disappear.
-
-        Returns the current process state.
-        """
-        # noinspection PyProtectedMember
-        return self.project.client._get_process_state(self.project, self)
 
 
 class Project:
@@ -706,8 +743,18 @@ class Project:
         :return: List of DocumentCollection objects
         """
         # noinspection PyProtectedMember
-        collection = self.client._list_document_collections(self.name)
-        return [DocumentCollection(self, c["name"]) for c in collection]
+        collections = self.client._list_document_collections(self.name)
+        return [DocumentCollection(self, c["name"]) for c in collections]
+
+    def exists_document_collection(self, name: str):
+        """
+        Checks if a document collection exists.
+
+        :return: Whether the collection exists
+        """
+        # noinspection PyProtectedMember
+        collections = self.client._list_document_collections(self.name)
+        return any(c["name2"] == name for c in collections)
 
     def delete(self) -> None:
         """
@@ -738,25 +785,6 @@ class Project:
         """
         # noinspection PyProtectedMember
         return self.client._select(self.name, query, **kwargs)
-
-    @experimental_api
-    def export_text_analysis(
-        self, document_sources: str, process: str, annotation_types: str = None
-    ) -> dict:
-        """
-        HIGHLY EXPERIMENTAL API - may soon change or disappear. Exports a given text analysis process as a json.
-
-        :return: The raw payload of the server response. Future versions of this library may return a better-suited
-         representation.
-        """
-        if self.client.spec_version.startswith("5."):
-            raise OperationNotSupported(
-                "Text analysis export is not supported for platform version 5.x, it is only supported from 6.x onwards."
-            )
-        # noinspection PyProtectedMember
-        return self.client._export_text_analysis(
-            self.name, document_sources, process, annotation_types
-        )
 
     @experimental_api
     def list_pears(self) -> List[str]:
@@ -793,8 +821,11 @@ class Project:
 
     @experimental_api
     def create_and_run_process(
-        self, process_name: str, document_source_name: str, pipeline_name: str
-    ) -> None:
+        self,
+        process_name: str,
+        document_collection: Union[str, DocumentCollection],
+        pipeline: Union[str, Pipeline],
+    ) -> Process:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
@@ -802,12 +833,14 @@ class Project:
         :return: The created process
         """
         # noinspection PyProtectedMember
-        self.client._create_and_run_process(
-            self.name, process_name, document_source_name, pipeline_name
-        )
+        self.client._create_and_run_process(self.name, process_name, document_collection, pipeline)
+
+        return self.get_process(process_name, document_collection)
 
     @experimental_api
-    def get_process(self, process_name: str, document_source_name: str) -> Process:
+    def get_process(
+        self, process_name: str, document_collection: Union[str, DocumentCollection]
+    ) -> Process:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
@@ -815,7 +848,7 @@ class Project:
         :return: The process
         """
         # noinspection PyProtectedMember
-        return self.client._get_process(self, process_name, document_source_name)
+        return self.client._get_process(self, process_name, document_collection)
 
     @experimental_api
     def list_processes(self) -> List[Process]:
@@ -990,7 +1023,9 @@ class Client:
             HEADER_CONTENT_TYPE, ""
         )
         if is_actually_json_response:
-            raise TypeError(f"Expected the return content to be bytes, but got json.")
+            raise TypeError(
+                f"Expected the return content to be bytes, but got JSON: {raw_response}"
+            )
 
         raw_response.raise_for_status()
         return raw_response.content
@@ -1126,7 +1161,7 @@ class Client:
         """
 
         projects = self.list_projects()
-        return bool(next((p for p in projects if p["name"] == name), None))
+        return any(p["name"] == name for p in projects)
 
     @experimental_api
     def _delete_project(self, name: str) -> None:
@@ -1488,20 +1523,49 @@ class Client:
 
     @experimental_api
     def _export_text_analysis(
-        self, project: str, document_sources: str, process: str, annotation_types: str = None
+        self, project: str, document_source: str, process: str, annotation_types: str = None
     ):
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
-        Use Project.export_text_analysis() instead.
+        Use Process.export_text_analysis() instead.
         """
         response = self.__request(
             "get",
-            f"/experimental/textanalysis/projects/{project}/documentSources/{document_sources}/processes/{process}/export",
+            f"/experimental/textanalysis/projects/{project}/documentSources/{document_source}/processes/{process}/export",
             params={"annotationTypes": annotation_types},
             headers={HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_JSON},
         )
         return response["payload"]
+
+    @experimental_api
+    def _export_analysis_results_to_xmi(
+        self, project: str, collection_name: str, document_id: str, process: Union[Process, str]
+    ) -> str:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Use Process.export_text_analysis_to_cas() instead.
+        """
+
+        if self.spec_version.startswith("5."):
+            raise OperationNotSupported(
+                "Text analysis export is not supported for platform version 5.x, it is only supported from 6.x onwards."
+            )
+
+        process_name = self.__process_name(process)
+
+        return str(
+            self.__request_with_bytes_response(
+                "get",
+                f"/experimental/textanalysis/projects/{project}/documentCollections/{collection_name}/documents/{document_id}"
+                f"/processes/{process_name}/exportTextAnalysisResult",
+                headers={
+                    HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_XMI,
+                },
+            ),
+            ENCODING_UTF_8,
+        )
 
     @experimental_api
     def _analyse_text_xmi(
@@ -1631,39 +1695,56 @@ class Client:
 
     @experimental_api
     def _create_and_run_process(
-        self, project: str, process_name: str, document_source_name: str, pipeline_name: str
-    ) -> None:
+        self,
+        project: str,
+        process_name: str,
+        document_collection: Union[str, DocumentCollection],
+        pipeline: Union[str, Pipeline],
+    ) -> dict:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
         Use Project.create_and_run_process() instead.
         """
+        document_collection_name = self.__document_collection_name(document_collection)
+        pipeline_name = self.__pipeline_name(pipeline)
+
         create_process_dto = {
             "processName": process_name,
-            "documentSourceName": document_source_name,
+            "documentSourceName": document_collection_name,
             "pipelineName": pipeline_name,
         }
-        self.__request(
+
+        response = self.__request(
             "post",
             f"/experimental/textanalysis/projects/{project}/processes",
             json=create_process_dto,
         )
 
+        return response["payload"]
+
     @experimental_api
     def _get_process(
-        self, project: "Project", process_name: str, document_source_name: str
+        self,
+        project: "Project",
+        process_name: str,
+        document_collection: Union[str, DocumentCollection],
     ) -> Process:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
         Use Project.get_process() instead.
         """
+        document_collection_name = self.__document_collection_name(document_collection)
+
         response = self.__request(
             "get",
             f"/experimental/textanalysis/projects/{project.name}/"
-            f"documentSources/{document_source_name}/processes/{process_name}",
+            f"documentSources/{document_collection_name}/processes/{process_name}",
         )
+
         process_details_dto = response["payload"]
+
         return Process(
             project=project,
             name=process_details_dto["processName"],
@@ -1689,20 +1770,22 @@ class Client:
             # todo: delete this if condition when v6 is released
             return Process.ProcessState(
                 process=process,
-                state=process_details_dto["state"],
-                processed_documents=process_details_dto["processedDocuments"],
+                state=process_details_dto.get("state"),
+                processed_documents=process_details_dto.get("processedDocuments"),
             )
         else:
             return Process.ProcessState(
                 process=process,
-                state=process_details_dto["state"],
-                number_of_total_documents=process_details_dto["numberOfTotalDocuments"],
-                number_of_successful_documents=process_details_dto["numberOfSuccessfulDocuments"],
-                number_of_unsuccessful_documents=process_details_dto[
+                state=process_details_dto.get("state"),
+                number_of_total_documents=process_details_dto.get("numberOfTotalDocuments"),
+                number_of_successful_documents=process_details_dto.get(
+                    "numberOfSuccessfulDocuments"
+                ),
+                number_of_unsuccessful_documents=process_details_dto.get(
                     "numberOfUnsuccessfulDocuments"
-                ],
-                error_messages=process_details_dto["errorMessages"],
-                preceding_process_name=process_details_dto["precedingProcessName"],
+                ),
+                error_messages=process_details_dto.get("errorMessages"),
+                preceding_process_name=process_details_dto.get("precedingProcessName"),
             )
 
     @experimental_api
@@ -1741,3 +1824,19 @@ class Client:
             return
 
         raise Exception("Unable to perform request: " + ", ".join(response["errorMessages"]))
+
+    @staticmethod
+    def __process_name(process: Union[str, Process]):
+        return process.name if isinstance(process, Process) else process
+
+    @staticmethod
+    def __pipeline_name(pipeline: Union[str, Pipeline]):
+        return pipeline.name if isinstance(pipeline, Pipeline) else pipeline
+
+    @staticmethod
+    def __document_collection_name(document_collection: Union[str, DocumentCollection]):
+        return (
+            document_collection.name
+            if isinstance(document_collection, DocumentCollection)
+            else document_collection
+        )

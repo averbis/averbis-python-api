@@ -18,6 +18,7 @@
 #
 #
 import logging
+import tempfile
 
 from averbis import Process
 from tests.fixtures import *
@@ -103,13 +104,37 @@ def test_create_and_run_process(client_version_6, requests_mock):
     process_name = "my_process"
     document_source_name = "my_document_source"
     pipeline_name = "my_pipeline_name"
+    state = "IDLE"
+    number_of_documents = 12
 
     requests_mock.post(
         f"{API_EXPERIMENTAL}/textanalysis/projects/test-project/processes",
         headers={"Content-Type": "application/json"},
         json={"payload": None, "errorMessages": []},
     )
-    project.create_and_run_process(process_name, document_source_name, pipeline_name)
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/test-project/"
+        f"documentSources/{document_source_name}/processes/{process_name}",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": {
+                "processName": process_name,
+                "pipelineName": pipeline_name,
+                "documentSourceName": document_source_name,
+                "state": state,
+                "processedDocuments": number_of_documents,
+            },
+            "errorMessages": [],
+        },
+    )
+
+    actual_process = project.create_and_run_process(
+        process_name, document_source_name, pipeline_name
+    )
+
+    expected_process = Process(project, process_name, document_source_name, pipeline_name)
+    assert_process_equal(expected_process, actual_process)
 
 
 def test_get_process(client_version_6, requests_mock):
