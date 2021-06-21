@@ -36,7 +36,8 @@ REQUIRES_PYTHON = ">=3.6.0"
 
 install_requires = [
     "requests",
-    "types-requests"
+    "types-requests",
+    "dkpro-cassis"
 ]
 
 test_dependencies = [
@@ -46,8 +47,7 @@ test_dependencies = [
     "pytest-cov",
     "requests-mock",
     "mypy",
-    "licenseheaders",
-    "dkpro-cassis"
+    "licenseheaders"
 ]
 
 dev_dependencies = [

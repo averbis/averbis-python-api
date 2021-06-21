@@ -18,7 +18,9 @@
 #
 #
 import copy
-import importlib
+
+import cassis
+from cassis import Cas, TypeSystem
 import json
 import logging
 from concurrent.futures.thread import ThreadPoolExecutor
@@ -316,13 +318,13 @@ class Pipeline:
     # Ignoring errors as linter (compiler) cannot resolve dynamically loaded lib
     # (with type:ignore for mypy) and (noinspection PyProtectedMember for pycharm)
     @experimental_api
-    def analyse_text_to_cas(self, source: Union[IO, str], **kwargs) -> "Cas":  # type: ignore
+    def analyse_text_to_cas(self, source: Union[IO, str], **kwargs) -> Cas:  # type: ignore
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear. Processes text using a pipeline and returns the result
-        as a UIMA CAS. Calling this method requires that the DKPro Cassis Python library has been installed.
+        as a UIMA CAS.
         """
         # noinspection PyProtectedMember
-        return importlib.import_module("cassis").load_cas_from_xmi(  # type: ignore
+        return cassis.load_cas_from_xmi(  # type: ignore
             self.project.client._analyse_text_xmi(self.project.name, self.name, source, **kwargs),
             typesystem=self.get_type_system(),
         )
@@ -330,14 +332,14 @@ class Pipeline:
     # Ignoring errors as linter (compiler) cannot resolve dynamically loaded lib
     # (with type:ignore for mypy) and (noinspection PyProtectedMember for pycharm)
     @experimental_api
-    def get_type_system(self) -> "TypeSystem":  # type: ignore
+    def get_type_system(self) -> TypeSystem:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear. Processes text using a pipeline and returns the result
-        as a UIMA CAS. Calling this method requires that the DKPro Cassis Python library has been installed.
+        as a UIMA CAS.
         """
         if self.cached_type_system is None:
             # noinspection PyProtectedMember
-            self.cached_type_system = importlib.import_module("cassis").load_typesystem(  # type: ignore
+            self.cached_type_system = cassis.load_typesystem(  # type: ignore
                 self.project.client._get_pipeline_type_system(self.project.name, self.name)
             )
         return self.cached_type_system
@@ -492,8 +494,9 @@ class Process:
             self.processed_documents: int = kwargs.get("processed_documents")
             self.number_of_total_documents: int = kwargs.get("number_of_total_documents")
             self.number_of_successful_documents: int = kwargs.get("number_of_successful_documents")
-            self.number_of_unsuccessful_documents: int\
-                = kwargs.get("number_of_unsuccessful_documents")
+            self.number_of_unsuccessful_documents: int = kwargs.get(
+                "number_of_unsuccessful_documents"
+            )
             self.error_messages: List[str] = kwargs.get("error_messages")
             self.preceding_process_name: str = kwargs.get("preceding_process_name")
 
@@ -547,16 +550,15 @@ class Process:
         )
 
     @experimental_api
-    def export_text_analysis_to_cas(self, document_id: str) -> "Cas":  # type: ignore
+    def export_text_analysis_to_cas(self, document_id: str) -> Cas:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
-        Returns an analysis as a UIMA CAS. Calling this method requires that the DKPro Cassis Python library has been
-        installed.
+        Returns an analysis as a UIMA CAS.
         """
 
         # noinspection PyProtectedMember
-        return importlib.import_module("cassis").load_cas_from_xmi(  # type: ignore
+        return cassis.load_cas_from_xmi(
             self.project.client._export_analysis_results_to_xmi(
                 self.project.name, self.document_source_name, document_id, self
             ),
