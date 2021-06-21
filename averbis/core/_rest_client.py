@@ -752,7 +752,7 @@ class Project:
         """
         # noinspection PyProtectedMember
         collections = self.client._list_document_collections(self.name)
-        return bool(next((c for c in collections if c["name"] == name), None))
+        return any(c["name2"] == name for c in collections)
 
     def delete(self) -> None:
         """
@@ -1159,7 +1159,7 @@ class Client:
         """
 
         projects = self.list_projects()
-        return bool(next((p for p in projects if p["name"] == name), None))
+        return any(p["name"] == name for p in projects)
 
     @experimental_api
     def _delete_project(self, name: str) -> None:
