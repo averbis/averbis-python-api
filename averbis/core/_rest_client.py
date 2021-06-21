@@ -556,7 +556,7 @@ class Process:
 
         # noinspection PyProtectedMember
         return importlib.import_module("cassis").load_cas_from_xmi(  # type: ignore
-            self.project.client._export_analysis_results_as_cas(
+            self.project.client._export_analysis_results_to_xmi(
                 self.project.name, self.document_source_name, document_id, self
             ),
             typesystem=self.project.get_pipeline(self.pipeline_name).get_type_system(),
@@ -1537,7 +1537,7 @@ class Client:
         return response["payload"]
 
     @experimental_api
-    def _export_analysis_results_as_cas(
+    def _export_analysis_results_to_xmi(
         self, project: str, collection_name: str, document_id: str, process: Union[Process, str]
     ) -> str:
         """
