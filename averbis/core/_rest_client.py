@@ -19,8 +19,7 @@
 #
 import copy
 
-import cassis
-from cassis import Cas, TypeSystem
+from cassis import Cas, TypeSystem, load_cas_from_xmi, load_typesystem  # type: ignore
 import json
 import logging
 from concurrent.futures.thread import ThreadPoolExecutor
@@ -318,13 +317,13 @@ class Pipeline:
     # Ignoring errors as linter (compiler) cannot resolve dynamically loaded lib
     # (with type:ignore for mypy) and (noinspection PyProtectedMember for pycharm)
     @experimental_api
-    def analyse_text_to_cas(self, source: Union[IO, str], **kwargs) -> Cas:  # type: ignore
+    def analyse_text_to_cas(self, source: Union[IO, str], **kwargs) -> Cas:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear. Processes text using a pipeline and returns the result
         as a UIMA CAS.
         """
         # noinspection PyProtectedMember
-        return cassis.load_cas_from_xmi(  # type: ignore
+        return load_cas_from_xmi(
             self.project.client._analyse_text_xmi(self.project.name, self.name, source, **kwargs),
             typesystem=self.get_type_system(),
         )
@@ -339,7 +338,7 @@ class Pipeline:
         """
         if self.cached_type_system is None:
             # noinspection PyProtectedMember
-            self.cached_type_system = cassis.load_typesystem(  # type: ignore
+            self.cached_type_system = load_typesystem(
                 self.project.client._get_pipeline_type_system(self.project.name, self.name)
             )
         return self.cached_type_system
@@ -558,7 +557,7 @@ class Process:
         """
 
         # noinspection PyProtectedMember
-        return cassis.load_cas_from_xmi(
+        return load_cas_from_xmi(
             self.project.client._export_analysis_results_to_xmi(
                 self.project.name, self.document_source_name, document_id, self
             ),
