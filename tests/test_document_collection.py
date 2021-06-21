@@ -97,23 +97,3 @@ def test_list_document_collection(client, requests_mock):
     collections = project.list_document_collections()
 
     assert collections[2].name == "collection2"
-
-
-def test_export_analysis_results(client, requests_mock):
-
-    project = client.get_project("LoadTesting")
-    collection = project.get_document_collection("my-collection")
-    document_id = "document0001"
-    process_name = "my-process"
-    expected_xmi = '<?xml version="1.0" encoding="UTF-8"?><xmi:XMI/>'
-
-    requests_mock.get(
-        f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/documentCollections/{collection.name}"
-        f"/documents/{document_id}/processes/{process_name}/exportTextAnalysisResult",
-        headers={"Content-Type": "application/vnd.uima.cas+xmi"},
-        text=expected_xmi,
-    )
-
-    xmi = collection.export_analysis_results(document_id, process_name)
-
-    assert xmi == expected_xmi

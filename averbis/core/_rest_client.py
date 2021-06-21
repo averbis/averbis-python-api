@@ -527,6 +527,41 @@ class Process:
         # noinspection PyProtectedMember
         return self.project.client._get_process_state(self.project, self)
 
+    @experimental_api
+    def export_text_analysis(self, annotation_types: str = None) -> dict:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear. Exports a given text analysis process as a json.
+
+        :return: The raw payload of the server response. Future versions of this library may return a better-suited
+         representation.
+        """
+        if self.project.client.spec_version.startswith("5."):
+            raise OperationNotSupported(
+                "Text analysis export is not supported for platform version 5.x, it is only supported from 6.x onwards."
+            )
+
+        # noinspection PyProtectedMember
+        return self.project.client._export_text_analysis(
+            self.project.name, self.document_source_name, self.name, annotation_types
+        )
+
+    @experimental_api
+    def export_text_analysis_to_cas(self, document_id: str) -> "Cas":  # type: ignore
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Returns an analysis as a UIMA CAS. Calling this method requires that the DKPro Cassis Python library has been
+        installed.
+        """
+
+        # noinspection PyProtectedMember
+        return importlib.import_module("cassis").load_cas_from_xmi(  # type: ignore
+            self.project.client._export_analysis_results_as_cas(
+                self.project.name, self.document_source_name, document_id, self
+            ),
+            typesystem=self.project.get_pipeline(self.pipeline_name).get_type_system(),
+        )
+
 
 class DocumentCollection:
     def __init__(self, project: "Project", name: str):
@@ -560,19 +595,6 @@ class DocumentCollection:
         # noinspection PyProtectedMember
         return self.project.client._import_documents(
             self.project.name, self.name, source, mime_type, filename
-        )
-
-    @experimental_api
-    def export_analysis_results(self, document_id: str, process: Union[Process, str]) -> str:
-        """
-        HIGHLY EXPERIMENTAL API - may soon change or disappear.
-
-        Export the results of a process on a document from a collection.
-        """
-
-        # noinspection PyProtectedMember
-        return self.project.client._export_analysis_results(
-            self.project.name, self.name, document_id, process
         )
 
     @experimental_api
@@ -761,25 +783,6 @@ class Project:
         """
         # noinspection PyProtectedMember
         return self.client._select(self.name, query, **kwargs)
-
-    @experimental_api
-    def export_text_analysis(
-        self, document_sources: str, process: str, annotation_types: str = None
-    ) -> dict:
-        """
-        HIGHLY EXPERIMENTAL API - may soon change or disappear. Exports a given text analysis process as a json.
-
-        :return: The raw payload of the server response. Future versions of this library may return a better-suited
-         representation.
-        """
-        if self.client.spec_version.startswith("5."):
-            raise OperationNotSupported(
-                "Text analysis export is not supported for platform version 5.x, it is only supported from 6.x onwards."
-            )
-        # noinspection PyProtectedMember
-        return self.client._export_text_analysis(
-            self.name, document_sources, process, annotation_types
-        )
 
     @experimental_api
     def list_pears(self) -> List[str]:
@@ -1518,7 +1521,7 @@ class Client:
 
     @experimental_api
     def _export_text_analysis(
-        self, project: str, document_sources: str, process: str, annotation_types: str = None
+        self, project: str, document_source: str, process: str, annotation_types: str = None
     ):
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -1527,20 +1530,25 @@ class Client:
         """
         response = self.__request(
             "get",
-            f"/experimental/textanalysis/projects/{project}/documentSources/{document_sources}/processes/{process}/export",
+            f"/experimental/textanalysis/projects/{project}/documentSources/{document_source}/processes/{process}/export",
             params={"annotationTypes": annotation_types},
             headers={HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_JSON},
         )
         return response["payload"]
 
-    def _export_analysis_results(
+    def _export_analysis_results_as_cas(
         self, project: str, collection_name: str, document_id: str, process: Union[Process, str]
     ) -> str:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
-        Use DocumentCollection.export_text_analysis() instead.
+        Use DocumentCollection.export_text_analysis_to_cas() instead.
         """
+
+        if self.spec_version.startswith("5."):
+            raise OperationNotSupported(
+                "Text analysis export is not supported for platform version 5.x, it is only supported from 6.x onwards."
+            )
 
         process_name = self.__process_name(process)
 
