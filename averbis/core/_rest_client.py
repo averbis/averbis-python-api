@@ -1294,27 +1294,6 @@ class Client:
         else:
             return [response["payload"]]
 
-    def _export_analysis_results(
-        self, project: str, collection_name: str, document_id: str, process: Union[Process, str]
-    ) -> str:
-        """
-        Use DocumentCollection.import_document() instead.
-        """
-
-        process_name = self.__process_name(process)
-
-        return str(
-            self.__request_with_bytes_response(
-                "get",
-                f"/experimental/textanalysis/projects/{project}/documentCollections/{collection_name}/documents/{document_id}"
-                f"/processes/{process_name}/exportTextAnalysisResult",
-                headers={
-                    HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_XMI,
-                },
-            ),
-            ENCODING_UTF_8,
-        )
-
     def _list_terminologies(self, project: str) -> dict:
         """
         Use Project.list_terminologies() instead.
@@ -1553,6 +1532,29 @@ class Client:
             headers={HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_JSON},
         )
         return response["payload"]
+
+    def _export_analysis_results(
+        self, project: str, collection_name: str, document_id: str, process: Union[Process, str]
+    ) -> str:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Use DocumentCollection.export_text_analysis() instead.
+        """
+
+        process_name = self.__process_name(process)
+
+        return str(
+            self.__request_with_bytes_response(
+                "get",
+                f"/experimental/textanalysis/projects/{project}/documentCollections/{collection_name}/documents/{document_id}"
+                f"/processes/{process_name}/exportTextAnalysisResult",
+                headers={
+                    HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_XMI,
+                },
+            ),
+            ENCODING_UTF_8,
+        )
 
     @experimental_api
     def _analyse_text_xmi(
