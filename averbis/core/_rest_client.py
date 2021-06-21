@@ -1018,7 +1018,9 @@ class Client:
             HEADER_CONTENT_TYPE, ""
         )
         if is_actually_json_response:
-            raise TypeError(f"Expected the return content to be bytes, but got JSON: {raw_response}")
+            raise TypeError(
+                f"Expected the return content to be bytes, but got JSON: {raw_response}"
+            )
 
         raw_response.raise_for_status()
         return raw_response.content
@@ -1763,7 +1765,9 @@ class Client:
                 process=process,
                 state=process_details_dto.get("state"),
                 number_of_total_documents=process_details_dto.get("numberOfTotalDocuments"),
-                number_of_successful_documents=process_details_dto.get("numberOfSuccessfulDocuments"),
+                number_of_successful_documents=process_details_dto.get(
+                    "numberOfSuccessfulDocuments"
+                ),
                 number_of_unsuccessful_documents=process_details_dto.get(
                     "numberOfUnsuccessfulDocuments"
                 ),
