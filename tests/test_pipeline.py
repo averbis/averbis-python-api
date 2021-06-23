@@ -55,7 +55,7 @@ def pipeline_requests_mock(pipeline_endpoint_behavior_mock, requests_mock):
 @pytest.fixture
 def pipeline_analyse_text_mock(client, requests_mock):
     # In the pipeline configuration, the name for the number of instances differs between platform version 5 and 6.
-    if client.spec_version.startswith("5."):
+    if client.get_spec_version().startswith("5."):
         payload = {"analysisEnginePoolSize": 4}
     else:
         payload = {"numberOfInstances": 4}
