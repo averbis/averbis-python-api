@@ -898,8 +898,8 @@ class Client:
                     + "generate a new API token with: Client(url, username='your_user_name', password='your_password')."
                 )
 
-        self._build_info = None
-        self._spec_version = None
+        self._build_info: dict = {}
+        self._spec_version: str = ""
 
     def _exists_profile(self, profile: str):
         return (
@@ -1122,7 +1122,7 @@ class Client:
         :return: The raw payload of the server response. Future versions of this library may return a better-suited
                  representation.
         """
-        if self._build_info is None:
+        if not self._build_info:
             response = self.__request("get", f"/v1/buildInfo")
             self._build_info = response["payload"]
         return self._build_info
