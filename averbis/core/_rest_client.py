@@ -18,7 +18,8 @@
 #
 #
 import copy
-import importlib
+
+from cassis import Cas, TypeSystem, load_cas_from_xmi, load_typesystem  # type: ignore
 import json
 import logging
 from concurrent.futures.thread import ThreadPoolExecutor
@@ -212,7 +213,7 @@ class Pipeline:
         :return: The raw payload of the server response. Future versions of this library may return a better-suited
                  representation.
         """
-        if self.project.client.spec_version.startswith("5."):
+        if self.project.client.get_spec_version().startswith("5."):
             raise OperationNotSupported(
                 "Deleting pipelines is not supported by the REST API in platform version 5.x, but only from 6.x onwards."
             )
@@ -246,7 +247,7 @@ class Pipeline:
 
         :return: An iterator over the results produced by the pipeline.
         """
-        if self.project.client.spec_version.startswith("5."):
+        if self.project.client.get_spec_version().startswith("5."):
             pipeline_instances = self.get_configuration()["analysisEnginePoolSize"]
         else:
             pipeline_instances = self.get_configuration()["numberOfInstances"]
@@ -316,13 +317,13 @@ class Pipeline:
     # Ignoring errors as linter (compiler) cannot resolve dynamically loaded lib
     # (with type:ignore for mypy) and (noinspection PyProtectedMember for pycharm)
     @experimental_api
-    def analyse_text_to_cas(self, source: Union[IO, str], **kwargs) -> "Cas":  # type: ignore
+    def analyse_text_to_cas(self, source: Union[IO, str], **kwargs) -> Cas:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear. Processes text using a pipeline and returns the result
-        as a UIMA CAS. Calling this method requires that the DKPro Cassis Python library has been installed.
+        as a UIMA CAS.
         """
         # noinspection PyProtectedMember
-        return importlib.import_module("cassis").load_cas_from_xmi(  # type: ignore
+        return load_cas_from_xmi(
             self.project.client._analyse_text_xmi(self.project.name, self.name, source, **kwargs),
             typesystem=self.get_type_system(),
         )
@@ -330,14 +331,14 @@ class Pipeline:
     # Ignoring errors as linter (compiler) cannot resolve dynamically loaded lib
     # (with type:ignore for mypy) and (noinspection PyProtectedMember for pycharm)
     @experimental_api
-    def get_type_system(self) -> "TypeSystem":  # type: ignore
+    def get_type_system(self) -> TypeSystem:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear. Processes text using a pipeline and returns the result
-        as a UIMA CAS. Calling this method requires that the DKPro Cassis Python library has been installed.
+        as a UIMA CAS.
         """
         if self.cached_type_system is None:
             # noinspection PyProtectedMember
-            self.cached_type_system = importlib.import_module("cassis").load_typesystem(  # type: ignore
+            self.cached_type_system = load_typesystem(
                 self.project.client._get_pipeline_type_system(self.project.name, self.name)
             )
         return self.cached_type_system
@@ -479,7 +480,7 @@ class Process:
             *args,
             **kwargs,
         ):
-            # todo: use these parameters instead of kwargs when v6 is released
+            # TODO: We have a different set of parameters per platform version. Right now, all parameters are supported. If v6 is released, only the following subset should be kept.
             # process: "Process",
             # state: str,
             # number_of_total_documents: int,
@@ -487,14 +488,16 @@ class Process:
             # number_of_unsuccessful_documents: int,
             # error_messages: List[str],
             # preceding_process_name: str
-            self.process = kwargs.get("process")
-            self.state = kwargs.get("state")
-            self.processed_documents = kwargs.get("processed_documents")
-            self.number_of_total_documents = kwargs.get("number_of_total_documents")
-            self.number_of_successful_documents = kwargs.get("number_of_successful_documents")
-            self.number_of_unsuccessful_documents = kwargs.get("number_of_unsuccessful_documents")
-            self.error_messages = kwargs.get("error_messages")
-            self.preceding_process_name = kwargs.get("preceding_process_name")
+            self.process: Process = kwargs.get("process")
+            self.state: str = kwargs.get("state")
+            self.processed_documents: int = kwargs.get("processed_documents")
+            self.number_of_total_documents: int = kwargs.get("number_of_total_documents")
+            self.number_of_successful_documents: int = kwargs.get("number_of_successful_documents")
+            self.number_of_unsuccessful_documents: int = kwargs.get(
+                "number_of_unsuccessful_documents"
+            )
+            self.error_messages: List[str] = kwargs.get("error_messages")
+            self.preceding_process_name: str = kwargs.get("preceding_process_name")
 
     @experimental_api
     def delete(self):
@@ -535,7 +538,7 @@ class Process:
         :return: The raw payload of the server response. Future versions of this library may return a better-suited
          representation.
         """
-        if self.project.client.spec_version.startswith("5."):
+        if self.project.client.get_spec_version().startswith("5."):
             raise OperationNotSupported(
                 "Text analysis export is not supported for platform version 5.x, it is only supported from 6.x onwards."
             )
@@ -546,16 +549,15 @@ class Process:
         )
 
     @experimental_api
-    def export_text_analysis_to_cas(self, document_id: str) -> "Cas":  # type: ignore
+    def export_text_analysis_to_cas(self, document_id: str) -> Cas:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
-        Returns an analysis as a UIMA CAS. Calling this method requires that the DKPro Cassis Python library has been
-        installed.
+        Returns an analysis as a UIMA CAS.
         """
 
         # noinspection PyProtectedMember
-        return importlib.import_module("cassis").load_cas_from_xmi(  # type: ignore
+        return load_cas_from_xmi(
             self.project.client._export_analysis_results_to_xmi(
                 self.project.name, self.document_source_name, document_id, self
             ),
@@ -752,7 +754,7 @@ class Project:
         """
         # noinspection PyProtectedMember
         collections = self.client._list_document_collections(self.name)
-        return bool(next((c for c in collections if c["name"] == name), None))
+        return any(c["name2"] == name for c in collections)
 
     def delete(self) -> None:
         """
@@ -896,13 +898,8 @@ class Client:
                     + "generate a new API token with: Client(url, username='your_user_name', password='your_password')."
                 )
 
-        try:
-            self.build_info = self.get_build_info()
-        except JSONDecodeError:
-            raise ValueError(
-                "The Client could not get information about the platform. This is likely because your API Token has changed."
-            )
-        self.spec_version = self.build_info["specVersion"]
+        self._build_info: dict = {}
+        self._spec_version: str = ""
 
     def _exists_profile(self, profile: str):
         return (
@@ -1110,6 +1107,14 @@ class Client:
         )
         return response["payload"]
 
+    def get_spec_version(self) -> str:
+        """
+        Helper function that returns the spec version of the server instance.
+
+        :return: The spec version as string
+        """
+        return self.get_build_info()["specVersion"]
+
     def get_build_info(self) -> dict:
         """
         Obtains information about the version of the server instance.
@@ -1117,8 +1122,10 @@ class Client:
         :return: The raw payload of the server response. Future versions of this library may return a better-suited
                  representation.
         """
-        response = self.__request("get", f"/v1/buildInfo")
-        return response["payload"]
+        if not self._build_info:
+            response = self.__request("get", f"/v1/buildInfo")
+            self._build_info = response["payload"]
+        return self._build_info
 
     def create_project(self, name: str, description: str = "") -> Project:
         """
@@ -1159,7 +1166,7 @@ class Client:
         """
 
         projects = self.list_projects()
-        return bool(next((p for p in projects if p["name"] == name), None))
+        return any(p["name"] == name for p in projects)
 
     @experimental_api
     def _delete_project(self, name: str) -> None:
@@ -1551,7 +1558,7 @@ class Client:
         Use Process.export_text_analysis_to_cas() instead.
         """
 
-        if self.spec_version.startswith("5."):
+        if self.get_build_info()["specVersion"].startswith("5."):
             raise OperationNotSupported(
                 "Text analysis export is not supported for platform version 5.x, it is only supported from 6.x onwards."
             )

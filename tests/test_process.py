@@ -17,7 +17,6 @@
 # limitations under the License.
 #
 #
-from cassis import Cas, TypeSystem
 
 from averbis import Process, Project, Pipeline
 from averbis.core import OperationNotSupported

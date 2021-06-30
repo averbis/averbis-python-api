@@ -18,6 +18,7 @@
 #
 #
 import logging
+import tempfile
 
 from averbis import Process
 from tests.fixtures import *
