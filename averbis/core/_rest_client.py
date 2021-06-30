@@ -213,7 +213,7 @@ class Pipeline:
         :return: The raw payload of the server response. Future versions of this library may return a better-suited
                  representation.
         """
-        if self.project.client.spec_version.startswith("5."):
+        if self.project.client.get_spec_version().startswith("5."):
             raise OperationNotSupported(
                 "Deleting pipelines is not supported by the REST API in platform version 5.x, but only from 6.x onwards."
             )
@@ -247,7 +247,7 @@ class Pipeline:
 
         :return: An iterator over the results produced by the pipeline.
         """
-        if self.project.client.spec_version.startswith("5."):
+        if self.project.client.get_spec_version().startswith("5."):
             pipeline_instances = self.get_configuration()["analysisEnginePoolSize"]
         else:
             pipeline_instances = self.get_configuration()["numberOfInstances"]
@@ -538,7 +538,7 @@ class Process:
         :return: The raw payload of the server response. Future versions of this library may return a better-suited
          representation.
         """
-        if self.project.client.spec_version.startswith("5."):
+        if self.project.client.get_spec_version().startswith("5."):
             raise OperationNotSupported(
                 "Text analysis export is not supported for platform version 5.x, it is only supported from 6.x onwards."
             )
@@ -898,13 +898,8 @@ class Client:
                     + "generate a new API token with: Client(url, username='your_user_name', password='your_password')."
                 )
 
-        try:
-            self.build_info = self.get_build_info()
-        except JSONDecodeError:
-            raise ValueError(
-                "The Client could not get information about the platform. This is likely because your API Token has changed."
-            )
-        self.spec_version = self.build_info["specVersion"]
+        self._build_info: dict = {}
+        self._spec_version: str = ""
 
     def _exists_profile(self, profile: str):
         return (
@@ -1112,6 +1107,14 @@ class Client:
         )
         return response["payload"]
 
+    def get_spec_version(self) -> str:
+        """
+        Helper function that returns the spec version of the server instance.
+
+        :return: The spec version as string
+        """
+        return self.get_build_info()["specVersion"]
+
     def get_build_info(self) -> dict:
         """
         Obtains information about the version of the server instance.
@@ -1119,8 +1122,10 @@ class Client:
         :return: The raw payload of the server response. Future versions of this library may return a better-suited
                  representation.
         """
-        response = self.__request("get", f"/v1/buildInfo")
-        return response["payload"]
+        if not self._build_info:
+            response = self.__request("get", f"/v1/buildInfo")
+            self._build_info = response["payload"]
+        return self._build_info
 
     def create_project(self, name: str, description: str = "") -> Project:
         """
@@ -1548,7 +1553,7 @@ class Client:
         Use Process.export_text_analysis_to_cas() instead.
         """
 
-        if self.spec_version.startswith("5."):
+        if self.get_build_info()["specVersion"].startswith("5."):
             raise OperationNotSupported(
                 "Text analysis export is not supported for platform version 5.x, it is only supported from 6.x onwards."
             )
