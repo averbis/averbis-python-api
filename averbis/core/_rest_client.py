@@ -754,7 +754,7 @@ class Project:
         """
         # noinspection PyProtectedMember
         collections = self.client._list_document_collections(self.name)
-        return any(c["name2"] == name for c in collections)
+        return any(c["name"] == name for c in collections)
 
     def delete(self) -> None:
         """
