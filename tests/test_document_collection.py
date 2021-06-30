@@ -19,6 +19,8 @@
 #
 from pathlib import Path
 
+from cassis import Cas, TypeSystem
+
 from averbis import DocumentCollection
 from tests.fixtures import *
 
@@ -29,7 +31,7 @@ def document_collection(client) -> DocumentCollection:
     return DocumentCollection(project, "my_collection")
 
 
-def test_infer_mime_type_for_plain_text(document_collection, requests_mock):
+def test_import_plain_text(document_collection, requests_mock):
     requests_mock.post(
         f"{API_BASE}/importer/projects/LoadTesting/documentCollections/my_collection/documents",
         json={
@@ -45,7 +47,23 @@ def test_infer_mime_type_for_plain_text(document_collection, requests_mock):
     assert result[0]["document_name"] == "text1.txt"
 
 
-def test_infer_mime_type_for_solr_xml(client, requests_mock):
+def test_import_cas(document_collection, requests_mock):
+    requests_mock.post(
+        f"{API_BASE}/importer/projects/LoadTesting/documentCollections/my_collection/documents",
+        json={
+            "payload": {"original_document_name": "text1.xmi", "document_name": "text1.xmi"},
+            "errorMessages": [],
+        },
+    )
+
+    cas = Cas(typesystem=TypeSystem())
+
+    result = document_collection.import_documents(cas, filename="text1.xmi")
+
+    assert result[0]["document_name"] == "text1.xmi"
+
+
+def test_import_solr_xml(client, requests_mock):
     project = client.get_project("LoadTesting")
     document_collection = DocumentCollection(project, "my_collection")
     requests_mock.post(

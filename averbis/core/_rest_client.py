@@ -587,11 +587,18 @@ class DocumentCollection:
         return self.project.client._delete_document_collection(self.project.name, self.name)
 
     def import_documents(
-        self, source: Union[Path, IO, str], mime_type: str = None, filename: str = None, typesystem: "TypeSystem" = None
+        self,
+        source: Union[Cas, Path, IO, str],
+        mime_type: str = None,
+        filename: str = None,
+        typesystem: "TypeSystem" = None,
     ) -> List[dict]:
         """
-        Imports documents from a given file. Supported file content types are plain text (text/plain)
-        and Averbis Solr XML (application/vnd.averbis.solr+xml).
+        Imports documents from a given file. Supported file content types are plain text (text/plain),
+        Averbis Solr XML (application/vnd.averbis.solr+xml) and UIMA CAS XMI (application/vnd.uima.cas+xmi).
+        If a document is provided as a CAS object, the type system information is taken from the object and
+        cannot be provided explicitly. If a CAS is provided as a string XML representation, then a type system
+        must be explicitly provided.
         """
 
         # noinspection PyProtectedMember
@@ -1233,10 +1240,10 @@ class Client:
         self,
         project: str,
         collection_name: str,
-        source: Union[Path, IO, str],
+        source: Union[Cas, Path, IO, str],
         mime_type: str = None,
         filename: str = None,
-        typesystem: "TypeSystem" = None
+        typesystem: "TypeSystem" = None,
     ) -> List[dict]:
         """
         Use DocumentCollection.import_document() instead.
@@ -1256,6 +1263,13 @@ class Client:
 
         if isinstance(source, str) and mime_type is None:
             mime_type = MEDIA_TYPE_TEXT_PLAIN
+
+        if isinstance(source, Cas):
+            if mime_type is not None:
+                raise Exception(
+                    f"Mime-type cannot be set explicitly when the source is a Cas object."
+                )
+            mime_type = MEDIA_TYPE_APPLICATION_XMI
 
         # If the format is not a multi-document format, we need to have a filename. If it is a multi-document
         # format, then the server is using the filenames stored within the multi-document
@@ -1290,11 +1304,20 @@ class Client:
                 with source.open("rb") as binary_file:
                     source = BytesIO(binary_file.read())
 
+        if isinstance(source, Cas):
+            if typesystem is None:
+                typesystem = source.typesystem
+            source = source.to_xmi()
+
         data: IO = BytesIO(source.encode(ENCODING_UTF_8)) if isinstance(source, str) else source
 
         files = {"documentFile": (filename, data, mime_type)}
         if typesystem:
-            files["typesystemFile"] = ("typesystem.xml", typesystem.to_xml(), MEDIA_TYPE_APPLICATION_XML)
+            files["typesystemFile"] = (
+                "typesystem.xml",
+                typesystem.to_xml(),
+                MEDIA_TYPE_APPLICATION_XML,
+            )
 
         response = self.__request(
             "post",
