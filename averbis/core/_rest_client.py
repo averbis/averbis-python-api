@@ -215,7 +215,8 @@ class Pipeline:
         """
         if self.project.client.get_spec_version().startswith("5."):
             raise OperationNotSupported(
-                "Deleting pipelines is not supported by the REST API in platform version 5.x, but only from 6.x onwards."
+                "Deleting pipelines is not supported by the REST API in platform version 5.x, but only from 6.x "
+                "onwards."
             )
 
         # noinspection PyProtectedMember
@@ -480,7 +481,8 @@ class Process:
             *args,
             **kwargs,
         ):
-            # TODO: We have a different set of parameters per platform version. Right now, all parameters are supported. If v6 is released, only the following subset should be kept.
+            # TODO: We have a different set of parameters per platform version. Right now, all parameters are supported.
+            #       When v6 is released, only the following subset should be kept.
             # process: "Process",
             # state: str,
             # number_of_total_documents: int,
@@ -556,6 +558,13 @@ class Process:
         Returns an analysis as a UIMA CAS.
         """
 
+        if self.pipeline_name is None:
+            raise Exception(
+                "Process is not associated with a pipeline. Currently, we can only obtain the type system information "
+                "required for exporting a CAS via a pipeline. Thus, exporting CAS results from this pipeline is not "
+                "supported."
+            )
+
         # noinspection PyProtectedMember
         return load_cas_from_xmi(
             self.project.client._export_analysis_results_to_xmi(
@@ -597,9 +606,9 @@ class DocumentCollection:
         Imports documents from a given file. Supported file content types are plain text (text/plain),
         Averbis Solr XML (application/vnd.averbis.solr+xml) and UIMA CAS XMI (application/vnd.uima.cas+xmi).
 
-        If a document is provided as a CAS object, the type system information can be automatically picked from the CAS object and
-        should not be provided explicitly. If a CAS is provided as a string XML representation, then a type system
-        must be explicitly provided.
+        If a document is provided as a CAS object, the type system information can be automatically picked from the CAS
+        object and should not be provided explicitly. If a CAS is provided as a string XML representation, then a type
+        system must be explicitly provided.
 
         The method tries to automatically determine the format (mime type) of the provided document, so setting the
         mime type parameter should usually not be necessary.
@@ -1034,6 +1043,7 @@ class Client:
         content_type_header = raw_response.headers.get(HEADER_CONTENT_TYPE, "")
         is_actually_json_response = MEDIA_TYPE_APPLICATION_JSON in content_type_header
         if is_actually_json_response:
+            raw_response.raise_for_status()
             raise TypeError(
                 f"Expected the return content to be bytes, but got [{content_type_header}]: {raw_response}"
             )
@@ -1276,7 +1286,8 @@ class Client:
         if isinstance(source, Cas):
             if (mime_type is not None) and (mime_type != MEDIA_TYPE_APPLICATION_XMI):
                 raise Exception(
-                    f"The format {mime_type} is not supported for CAS objects. It must be set to {MEDIA_TYPE_APPLICATION_XMI} or be omitted."
+                    f"The format {mime_type} is not supported for CAS objects. It must be set to "
+                    f"{MEDIA_TYPE_APPLICATION_XMI} or be omitted."
                 )
             mime_type = MEDIA_TYPE_APPLICATION_XMI
 
@@ -1300,8 +1311,9 @@ class Client:
                 if mime_type not in [MEDIA_TYPE_TEXT_PLAIN, MEDIA_TYPE_APPLICATION_SOLR_XML]:
                     raise ValueError(
                         f"Unable to guess a valid mime_type. Supported file content types are plain text (mime_type = "
-                        f"'{MEDIA_TYPE_TEXT_PLAIN}') and Averbis Solr XML (mime_type = '{MEDIA_TYPE_APPLICATION_SOLR_XML}')"
-                        f".\nPlease provide the correct mime_type with: `document_collection.import_documents(file, "
+                        f"'{MEDIA_TYPE_TEXT_PLAIN}') and Averbis Solr XML (mime_type = "
+                        f"'{MEDIA_TYPE_APPLICATION_SOLR_XML}').\n"
+                        f"Please provide the correct mime_type with: `document_collection.import_documents(file, "
                         f"mime_type = ...)`."
                     )
 
@@ -1600,8 +1612,8 @@ class Client:
         return str(
             self.__request_with_bytes_response(
                 "get",
-                f"/experimental/textanalysis/projects/{project}/documentCollections/{collection_name}/documents/{document_id}"
-                f"/processes/{process_name}/exportTextAnalysisResult",
+                f"/experimental/textanalysis/projects/{project}/documentCollections/{collection_name}"
+                f"/documents/{document_id}/processes/{process_name}/exportTextAnalysisResult",
                 headers={
                     HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_XMI,
                 },
