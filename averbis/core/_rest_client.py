@@ -596,9 +596,19 @@ class DocumentCollection:
         """
         Imports documents from a given file. Supported file content types are plain text (text/plain),
         Averbis Solr XML (application/vnd.averbis.solr+xml) and UIMA CAS XMI (application/vnd.uima.cas+xmi).
-        If a document is provided as a CAS object, the type system information is taken from the object and
-        cannot be provided explicitly. If a CAS is provided as a string XML representation, then a type system
+
+        If a document is provided as a CAS object, the type system information can be automatically picked from the CAS object and
+        should not be provided explicitly. If a CAS is provided as a string XML representation, then a type system
         must be explicitly provided.
+
+        The method tries to automatically determine the format (mime type) of the provided document, so setting the
+        mime type parameter should usually not be necessary.
+
+        If possible, the method obtains the file name from the provided source. If this is not possible (e.g. if the
+        source is a string or a CAS object), the file name should explicitly be provided. If no filename is provided,
+        a default filename is used. Note that a file in the Averbis Solr XML format can contain multiple documents
+        and each of these has its name encoded within the XML. In this case, the setting filename parameter is not
+        permitted at all.
         """
 
         # noinspection PyProtectedMember
@@ -1265,9 +1275,9 @@ class Client:
             mime_type = MEDIA_TYPE_TEXT_PLAIN
 
         if isinstance(source, Cas):
-            if mime_type is not None:
+            if (mime_type is not None) and (mime_type != MEDIA_TYPE_APPLICATION_XMI):
                 raise Exception(
-                    f"Mime-type cannot be set explicitly when the source is a Cas object."
+                    f"The format {mime_type} is not supported for CAS objects. It must be set to {MEDIA_TYPE_APPLICATION_XMI} or be omitted."
                 )
             mime_type = MEDIA_TYPE_APPLICATION_XMI
 
