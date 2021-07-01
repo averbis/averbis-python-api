@@ -1031,12 +1031,11 @@ class Client:
         """
         raw_response = self._run_request(method, endpoint, **kwargs)
 
-        is_actually_json_response = MEDIA_TYPE_APPLICATION_JSON in raw_response.headers.get(
-            HEADER_CONTENT_TYPE, ""
-        )
+        content_type_header = raw_response.headers.get(HEADER_CONTENT_TYPE, "")
+        is_actually_json_response = MEDIA_TYPE_APPLICATION_JSON in content_type_header
         if is_actually_json_response:
             raise TypeError(
-                f"Expected the return content to be bytes, but got JSON: {raw_response}"
+                f"Expected the return content to be bytes, but got [{content_type_header}]: {raw_response}"
             )
 
         raw_response.raise_for_status()
