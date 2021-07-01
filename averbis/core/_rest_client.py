@@ -215,7 +215,8 @@ class Pipeline:
         """
         if self.project.client.get_spec_version().startswith("5."):
             raise OperationNotSupported(
-                "Deleting pipelines is not supported by the REST API in platform version 5.x, but only from 6.x onwards."
+                "Deleting pipelines is not supported by the REST API in platform version 5.x, but only from 6.x "
+                "onwards."
             )
 
         # noinspection PyProtectedMember
@@ -480,7 +481,8 @@ class Process:
             *args,
             **kwargs,
         ):
-            # TODO: We have a different set of parameters per platform version. Right now, all parameters are supported. If v6 is released, only the following subset should be kept.
+            # TODO: We have a different set of parameters per platform version. Right now, all parameters are supported.
+            #       When v6 is released, only the following subset should be kept.
             # process: "Process",
             # state: str,
             # number_of_total_documents: int,
@@ -556,6 +558,13 @@ class Process:
         Returns an analysis as a UIMA CAS.
         """
 
+        if self.pipeline_name is None:
+            raise Exception(
+                "Process is not associated with a pipeline. Currently, we can only obtain the type system information "
+                "required for exporting a CAS via a pipeline. Thus, exporting CAS results from this pipeline is not "
+                "supported."
+            )
+
         # noinspection PyProtectedMember
         return load_cas_from_xmi(
             self.project.client._export_analysis_results_to_xmi(
@@ -587,16 +596,33 @@ class DocumentCollection:
         return self.project.client._delete_document_collection(self.project.name, self.name)
 
     def import_documents(
-        self, source: Union[Path, IO, str], mime_type: str = None, filename: str = None
+        self,
+        source: Union[Cas, Path, IO, str],
+        mime_type: str = None,
+        filename: str = None,
+        typesystem: "TypeSystem" = None,
     ) -> List[dict]:
         """
-        Imports documents from a given file. Supported file content types are plain text (text/plain)
-        and Averbis Solr XML (application/vnd.averbis.solr+xml).
+        Imports documents from a given file. Supported file content types are plain text (text/plain),
+        Averbis Solr XML (application/vnd.averbis.solr+xml) and UIMA CAS XMI (application/vnd.uima.cas+xmi).
+
+        If a document is provided as a CAS object, the type system information can be automatically picked from the CAS
+        object and should not be provided explicitly. If a CAS is provided as a string XML representation, then a type
+        system must be explicitly provided.
+
+        The method tries to automatically determine the format (mime type) of the provided document, so setting the
+        mime type parameter should usually not be necessary.
+
+        If possible, the method obtains the file name from the provided source. If this is not possible (e.g. if the
+        source is a string or a CAS object), the file name should explicitly be provided. If no filename is provided,
+        a default filename is used. Note that a file in the Averbis Solr XML format can contain multiple documents
+        and each of these has its name encoded within the XML. In this case, the setting filename parameter is not
+        permitted at all.
         """
 
         # noinspection PyProtectedMember
         return self.project.client._import_documents(
-            self.project.name, self.name, source, mime_type, filename
+            self.project.name, self.name, source, mime_type, filename, typesystem
         )
 
     @experimental_api
@@ -1014,12 +1040,12 @@ class Client:
         """
         raw_response = self._run_request(method, endpoint, **kwargs)
 
-        is_actually_json_response = MEDIA_TYPE_APPLICATION_JSON in raw_response.headers.get(
-            HEADER_CONTENT_TYPE, ""
-        )
+        content_type_header = raw_response.headers.get(HEADER_CONTENT_TYPE, "")
+        is_actually_json_response = MEDIA_TYPE_APPLICATION_JSON in content_type_header
         if is_actually_json_response:
+            raw_response.raise_for_status()
             raise TypeError(
-                f"Expected the return content to be bytes, but got JSON: {raw_response}"
+                f"Expected the return content to be bytes, but got [{content_type_header}]: {raw_response}"
             )
 
         raw_response.raise_for_status()
@@ -1233,9 +1259,10 @@ class Client:
         self,
         project: str,
         collection_name: str,
-        source: Union[Path, IO, str],
+        source: Union[Cas, Path, IO, str],
         mime_type: str = None,
         filename: str = None,
+        typesystem: "TypeSystem" = None,
     ) -> List[dict]:
         """
         Use DocumentCollection.import_document() instead.
@@ -1255,6 +1282,14 @@ class Client:
 
         if isinstance(source, str) and mime_type is None:
             mime_type = MEDIA_TYPE_TEXT_PLAIN
+
+        if isinstance(source, Cas):
+            if (mime_type is not None) and (mime_type != MEDIA_TYPE_APPLICATION_XMI):
+                raise Exception(
+                    f"The format {mime_type} is not supported for CAS objects. It must be set to "
+                    f"{MEDIA_TYPE_APPLICATION_XMI} or be omitted."
+                )
+            mime_type = MEDIA_TYPE_APPLICATION_XMI
 
         # If the format is not a multi-document format, we need to have a filename. If it is a multi-document
         # format, then the server is using the filenames stored within the multi-document
@@ -1276,8 +1311,9 @@ class Client:
                 if mime_type not in [MEDIA_TYPE_TEXT_PLAIN, MEDIA_TYPE_APPLICATION_SOLR_XML]:
                     raise ValueError(
                         f"Unable to guess a valid mime_type. Supported file content types are plain text (mime_type = "
-                        f"'{MEDIA_TYPE_TEXT_PLAIN}') and Averbis Solr XML (mime_type = '{MEDIA_TYPE_APPLICATION_SOLR_XML}')"
-                        f".\nPlease provide the correct mime_type with: `document_collection.import_documents(file, "
+                        f"'{MEDIA_TYPE_TEXT_PLAIN}') and Averbis Solr XML (mime_type = "
+                        f"'{MEDIA_TYPE_APPLICATION_SOLR_XML}').\n"
+                        f"Please provide the correct mime_type with: `document_collection.import_documents(file, "
                         f"mime_type = ...)`."
                     )
 
@@ -1289,12 +1325,25 @@ class Client:
                 with source.open("rb") as binary_file:
                     source = BytesIO(binary_file.read())
 
+        if isinstance(source, Cas):
+            if typesystem is None:
+                typesystem = source.typesystem
+            source = source.to_xmi()
+
         data: IO = BytesIO(source.encode(ENCODING_UTF_8)) if isinstance(source, str) else source
+
+        files = {"documentFile": (filename, data, mime_type)}
+        if typesystem:
+            files["typesystemFile"] = (
+                "typesystem.xml",
+                typesystem.to_xml(),
+                MEDIA_TYPE_APPLICATION_XML,
+            )
 
         response = self.__request(
             "post",
             f"/v1/importer/projects/{project}/documentCollections/{collection_name}/documents",
-            files={"documentFile": (filename, data, mime_type)},
+            files=files,
         )
 
         # When a multi-document file format is uploaded (e.g. SolrXML), we get an array as a result, otherwise we get
@@ -1563,8 +1612,8 @@ class Client:
         return str(
             self.__request_with_bytes_response(
                 "get",
-                f"/experimental/textanalysis/projects/{project}/documentCollections/{collection_name}/documents/{document_id}"
-                f"/processes/{process_name}/exportTextAnalysisResult",
+                f"/experimental/textanalysis/projects/{project}/documentCollections/{collection_name}"
+                f"/documents/{document_id}/processes/{process_name}/exportTextAnalysisResult",
                 headers={
                     HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_XMI,
                 },
