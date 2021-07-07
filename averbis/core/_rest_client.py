@@ -532,10 +532,9 @@ class Process:
         # noinspection PyProtectedMember
         return self.project.client._get_process_state(self.project, self)
 
-    @experimental_api
     def export_text_analysis(self, annotation_types: str = None) -> dict:
         """
-        HIGHLY EXPERIMENTAL API - may soon change or disappear. Exports a given text analysis process as a json.
+        Exports a given text analysis process as a json.
 
         :return: The raw payload of the server response. Future versions of this library may return a better-suited
          representation.
@@ -1575,18 +1574,15 @@ class Client:
         )
         return response["payload"]
 
-    @experimental_api
     def _export_text_analysis(
         self, project: str, document_source: str, process: str, annotation_types: str = None
     ):
         """
-        HIGHLY EXPERIMENTAL API - may soon change or disappear.
-
         Use Process.export_text_analysis() instead.
         """
         response = self.__request(
             "get",
-            f"/experimental/textanalysis/projects/{project}/documentSources/{document_source}/processes/{process}/export",
+            f"/v1/textanalysis/projects/{project}/documentSources/{document_source}/processes/{process}/export",
             params={"annotationTypes": annotation_types},
             headers={HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_JSON},
         )

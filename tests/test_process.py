@@ -146,7 +146,7 @@ def test_export_text_analysis_export_v6(client_version_6, requests_mock):
     process = project.get_process(process_name, collection)
 
     requests_mock.get(
-        f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/"
+        f"{API_BASE}/textanalysis/projects/{project.name}/"
         f"documentSources/{process.document_source_name}/processes/{process.name}/export",
         headers={"Content-Type": "application/json"},
         json={
