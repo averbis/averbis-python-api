@@ -1026,8 +1026,10 @@ class Client:
 
     def __request(self, method: str, endpoint: str, **kwargs) -> dict:
         raw_response = self._run_request(method, endpoint, **kwargs)
-        response = raw_response.json()
-        self.__handle_error(response)
+        if raw_response.ok:
+            response = raw_response.json()
+        else:
+            self.__handle_error(raw_response)
         return response
 
     def __request_with_bytes_response(self, method: str, endpoint: str, **kwargs) -> bytes:
@@ -1891,11 +1893,24 @@ class Client:
         return None
 
     @staticmethod
-    def __handle_error(response):
-        if response["errorMessages"] is None or len(response["errorMessages"]) == 0:
-            return
+    def __handle_error(raw_response):
+        error_msg = f"Client request failed with status code {raw_response.status_code}."
+        try:
+            response = raw_response.json()
 
-        raise Exception("Unable to perform request: " + ", ".join(response["errorMessages"]))
+            # Accessing an endpoint that is in the subdomain of the platform, but which does not exist,
+            # returns a general servlet with a field "message"
+            if "message" in response and response["message"] is not None:
+                error_msg += f"\nError message is: {response['message']}"
+
+            # Accessing an existing endpoint that has an error, returns its error in "errorMessages"
+            if "errorMessages" in response and response["errorMessages"] is not None:
+                error_msg += f'\nError message is: {", ".join(response["errorMessages"])}'
+        except JSONDecodeError:
+            # This is the case where we received a response (with a status_code), but no valid json.
+            pass
+
+        raise Exception(error_msg)
 
     @staticmethod
     def __process_name(process: Union[str, Process]):

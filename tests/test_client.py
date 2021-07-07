@@ -649,9 +649,10 @@ def test_analyse_texts_with_some_working_and_some_failing(client_version_5, requ
         },
     )
 
-    def callback(request, _):
+    def callback(request, context):
         doc_text = request.text.read().decode("utf-8")
         if doc_text == "works":
+            context.status_code = 200
             return {
                 "payload": [
                     {
@@ -665,6 +666,7 @@ def test_analyse_texts_with_some_working_and_some_failing(client_version_5, requ
                 "errorMessages": [],
             }
         else:
+            context.status_code = 500
             return {
                 "payload": [],
                 "errorMessages": ["Kaputt!"],
@@ -802,3 +804,47 @@ def test_with_settings_file_with_defaults_id(requests_mock_id6):
     assert id_client._url == "https://localhost:8080/information-discovery"
     assert id_client._api_token == "dummy-token"
     assert id_client._verify_ssl == "id.pem"
+
+
+def test_handle_error_in_non_existing_endpoint(client, requests_mock):
+    """ Simulates the scenario that an invalid URL is called. The URL is in the namespace of a platform. """
+    requests_mock.get(
+        f"{API_BASE}/invalid_url",
+        headers={"Content-Type": "application/json"},
+        json={
+            "servlet": "Platform",
+            "message": "Not Found",
+            "url": f"{API_BASE}/invalid_url",
+            "status": "404",
+        },
+        status_code=404,
+    )
+    with pytest.raises(Exception) as ex:
+        client._Client__request(method="get", endpoint="v1/invalid_url")
+    expected_error_message = (
+        "Client request failed with status code 404.\nError message is: Not Found"
+    )
+    assert str(ex.value) == expected_error_message
+
+
+def test_handle_error_bad_request(client, requests_mock):
+    """ Simulates a bad request with error message 400, e.g. creating a project that already exists. """
+    requests_mock.get(
+        f"{API_BASE}/invalid_url",
+        headers={"Content-Type": "application/json"},
+        json={"payload": None, "errorMessages": ["A project with name 'test' already exists."]},
+        status_code=400,
+    )
+    with pytest.raises(Exception) as ex:
+        client._Client__request(method="get", endpoint="v1/invalid_url")
+    expected_error_message = "Client request failed with status code 400.\nError message is: A project with name 'test' already exists."
+    assert str(ex.value) == expected_error_message
+
+
+def test_handle_error_no_access(client, requests_mock):
+    """ Simulates the scenario where the user has no access. """
+    requests_mock.get(f"{API_BASE}/url/that/cannot/be/accessed", status_code=401)
+    with pytest.raises(Exception) as ex:
+        client._Client__request(method="get", endpoint="v1/url/that/cannot/be/accessed")
+    expected_error_message = "Client request failed with status code 401."
+    assert str(ex.value) == expected_error_message

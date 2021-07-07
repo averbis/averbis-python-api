@@ -236,8 +236,8 @@ def test_delete_pear_with_pear_does_not_exist(client_version_6, requests_mock):
     with pytest.raises(Exception) as ex:
         project.delete_pear(pear_identifier)
 
-    expected_error_message = "Unable to perform request: The requested resource could not be found."
-    assert expected_error_message in str(ex.value)
+    expected_error_message = "Client request failed with status code 404.\nError message is: The requested resource could not be found."
+    assert expected_error_message == str(ex.value)
 
 
 def test_install_pear(client_version_6, requests_mock):
@@ -293,7 +293,7 @@ def test_install_pear_with_pear_already_exists(client_version_6, requests_mock):
             project.install_pear(tf.name)
 
         expected_error_message = (
-            "Unable to perform request: The PEAR component 'xyz.pear' could not be installed "
-            "since another PEAR component with the ID 'xyz' already exists. "
+            "Client request failed with status code 404.\n"
+            "Error message is: The PEAR component 'xyz.pear' could not be installed since another PEAR component with the ID 'xyz' already exists. "
         )
-        assert expected_error_message in str(ex.value)
+        assert expected_error_message == str(ex.value)
