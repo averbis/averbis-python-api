@@ -558,19 +558,16 @@ class Process:
         Returns an analysis as a UIMA CAS.
         """
 
-        if self.pipeline_name is None:
-            raise Exception(
-                "Process is not associated with a pipeline. Currently, we can only obtain the type system information "
-                "required for exporting a CAS via a pipeline. Thus, exporting CAS results from this pipeline is not "
-                "supported."
-            )
+        type_system = load_typesystem(self.project.client._export_analysis_result_typesystem(
+            self.project.name, self.document_source_name, document_id, self
+        ))
 
         # noinspection PyProtectedMember
         return load_cas_from_xmi(
-            self.project.client._export_analysis_results_to_xmi(
+            self.project.client._export_analysis_result_to_xmi(
                 self.project.name, self.document_source_name, document_id, self
             ),
-            typesystem=self.project.get_pipeline(self.pipeline_name).get_type_system(),
+            typesystem=type_system,
         )
 
 
@@ -1593,7 +1590,7 @@ class Client:
         return response["payload"]
 
     @experimental_api
-    def _export_analysis_results_to_xmi(
+    def _export_analysis_result_to_xmi(
         self, project: str, collection_name: str, document_id: str, process: Union[Process, str]
     ) -> str:
         """
@@ -1617,6 +1614,31 @@ class Client:
                 headers={
                     HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_XMI,
                 },
+            ),
+            ENCODING_UTF_8,
+        )
+
+    @experimental_api
+    def _export_analysis_result_typesystem(
+        self, project: str, collection_name: str, document_id: str, process: Union[Process, str]
+    ) -> str:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+        """
+
+        if self.get_build_info()["specVersion"].startswith("5."):
+            raise OperationNotSupported(
+                "Text analysis export is not supported for platform version 5.x, it is only supported from 6.x onwards."
+            )
+
+        process_name = self.__process_name(process)
+
+        return str(
+            self.__request_with_bytes_response(
+                "get",
+                f"/experimental/textanalysis/projects/{project}/documentCollections/{collection_name}"
+                f"/documents/{document_id}/processes/{process_name}/exportTypesystem",
+                headers={HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_XML},
             ),
             ENCODING_UTF_8,
         )
