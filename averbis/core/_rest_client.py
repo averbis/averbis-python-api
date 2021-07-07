@@ -113,6 +113,12 @@ class Pipeline:
         self.pipeline_state_change_timeout = self.pipeline_state_poll_interval * 10
         self.cached_type_system = None
 
+    def __repr__(self):
+        """
+        A nicer string representation of the Pipeline object.
+        """
+        return f'{self.__class__.__name__}(name="{self.name}", project="{self.project.name}")'
+
     def wait_for_pipeline_to_leave_transient_state(self) -> str:
         pipeline_info = self.get_info()
         total_time_slept = 0
@@ -373,6 +379,12 @@ class Terminology:
         self.project = project
         self.name = name
 
+    def __repr__(self):
+        """
+        A nicer string representation of the Terminology object.
+        """
+        return f'{self.__class__.__name__}(name="{self.name}", project="{self.project.name}")'
+
     def start_export(self, terminology_format: str = TERMINOLOGY_EXPORTER_OBO_1_4) -> None:
         """
         Trigger the export of the terminology.
@@ -475,6 +487,14 @@ class Process:
         self.document_source_name = document_source_name
         self.pipeline_name = pipeline_name
 
+    def __repr__(self):
+        """
+        A nicer string representation of the Process object.
+        """
+        return f'{self.__class__.__name__}(name="{self.name}", project="{self.project.name}",' \
+               f' pipeline_name="{self.pipeline_name}", document_source_name="{self.document_source_name}")'
+
+
     class ProcessState:
         def __init__(
             self,
@@ -575,6 +595,12 @@ class DocumentCollection:
         self.project = project
         self.name = name
 
+    def __repr__(self):
+        """
+        A nicer string representation of the DocumentCollection object.
+        """
+        return f'{self.__class__.__name__}(name="{self.name}", project="{self.project.name}")'
+
     def get_number_of_documents(self) -> int:
         """
         Returns the number of documents in that collection.
@@ -637,6 +663,12 @@ class Pear:
         self.project = project
         self.identifier = identifier
 
+    def __repr__(self):
+        """
+        A nicer string representation of the Pear object.
+        """
+        return f'{self.__class__.__name__}(identifier="{self.identifier}", project="{self.project.name}")'
+
     @experimental_api
     def delete(self):
         """
@@ -665,6 +697,12 @@ class Project:
         self.client = client
         self.name = name
         self.__cached_pipelines: dict = {}
+
+    def __repr__(self):
+        """
+        A nicer string representation of the Project object.
+        """
+        return f'{self.__class__.__name__}(name="{self.name}")'
 
     def get_pipeline(self, name: str) -> Pipeline:
         """
@@ -922,6 +960,13 @@ class Client:
 
         self._build_info: dict = {}
         self._spec_version: str = ""
+
+    def __repr__(self):
+        """
+        A nicer string representation of the Client object.
+        """
+        return f'{self.__class__.__name__}({self._url})'
+
 
     def _exists_profile(self, profile: str):
         return (
