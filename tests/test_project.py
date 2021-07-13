@@ -236,8 +236,11 @@ def test_delete_pear_with_pear_does_not_exist(client_version_6, requests_mock):
     with pytest.raises(Exception) as ex:
         project.delete_pear(pear_identifier)
 
-    expected_error_message = "Client request failed with status code 404.\nError message is: The requested resource could not be found."
-    assert expected_error_message == str(ex.value)
+    expected_error_message = (
+        "404 Server Error: 'None' for url: 'https://localhost:8080/information-discovery/rest/experimental/textanalysis/projects/test-project/pearComponents/pear0'.\n"
+        "Endpoint error message is: 'The requested resource could not be found.'"
+    )
+    assert str(ex.value) == expected_error_message
 
 
 def test_install_pear(client_version_6, requests_mock):
@@ -279,7 +282,7 @@ def test_install_pear_with_pear_already_exists(client_version_6, requests_mock):
     requests_mock.post(
         f"{API_EXPERIMENTAL}/textanalysis/projects/test-project/pearComponents",
         headers={"Content-Type": "application/json"},
-        status_code=404,
+        status_code=500,
         json={
             "payload": None,
             "errorMessages": [
@@ -293,7 +296,7 @@ def test_install_pear_with_pear_already_exists(client_version_6, requests_mock):
             project.install_pear(tf.name)
 
         expected_error_message = (
-            "Client request failed with status code 404.\n"
-            "Error message is: The PEAR component 'xyz.pear' could not be installed since another PEAR component with the ID 'xyz' already exists. "
+            "500 Server Error: 'None' for url: 'https://localhost:8080/information-discovery/rest/experimental/textanalysis/projects/test-project/pearComponents'.\n"
+            "Endpoint error message is: 'The PEAR component 'xyz.pear' could not be installed since another PEAR component with the ID 'xyz' already exists. '"
         )
         assert expected_error_message == str(ex.value)
