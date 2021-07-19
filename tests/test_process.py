@@ -143,7 +143,7 @@ def test_export_text_analysis_export_v6(client_version_6, requests_mock):
         },
     )
 
-    process = project.get_process(process_name, collection)
+    process = collection.get_process(process_name)
 
     requests_mock.get(
         f"{API_BASE}/textanalysis/projects/{project.name}/"
