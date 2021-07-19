@@ -129,8 +129,9 @@ def test_create_and_run_process(client_version_6, requests_mock):
         },
     )
 
-    actual_process = project.create_and_run_process(
-        process_name, document_source_name, pipeline_name
+    collection = project.get_document_collection(document_source_name)
+    actual_process = collection.create_and_run_process(
+        process_name=process_name, pipeline=pipeline_name
     )
 
     expected_process = Process(project, process_name, document_source_name, pipeline_name)
@@ -161,7 +162,7 @@ def test_get_process(client_version_6, requests_mock):
         headers={"Content-Type": "application/json"},
         json={"payload": payload, "errorMessages": []},
     )
-    actual = project.get_process(process_name, document_source_name)
+    actual = project.get_document_collection(document_source_name).get_process(process_name)
     assert_process_equal(expected_process, actual)
 
 

@@ -25,7 +25,6 @@ import logging
 from concurrent.futures.thread import ThreadPoolExecutor
 from functools import wraps
 from io import BytesIO, IOBase
-from json import JSONDecodeError
 
 from time import sleep, time
 from typing import List, Union, IO, Iterable, Dict, Iterator, Optional
@@ -112,6 +111,9 @@ class Pipeline:
         self.pipeline_state_poll_interval = 5
         self.pipeline_state_change_timeout = self.pipeline_state_poll_interval * 10
         self.cached_type_system = None
+
+    def __repr__(self):
+        return f'{self.__class__.__name__}(name="{self.name}", project="{self.project.name}")'
 
     def wait_for_pipeline_to_leave_transient_state(self) -> str:
         pipeline_info = self.get_info()
@@ -373,6 +375,9 @@ class Terminology:
         self.project = project
         self.name = name
 
+    def __repr__(self):
+        return f'{self.__class__.__name__}(name="{self.name}", project="{self.project.name}")'
+
     def start_export(self, terminology_format: str = TERMINOLOGY_EXPORTER_OBO_1_4) -> None:
         """
         Trigger the export of the terminology.
@@ -475,6 +480,12 @@ class Process:
         self.document_source_name = document_source_name
         self.pipeline_name = pipeline_name
 
+    def __repr__(self):
+        return (
+            f'{self.__class__.__name__}(name="{self.name}", project="{self.project.name}",'
+            f' pipeline_name="{self.pipeline_name}", document_source_name="{self.document_source_name}")'
+        )
+
     class ProcessState:
         def __init__(
             self,
@@ -575,6 +586,9 @@ class DocumentCollection:
         self.project = project
         self.name = name
 
+    def __repr__(self):
+        return f'{self.__class__.__name__}(name="{self.name}", project="{self.project.name}")'
+
     def get_number_of_documents(self) -> int:
         """
         Returns the number of documents in that collection.
@@ -583,6 +597,34 @@ class DocumentCollection:
         return self.project.client._get_document_collection(self.project.name, self.name)[
             "numberOfDocuments"
         ]
+
+    @experimental_api
+    def get_process(self, process_name: str) -> Process:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Get a process
+        :return: The process
+        """
+        # noinspection PyProtectedMember
+        return self.project.client._get_process(self, process_name)
+
+    @experimental_api
+    def create_and_run_process(
+        self,
+        process_name: str,
+        pipeline: Union[str, Pipeline],
+    ) -> Process:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Creates a process and runs the document analysis.
+        :return: The created process
+        """
+        # noinspection PyProtectedMember
+        self.project.client._create_and_run_process(self, process_name, pipeline)
+
+        return self.get_process(process_name)
 
     def delete(self) -> dict:
         """
@@ -637,6 +679,9 @@ class Pear:
         self.project = project
         self.identifier = identifier
 
+    def __repr__(self):
+        return f'{self.__class__.__name__}(identifier="{self.identifier}", project="{self.project.name}")'
+
     @experimental_api
     def delete(self):
         """
@@ -665,6 +710,9 @@ class Project:
         self.client = client
         self.name = name
         self.__cached_pipelines: dict = {}
+
+    def __repr__(self):
+        return f'{self.__class__.__name__}(name="{self.name}")'
 
     def get_pipeline(self, name: str) -> Pipeline:
         """
@@ -842,37 +890,6 @@ class Project:
         return Pear(self, pear_identifier)
 
     @experimental_api
-    def create_and_run_process(
-        self,
-        process_name: str,
-        document_collection: Union[str, DocumentCollection],
-        pipeline: Union[str, Pipeline],
-    ) -> Process:
-        """
-        HIGHLY EXPERIMENTAL API - may soon change or disappear.
-
-        Creates a process and runs the document analysis.
-        :return: The created process
-        """
-        # noinspection PyProtectedMember
-        self.client._create_and_run_process(self.name, process_name, document_collection, pipeline)
-
-        return self.get_process(process_name, document_collection)
-
-    @experimental_api
-    def get_process(
-        self, process_name: str, document_collection: Union[str, DocumentCollection]
-    ) -> Process:
-        """
-        HIGHLY EXPERIMENTAL API - may soon change or disappear.
-
-        Get a process
-        :return: The process
-        """
-        # noinspection PyProtectedMember
-        return self.client._get_process(self, process_name, document_collection)
-
-    @experimental_api
     def list_processes(self) -> List[Process]:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -922,6 +939,9 @@ class Client:
 
         self._build_info: dict = {}
         self._spec_version: str = ""
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self._url})"
 
     def _exists_profile(self, profile: str):
         return (
@@ -1760,36 +1780,34 @@ class Client:
         )
         processes = []
         for item in response["payload"]:
-            processes.append(
-                self._get_process(project, item["processName"], item["documentSourceName"])
-            )
+            document_collection = project.get_document_collection(item["documentSourceName"])
+            processes.append(document_collection.get_process(item["processName"]))
         return processes
 
     @experimental_api
     def _create_and_run_process(
         self,
-        project: str,
+        document_collection: DocumentCollection,
         process_name: str,
-        document_collection: Union[str, DocumentCollection],
         pipeline: Union[str, Pipeline],
     ) -> dict:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
-        Use Project.create_and_run_process() instead.
+        Use DocumentCollection.create_and_run_process() instead.
         """
-        document_collection_name = self.__document_collection_name(document_collection)
         pipeline_name = self.__pipeline_name(pipeline)
+        project = document_collection.project
 
         create_process_dto = {
             "processName": process_name,
-            "documentSourceName": document_collection_name,
+            "documentSourceName": document_collection.name,
             "pipelineName": pipeline_name,
         }
 
         response = self.__request(
             "post",
-            f"/experimental/textanalysis/projects/{project}/processes",
+            f"/experimental/textanalysis/projects/{project.name}/processes",
             json=create_process_dto,
         )
 
@@ -1798,21 +1816,20 @@ class Client:
     @experimental_api
     def _get_process(
         self,
-        project: "Project",
+        document_collection: DocumentCollection,
         process_name: str,
-        document_collection: Union[str, DocumentCollection],
     ) -> Process:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
-        Use Project.get_process() instead.
+        Use DocumentCollection.get_process() instead.
         """
-        document_collection_name = self.__document_collection_name(document_collection)
+        project = document_collection.project
 
         response = self.__request(
             "get",
             f"/experimental/textanalysis/projects/{project.name}/"
-            f"documentSources/{document_collection_name}/processes/{process_name}",
+            f"documentSources/{document_collection.name}/processes/{process_name}",
         )
 
         process_details_dto = response["payload"]
@@ -1829,7 +1846,7 @@ class Client:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
-        Use Project.get_process() instead.
+        Use Process.get_process_state() instead.
         """
         response = self.__request(
             "get",
