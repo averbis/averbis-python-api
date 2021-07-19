@@ -25,6 +25,7 @@ import logging
 from concurrent.futures.thread import ThreadPoolExecutor
 from functools import wraps
 from io import BytesIO, IOBase
+from json import JSONDecodeError
 
 from time import sleep, time
 from typing import List, Union, IO, Iterable, Dict, Iterator, Optional
