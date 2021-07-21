@@ -30,7 +30,6 @@ from averbis.core import (
 )
 from tests.fixtures import *
 
-
 TEST_DIRECTORY = os.path.dirname(__file__)
 
 logging.basicConfig(level=logging.INFO)
@@ -747,6 +746,23 @@ def test_classify_document(client, requests_mock):
     assert response["classifications"][0]["documentIdentifier"] == "UNKNOWN"
 
 
+def test_list_resources(client, requests_mock):
+    expected_resources_list = [
+        "test1.txt",
+        "test2.txt",
+        "test3.txt",
+    ]
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/resources",
+        headers={"Content-Type": "application/json"},
+        json={"payload": {"files": expected_resources_list}, "errorMessages": []},
+    )
+
+    actual_resources_list = client.list_resources()
+    assert actual_resources_list == expected_resources_list
+
+
 def test_select(client, requests_mock):
     requests_mock.get(
         f"{API_BASE}/search/projects/LoadTesting/select",
@@ -807,7 +823,7 @@ def test_with_settings_file_with_defaults_id(requests_mock_id6):
 
 
 def test_handle_error_outside_platform(client, requests_mock):
-    """ Simulates an error that is outside the scope of our platform. """
+    """Simulates an error that is outside the scope of our platform."""
     requests_mock.get(
         f"{API_BASE}/invalid_url",
         headers={"Content-Type": "application/json"},
@@ -821,7 +837,7 @@ def test_handle_error_outside_platform(client, requests_mock):
 
 
 def test_handle_error_in_non_existing_endpoint(client, requests_mock):
-    """ Simulates the scenario that an invalid URL is called. The URL is in the namespace of a platform. """
+    """Simulates the scenario that an invalid URL is called. The URL is in the namespace of a platform."""
     requests_mock.get(
         f"{API_BASE}/invalid_url",
         headers={"Content-Type": "application/json"},
@@ -839,7 +855,7 @@ def test_handle_error_in_non_existing_endpoint(client, requests_mock):
 
 
 def test_handle_error_bad_request(client, requests_mock):
-    """ Simulates a bad request with error message 400, e.g. creating a project that already exists. """
+    """Simulates a bad request with error message 400, e.g. creating a project that already exists."""
     requests_mock.get(
         f"{API_BASE}/invalid_url",
         headers={"Content-Type": "application/json"},
@@ -856,7 +872,7 @@ def test_handle_error_bad_request(client, requests_mock):
 
 
 def test_handle_error_no_access(client, requests_mock):
-    """ Simulates the scenario where the user has no access. """
+    """Simulates the scenario where the user has no access."""
     requests_mock.get(f"{API_BASE}/url/that/cannot/be/accessed", status_code=401)
     with pytest.raises(Exception) as ex:
         client._Client__request_with_json_response(

@@ -259,3 +259,24 @@ def test_delete_pipeline_v6(client_version_6, requests_mock):
         json={"payload": None, "errorMessages": []},
     )
     pipeline.delete()
+
+
+def test_list_resources(client, requests_mock):
+    pipeline = Pipeline(Project(client, "LoadTesting"), "discharge")
+
+    expected_resources_list = [
+        "test1.txt",
+        "test2.txt",
+        "test3.txt",
+    ]
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis"
+        f"/projects/{pipeline.project.name}"
+        f"/pipelines/{pipeline.name}/resources",
+        headers={"Content-Type": "application/json"},
+        json={"payload": {"files": expected_resources_list}, "errorMessages": []},
+    )
+
+    actual_resources_list = pipeline.list_resources()
+    assert actual_resources_list == expected_resources_list
