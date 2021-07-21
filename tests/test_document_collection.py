@@ -139,8 +139,6 @@ def test_get_process(client_version_6, requests_mock):
     process_name = "my_process"
     document_source_name = "my_document_source"
     pipeline_name = "my_pipeline_name"
-    state = "IDLE"
-    number_of_documents = 12
 
     expected_process = Process(project, process_name, document_source_name, pipeline_name)
 
@@ -148,8 +146,8 @@ def test_get_process(client_version_6, requests_mock):
         "processName": process_name,
         "pipelineName": pipeline_name,
         "documentSourceName": document_source_name,
-        "state": state,
-        "processedDocuments": number_of_documents,
+        "state": "IDLE",
+        "processedDocuments": 12,
     }
 
     requests_mock.get(

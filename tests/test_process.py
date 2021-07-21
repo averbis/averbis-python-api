@@ -54,7 +54,7 @@ def test_rerun(process, requests_mock):
     process.rerun()
 
 
-def test_create_and_run_process_on_process(process, requests_mock):
+def test_create_and_run_process(process, requests_mock):
     process_name = "process-on-process"
     pipeline_name = "second-pipeline"
 
@@ -64,15 +64,12 @@ def test_create_and_run_process_on_process(process, requests_mock):
         json={"payload": None, "errorMessages": []},
     )
 
-    state = "IDLE"
-    number_of_documents = 12
-
     payload = {
         "processName": process_name,
         "pipelineName": pipeline_name,
         "documentSourceName": process.document_source_name,
-        "state": state,
-        "processedDocuments": number_of_documents,
+        "state": "IDLE",
+        "processedDocuments": 12,
         "precedingProcessName": process.name
     }
 
@@ -83,7 +80,7 @@ def test_create_and_run_process_on_process(process, requests_mock):
         json={"payload": payload, "errorMessages": []},
     )
 
-    actual_process_with_preceding_process = process.create_and_run_process_on_process(process_name, pipeline_name)
+    actual_process_with_preceding_process = process.create_and_run_process(process_name, pipeline_name)
 
     expected_process = Process(process.project, process_name, process.document_source_name, pipeline_name,
                                preceding_process_name=process.name)
@@ -93,16 +90,12 @@ def test_create_and_run_process_on_process(process, requests_mock):
 
 def test_deprecated_process_state(process, requests_mock):
     # todo: delete me when v6 is released
-
-    state = "IDLE"
-    number_of_documents = 12
-
     payload = {
         "processName": process.name,
         "pipelineName": process.pipeline_name,
         "documentSourceName": process.document_source_name,
-        "state": state,
-        "processedDocuments": number_of_documents,
+        "state": "IDLE",
+        "processedDocuments": 12,
     }
 
     requests_mock.get(
@@ -117,13 +110,11 @@ def test_deprecated_process_state(process, requests_mock):
 
 
 def test_process_state(process, requests_mock):
-    state = "IDLE"
-
     payload = {
         "processName": process.name,
         "pipelineName": process.pipeline_name,
         "documentSourceName": process.document_source_name,
-        "state": state,
+        "state": "IDLE",
         "numberOfTotalDocuments": 6871,
         "numberOfSuccessfulDocuments": 6871,
         "numberOfUnsuccessfulDocuments": 0,

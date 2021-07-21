@@ -527,7 +527,7 @@ class Process:
         self.project.client._delete_process(self.project.name, self.name, self.document_source_name)
 
     @experimental_api
-    def create_and_run_process_on_process(
+    def create_and_run_process(
         self, process_name: str, pipeline: Union[str, Pipeline]
     ) -> "Process":
         """
@@ -1846,19 +1846,19 @@ class Client:
 
         project = document_collection.project
 
-        create_process_dto = {
+        request_json = {
             "processName": process_name,
             "documentSourceName": document_collection.name,
             "pipelineName": pipeline_name,
         }
 
         if preceding_process_name:
-            create_process_dto["precedingProcessName"] = preceding_process_name
+            request_json["precedingProcessName"] = preceding_process_name
 
         response = self.__request_with_json_response(
             "post",
             f"/experimental/textanalysis/projects/{project.name}/processes",
-            json=create_process_dto,
+            json=request_json,
         )
 
         return response["payload"]
@@ -1882,17 +1882,17 @@ class Client:
             f"documentSources/{document_collection.name}/processes/{process_name}",
         )
 
-        process_details_dto = response["payload"]
+        process_details = response["payload"]
 
         preceding_process_name = None
-        if "precedingProcessName" in process_details_dto:
-            preceding_process_name = process_details_dto["precedingProcessName"]
+        if "precedingProcessName" in process_details:
+            preceding_process_name = process_details["precedingProcessName"]
 
         return Process(
             project=project,
-            name=process_details_dto["processName"],
-            pipeline_name=process_details_dto["pipelineName"],
-            document_source_name=process_details_dto["documentSourceName"],
+            name=process_details["processName"],
+            pipeline_name=process_details["pipelineName"],
+            document_source_name=process_details["documentSourceName"],
             preceding_process_name=preceding_process_name,
         )
 
@@ -1908,28 +1908,28 @@ class Client:
             f"/experimental/textanalysis/projects/{project.name}/"
             f"documentSources/{process.document_source_name}/processes/{process.name}",
         )
-        process_details_dto = response["payload"]
+        process_details = response["payload"]
 
-        if "processedDocuments" in process_details_dto:
+        if "processedDocuments" in process_details:
             # todo: delete this if condition when v6 is released
             return Process.ProcessState(
                 process=process,
-                state=process_details_dto.get("state"),
-                processed_documents=process_details_dto.get("processedDocuments"),
+                state=process_details.get("state"),
+                processed_documents=process_details.get("processedDocuments"),
             )
         else:
             return Process.ProcessState(
                 process=process,
-                state=process_details_dto.get("state"),
-                number_of_total_documents=process_details_dto.get("numberOfTotalDocuments"),
-                number_of_successful_documents=process_details_dto.get(
+                state=process_details.get("state"),
+                number_of_total_documents=process_details.get("numberOfTotalDocuments"),
+                number_of_successful_documents=process_details.get(
                     "numberOfSuccessfulDocuments"
                 ),
-                number_of_unsuccessful_documents=process_details_dto.get(
+                number_of_unsuccessful_documents=process_details.get(
                     "numberOfUnsuccessfulDocuments"
                 ),
-                error_messages=process_details_dto.get("errorMessages"),
-                preceding_process_name=process_details_dto.get("precedingProcessName"),
+                error_messages=process_details.get("errorMessages"),
+                preceding_process_name=process_details.get("precedingProcessName"),
             )
 
     @experimental_api
