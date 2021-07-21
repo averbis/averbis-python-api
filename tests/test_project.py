@@ -182,13 +182,8 @@ def test_list_resources(client, requests_mock):
 
     requests_mock.get(
         f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/resources",
-        json={
         headers={"Content-Type": "application/json"},
-            "payload": {
-            },
-                "files": expected_resources_list
-            "errorMessages": []
-        }
+        json={"payload": {"files": expected_resources_list}, "errorMessages": []},
     )
 
     actual_resources_list = project.list_resources()
