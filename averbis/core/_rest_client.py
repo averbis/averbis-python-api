@@ -25,12 +25,15 @@ import logging
 from concurrent.futures.thread import ThreadPoolExecutor
 from functools import wraps
 from io import BytesIO, IOBase
+from json import JSONDecodeError
 
 from time import sleep, time
 from typing import List, Union, IO, Iterable, Dict, Iterator, Optional
 from pathlib import Path
 import requests
 import mimetypes
+
+from requests import RequestException
 
 ENCODING_UTF_8 = "utf-8"
 
@@ -568,9 +571,11 @@ class Process:
         Returns an analysis as a UIMA CAS.
         """
 
-        type_system = load_typesystem(self.project.client._export_analysis_result_typesystem(
-            self.project.name, self.document_source_name, document_id, self
-        ))
+        type_system = load_typesystem(
+            self.project.client._export_analysis_result_typesystem(
+                self.project.name, self.document_source_name, document_id, self
+            )
+        )
 
         # noinspection PyProtectedMember
         return load_cas_from_xmi(
@@ -1044,27 +1049,38 @@ class Client:
     def _build_url(self, endpoint):
         return f"{self._url.rstrip('/')}/rest/{endpoint.lstrip('/')}"
 
-    def __request(self, method: str, endpoint: str, **kwargs) -> dict:
+    def __request_with_json_response(self, method: str, endpoint: str, **kwargs) -> dict:
+        """
+        A json response is used in almost all endpoints. Error messages are also returned as json.
+        """
         raw_response = self._run_request(method, endpoint, **kwargs)
-        response = raw_response.json()
-        self.__handle_error(response)
-        return response
+
+        if not raw_response.ok:
+            self.__handle_error(raw_response)
+
+        try:
+            return raw_response.json()
+        except JSONDecodeError as e:
+            raise JSONDecodeError(
+                msg="The server successfully returned a response, however, this response could not be converted to Json.",
+                doc=e.doc,
+                pos=e.pos,
+            )
 
     def __request_with_bytes_response(self, method: str, endpoint: str, **kwargs) -> bytes:
         """
         A bytes response is used in the experimental API for encoding CAS objects.
         """
         raw_response = self._run_request(method, endpoint, **kwargs)
+        if not raw_response.ok:
+            self.__handle_error(raw_response)
 
         content_type_header = raw_response.headers.get(HEADER_CONTENT_TYPE, "")
         is_actually_json_response = MEDIA_TYPE_APPLICATION_JSON in content_type_header
         if is_actually_json_response:
-            raw_response.raise_for_status()
             raise TypeError(
                 f"Expected the return content to be bytes, but got [{content_type_header}]: {raw_response}"
             )
-
-        raw_response.raise_for_status()
         return raw_response.content
 
     def _default_headers(self, items=None) -> dict:
@@ -1088,7 +1104,7 @@ class Client:
         :return: The raw payload of the server response. Future versions of this library may return a better-suited
                  representation.
         """
-        response = self.__request(
+        response = self.__request_with_json_response(
             "put",
             f"/v1/users/{user}/changeMyPassword",
             json={"oldPassword": old_password, "newPassword": new_password},
@@ -1103,7 +1119,7 @@ class Client:
         :return: the API token that was obtained
         """
 
-        response = self.__request(
+        response = self.__request_with_json_response(
             "post", f"/v1/users/{user}/apitoken", json={"password": password, "userSourceName": ""}
         )
         self._api_token = response["payload"]
@@ -1117,7 +1133,7 @@ class Client:
         :return: the API token that was obtained
         """
 
-        response = self.__request(
+        response = self.__request_with_json_response(
             "put", f"/v1/users/{user}/apitoken", json={"password": password, "userSourceName": ""}
         )
         self._api_token = response["payload"]
@@ -1128,7 +1144,7 @@ class Client:
         Invalidates the API token for the given user. This method does not clear the API token from this client object.
         If the client is currently using the API token that is being cleared, subsequent operations will fail.
         """
-        self.__request(
+        self.__request_with_json_response(
             "delete",
             f"/v1/users/{user}/apitoken",
             json={"password": password, "userSourceName": ""},
@@ -1142,7 +1158,7 @@ class Client:
         :return: The raw payload of the server response. Future versions of this library may return a better-suited
                  representation.
         """
-        response = self.__request(
+        response = self.__request_with_json_response(
             "post",
             f"/v1/users/{user}/apitoken/status",
             json={"password": password, "userSourceName": ""},
@@ -1165,7 +1181,7 @@ class Client:
                  representation.
         """
         if not self._build_info:
-            response = self.__request("get", f"/v1/buildInfo")
+            response = self.__request_with_json_response("get", f"/v1/buildInfo")
             self._build_info = response["payload"]
         return self._build_info
 
@@ -1175,7 +1191,7 @@ class Client:
 
         :return: The project.
         """
-        response = self.__request(
+        response = self.__request_with_json_response(
             "post", f"/v1/projects", params={"name": name, "description": description}
         )
         return Project(self, response["payload"]["name"])
@@ -1196,7 +1212,7 @@ class Client:
         Returns a list of the projects.
         """
 
-        response = self.__request("get", f"/experimental/projects")
+        response = self.__request_with_json_response("get", f"/experimental/projects")
         return response["payload"]
 
     @experimental_api
@@ -1223,7 +1239,9 @@ class Client:
         """
         Use Project.list_document_collections() instead.
         """
-        response = self.__request("get", f"/v1/importer/projects/{project}/documentCollections")
+        response = self.__request_with_json_response(
+            "get", f"/v1/importer/projects/{project}/documentCollections"
+        )
 
         return response["payload"]
 
@@ -1231,7 +1249,7 @@ class Client:
         """
         Use Project.create_document_collection() instead.
         """
-        response = self.__request(
+        response = self.__request_with_json_response(
             "post",
             f"/v1/importer/projects/{project}/documentCollections",
             json={"name": collection_name},
@@ -1242,7 +1260,7 @@ class Client:
         """
         Use DocumentCollection.get_number_of_documents() instead.
         """
-        response = self.__request(
+        response = self.__request_with_json_response(
             "get", f"/v1/importer/projects/{project}/documentCollections/{collection_name}"
         )
 
@@ -1252,7 +1270,7 @@ class Client:
         """
         Use DocumentCollection.delete() instead.
         """
-        response = self.__request(
+        response = self.__request_with_json_response(
             "delete", f"/v1/importer/projects/{project}/documentCollections/{collection_name}"
         )
         return response["payload"]
@@ -1265,7 +1283,7 @@ class Client:
         Lists the documents in the collection.
         """
 
-        response = self.__request(
+        response = self.__request_with_json_response(
             "get",
             f"/experimental/projects/{project}/documentCollections/{collection_name}/documents",
         )
@@ -1356,7 +1374,7 @@ class Client:
                 MEDIA_TYPE_APPLICATION_XML,
             )
 
-        response = self.__request(
+        response = self.__request_with_json_response(
             "post",
             f"/v1/importer/projects/{project}/documentCollections/{collection_name}/documents",
             files=files,
@@ -1373,7 +1391,9 @@ class Client:
         """
         Use Project.list_terminologies() instead.
         """
-        response = self.__request("get", f"/v1/terminology/projects/{project}/terminologies")
+        response = self.__request_with_json_response(
+            "get", f"/v1/terminology/projects/{project}/terminologies"
+        )
         return response["payload"]
 
     def _create_terminology(
@@ -1389,7 +1409,7 @@ class Client:
         """
         Use Project.create_terminology() instead.
         """
-        response = self.__request(
+        response = self.__request_with_json_response(
             "post",
             f"/v1/terminology/projects/{project}/terminologies",
             json={
@@ -1407,13 +1427,15 @@ class Client:
         """
         Use Terminology.delete() instead.
         """
-        self.__request("delete", f"/v1/terminology/projects/{project}/terminologies/{terminology}")
+        self.__request_with_json_response(
+            "delete", f"/v1/terminology/projects/{project}/terminologies/{terminology}"
+        )
 
     def _start_terminology_export(self, project: str, terminology: str, exporter: str) -> None:
         """
         Use Terminology.start_export() instead.
         """
-        self.__request(
+        self.__request_with_json_response(
             "post",
             f"/v1/terminology/projects/{project}/terminologies/{terminology}/terminologyExports",
             params={"terminologyExporterName": exporter},
@@ -1423,7 +1445,7 @@ class Client:
         """
         Use Terminology.get_export_status() instead.
         """
-        response = self.__request(
+        response = self.__request_with_json_response(
             "get",
             f"/v1/terminology/projects/{project}/terminologies/{terminology}/terminologyExports",
         )
@@ -1444,7 +1466,7 @@ class Client:
 
         data: IO = BytesIO(source.encode(ENCODING_UTF_8)) if isinstance(source, str) else source
 
-        self.__request(
+        self.__request_with_json_response(
             "post",
             f"/v1/terminology/projects/{project}/terminologies/{terminology}/terminologyImports",
             data=data,
@@ -1456,7 +1478,7 @@ class Client:
         """
         Use Terminology.get_import_status() instead.
         """
-        response = self.__request(
+        response = self.__request_with_json_response(
             "get",
             f"/v1/terminology/projects/{project}/terminologies/{terminology}/terminologyImports",
             headers={HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_JSON},
@@ -1464,7 +1486,7 @@ class Client:
         return response["payload"]
 
     def _create_pipeline(self, project: str, configuration: dict) -> Pipeline:
-        response = self.__request(
+        response = self.__request_with_json_response(
             "post",
             f"/v1/textanalysis/projects/{project}/pipelines",
             json=configuration,
@@ -1478,37 +1500,37 @@ class Client:
 
         Use Pipeline.delete() instead.
         """
-        response = self.__request(
+        response = self.__request_with_json_response(
             "delete", f"/experimental/textanalysis/projects/{project}/pipelines/{pipeline}"
         )
         return response["payload"]
 
     def _start_pipeline(self, project: str, pipeline: str) -> dict:
-        response = self.__request(
+        response = self.__request_with_json_response(
             "put", f"/v1/textanalysis/projects/{project}/pipelines/{pipeline}/start"
         )
         return response["payload"]
 
     def _stop_pipeline(self, project: str, pipeline: str) -> dict:
-        response = self.__request(
+        response = self.__request_with_json_response(
             "put", f"/v1/textanalysis/projects/{project}/pipelines/{pipeline}/stop"
         )
         return response["payload"]
 
     def _get_pipeline_info(self, project: str, pipeline: str) -> dict:
-        response = self.__request(
+        response = self.__request_with_json_response(
             "get", f"/v1/textanalysis/projects/{project}/pipelines/{pipeline}"
         )
         return response["payload"]
 
     def _get_pipeline_configuration(self, project: str, pipeline: str) -> dict:
-        response = self.__request(
+        response = self.__request_with_json_response(
             "get", f"/v1/textanalysis/projects/{project}/pipelines/{pipeline}/configuration"
         )
         return response["payload"]
 
     def _set_pipeline_configuration(self, project: str, pipeline: str, configuration: dict) -> None:
-        self.__request(
+        self.__request_with_json_response(
             "put",
             f"/v1/textanalysis/projects/{project}/pipelines/{pipeline}/configuration",
             json=configuration,
@@ -1527,7 +1549,7 @@ class Client:
             else:
                 return MEDIA_TYPE_OCTET_STREAM
 
-        response = self.__request(
+        response = self.__request_with_json_response(
             "post",
             f"/v1/classification/projects/{project}/classificationSets/{classification_set}/classifyDocument",
             data=data,
@@ -1550,7 +1572,7 @@ class Client:
 
         data: IO = BytesIO(source.encode(ENCODING_UTF_8)) if isinstance(source, str) else source
 
-        response = self.__request(
+        response = self.__request_with_json_response(
             "post",
             f"/v1/textanalysis/projects/{project}/pipelines/{pipeline}/analyseText",
             data=data,
@@ -1573,7 +1595,7 @@ class Client:
 
         data: IO = BytesIO(source.encode(ENCODING_UTF_8)) if isinstance(source, str) else source
 
-        response = self.__request(
+        response = self.__request_with_json_response(
             "post",
             f"/v1/textanalysis/projects/{project}/pipelines/{pipeline}/analyseHtml",
             data=data,
@@ -1583,7 +1605,7 @@ class Client:
         return response["payload"]
 
     def _select(self, project: str, q: str = None, **kwargs) -> dict:
-        response = self.__request(
+        response = self.__request_with_json_response(
             "get",
             f"/v1/search/projects/{project}/select",
             params={"q": q, **kwargs},
@@ -1597,7 +1619,7 @@ class Client:
         """
         Use Process.export_text_analysis() instead.
         """
-        response = self.__request(
+        response = self.__request_with_json_response(
             "get",
             f"/v1/textanalysis/projects/{project}/documentSources/{document_source}/processes/{process}/export",
             params={"annotationTypes": annotation_types},
@@ -1715,7 +1737,7 @@ class Client:
 
         Use Project.list_pears() instead.
         """
-        response = self.__request(
+        response = self.__request_with_json_response(
             "get", f"/experimental/textanalysis/projects/{project}/pearComponents"
         )
         return response["payload"]
@@ -1727,7 +1749,7 @@ class Client:
 
         Use Project.delete_pear() instead.
         """
-        self.__request(
+        self.__request_with_json_response(
             "delete",
             f"/experimental/textanalysis/projects/{project}/pearComponents/{pear_identifier}",
         )
@@ -1749,7 +1771,7 @@ class Client:
         if not file_or_path.name.endswith(".pear"):
             raise Exception(f"{file_or_path.name} was not of type '.pear'")
 
-        response = self.__request(
+        response = self.__request_with_json_response(
             "post",
             f"/experimental/textanalysis/projects/{project}/pearComponents",
             files={"pearPackage": (file_or_path.name, file_or_path, "application/octet-stream")},
@@ -1763,7 +1785,7 @@ class Client:
 
         Use Pear.get_default_configuration() instead.
         """
-        response = self.__request(
+        response = self.__request_with_json_response(
             "get", f"/experimental/textanalysis/projects/{project}/pearComponents/{pear_identifier}"
         )
         return response["payload"]
@@ -1775,7 +1797,7 @@ class Client:
 
         Use Project.list_processes() instead.
         """
-        response = self.__request(
+        response = self.__request_with_json_response(
             "get", f"/experimental/textanalysis/projects/{project.name}/processes"
         )
         processes = []
@@ -1805,7 +1827,7 @@ class Client:
             "pipelineName": pipeline_name,
         }
 
-        response = self.__request(
+        response = self.__request_with_json_response(
             "post",
             f"/experimental/textanalysis/projects/{project.name}/processes",
             json=create_process_dto,
@@ -1826,7 +1848,7 @@ class Client:
         """
         project = document_collection.project
 
-        response = self.__request(
+        response = self.__request_with_json_response(
             "get",
             f"/experimental/textanalysis/projects/{project.name}/"
             f"documentSources/{document_collection.name}/processes/{process_name}",
@@ -1848,7 +1870,7 @@ class Client:
 
         Use Process.get_process_state() instead.
         """
-        response = self.__request(
+        response = self.__request_with_json_response(
             "get",
             f"/experimental/textanalysis/projects/{project.name}/"
             f"documentSources/{process.document_source_name}/processes/{process.name}",
@@ -1886,7 +1908,7 @@ class Client:
 
         Use Process.delete() instead.
         """
-        self.__request(
+        self.__request_with_json_response(
             "delete",
             f"/experimental/textanalysis/projects/{project_name}/"
             f"documentSources/{document_source_name}/processes/{process_name}",
@@ -1900,7 +1922,7 @@ class Client:
 
         Use Process.rerun() instead.
         """
-        self.__request(
+        self.__request_with_json_response(
             "post",
             f"/experimental/textanalysis/projects/{project_name}/"
             f"documentSources/{document_source_name}/processes/{process_name}/reprocess",
@@ -1908,11 +1930,52 @@ class Client:
         return None
 
     @staticmethod
-    def __handle_error(response):
-        if response["errorMessages"] is None or len(response["errorMessages"]) == 0:
-            return
+    def __handle_error(raw_response: requests.Response):
+        """
+        Reports as much information about an error as possible.
 
-        raise Exception("Unable to perform request: " + ", ".join(response["errorMessages"]))
+        The error information is potentially composed of two parts:
+            First, there can be information in the status_code and reason of the raw_response for general HTTPErrors
+            Second, the response might actually contain json with some information in the keys "message" or "errorMessages"
+        """
+        status_code = raw_response.status_code
+        reason = raw_response.reason
+        url = raw_response.url
+
+        error_msg = ""
+        if isinstance(reason, bytes):
+            # We attempt to decode utf-8 first because some servers
+            # choose to localize their reason strings. If the string
+            # isn't utf-8, we fall back to iso-8859-1 for all other
+            # encodings.
+            try:
+                reason = reason.decode("utf-8")
+            except UnicodeDecodeError:
+                reason = reason.decode("iso-8859-1")
+
+        if 400 <= status_code < 500:
+            error_msg = f"{status_code} Server Error: '{reason}' for url: '{url}'."
+
+        elif 500 <= status_code < 600:
+            error_msg = f"{status_code} Server Error: '{reason}' for url: '{url}'."
+
+        try:
+            response = raw_response.json()
+
+            # Accessing an endpoint that is in the subdomain of the platform, but which does not exist,
+            # returns a general servlet with a field "message"
+            if "message" in response and response["message"] is not None:
+                error_msg += f"\nPlatform error message is: '{response['message']}'"
+
+            # Accessing an existing endpoint that has an error, returns its error in "errorMessages"
+            if "errorMessages" in response and response["errorMessages"] is not None:
+                error_msg += (
+                    f"\nEndpoint error message is: '{', '.join(response['errorMessages'])}'"
+                )
+        except JSONDecodeError:
+            pass
+
+        raise RequestException(error_msg)
 
     @staticmethod
     def __process_name(process: Union[str, Process]):
