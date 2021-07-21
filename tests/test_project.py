@@ -171,6 +171,30 @@ def test_list_document_collection(client, requests_mock):
     assert collections[2].name == "collection2"
 
 
+def test_list_resources(client, requests_mock):
+    project = client.get_project("test-project")
+
+    expected_resources_list = [
+        "test1.txt",
+        "test2.txt",
+        "test3.txt",
+    ]
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/resources",
+        json={
+        headers={"Content-Type": "application/json"},
+            "payload": {
+            },
+                "files": expected_resources_list
+            "errorMessages": []
+        }
+    )
+
+    actual_resources_list = project.list_resources()
+    assert actual_resources_list == expected_resources_list
+
+
 def test_delete_pear_with_pear_does_not_exist(client_version_6, requests_mock):
     project = client_version_6.get_project("test-project")
     pear_identifier = "pear0"

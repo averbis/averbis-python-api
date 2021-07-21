@@ -349,6 +349,18 @@ class Pipeline:
             )
         return self.cached_type_system
 
+    @experimental_api
+    def list_resources(self) -> List[str]:
+        """
+        List the resources of the pipeline.
+
+        :return: The list of pipeline resources.
+        """
+        # noinspection PyProtectedMember
+        return self.project.client._list_resources(
+            project_name=self.project.name, pipeline_name=self.name
+        )["files"]
+
 
 class Terminology:
     EXPORT_STATE_COMPLETED = "COMPLETED"
@@ -946,6 +958,16 @@ class Project:
         # noinspection PyProtectedMember
         return self.client._list_processes(self)
 
+    @experimental_api
+    def list_resources(self) -> List[str]:
+        """
+        List the resources of the project.
+
+        :return: The list of project resources.
+        """
+        # noinspection PyProtectedMember
+        return self.client._list_resources(project_name=self.name)["files"]
+
 
 class Client:
     def __init__(
@@ -1244,6 +1266,14 @@ class Client:
         :return: The project.
         """
         return Project(self, name)
+
+    def list_resources(self) -> List[str]:
+        """
+        List the resources that are globally available.
+
+        :return: List of resources.
+        """
+        return self._list_resources()["files"]
 
     @experimental_api
     def list_projects(self) -> dict:
@@ -1978,6 +2008,16 @@ class Client:
         )
         return None
 
+    @experimental_api
+    def _list_resources(self, project_name=None, pipeline_name=None) -> dict:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Use {client, project, pipeline}.list_resources() instead.
+        """
+        endpoint = self.__get_resources_endpoint(pipeline_name, project_name)
+        return self.__request_with_json_response("get", endpoint)["payload"]
+
     @staticmethod
     def __handle_error(raw_response: requests.Response):
         """
@@ -2041,3 +2081,13 @@ class Client:
             if isinstance(document_collection, DocumentCollection)
             else document_collection
         )
+
+    @staticmethod
+    def __get_resources_endpoint(pipeline_name, project_name):
+        endpoint = "/experimental/textanalysis/"
+        if project_name:
+            endpoint += f"projects/{project_name}/"
+        if pipeline_name:
+            endpoint += f"pipelines/{pipeline_name}/"
+        endpoint += "resources"
+        return endpoint

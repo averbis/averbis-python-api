@@ -30,7 +30,6 @@ from averbis.core import (
 )
 from tests.fixtures import *
 
-
 TEST_DIRECTORY = os.path.dirname(__file__)
 
 logging.basicConfig(level=logging.INFO)
@@ -745,6 +744,23 @@ def test_classify_document(client, requests_mock):
     )
 
     assert response["classifications"][0]["documentIdentifier"] == "UNKNOWN"
+
+
+def test_list_resources(client, requests_mock):
+    expected_resources_list = [
+        "test1.txt",
+        "test2.txt",
+        "test3.txt",
+    ]
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/resources",
+        headers={"Content-Type": "application/json"},
+        json={"payload": {"files": expected_resources_list}, "errorMessages": []},
+    )
+
+    actual_resources_list = client.list_resources()
+    assert actual_resources_list == expected_resources_list
 
 
 def test_select(client, requests_mock):
