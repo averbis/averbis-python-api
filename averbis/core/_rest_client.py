@@ -685,8 +685,11 @@ class DocumentCollection:
 
         Lists the processes of the collection.
         """
-        # noinspection PyProtectedMember
-        return self.project.client._list_processes_of_document_collection(self.project, self.name)
+        return [
+            process
+            for process in self.project.list_processes()
+            if process.document_source_name == self.name
+        ]
 
 
 class Pear:
@@ -1815,21 +1818,6 @@ class Client:
             document_collection = project.get_document_collection(item["documentSourceName"])
             processes.append(document_collection.get_process(item["processName"]))
         return processes
-
-    @experimental_api
-    def _list_processes_of_document_collection(
-        self, project: "Project", document_collection_name: str
-    ) -> List[Process]:
-        """
-        HIGHLY EXPERIMENTAL API - may soon change or disappear.
-
-        Use DocumentCollection.list_processes() instead.
-        """
-        return [
-            process
-            for process in self._list_processes(project)
-            if process.document_source_name == document_collection_name
-        ]
 
     @experimental_api
     def _create_and_run_process(
