@@ -70,7 +70,7 @@ def test_create_and_run_process(process, requests_mock):
         "documentSourceName": process.document_source_name,
         "state": "IDLE",
         "processedDocuments": 12,
-        "precedingProcessName": process.name
+        "precedingProcessName": process.name,
     }
 
     requests_mock.get(
@@ -80,10 +80,17 @@ def test_create_and_run_process(process, requests_mock):
         json={"payload": payload, "errorMessages": []},
     )
 
-    actual_process_with_preceding_process = process.create_and_run_process(process_name, pipeline_name)
+    actual_process_with_preceding_process = process.create_and_run_process(
+        process_name, pipeline_name
+    )
 
-    expected_process = Process(process.project, process_name, process.document_source_name, pipeline_name,
-                               preceding_process_name=process.name)
+    expected_process = Process(
+        process.project,
+        process_name,
+        process.document_source_name,
+        pipeline_name,
+        preceding_process_name=process.name,
+    )
 
     assert_process_equal(actual_process_with_preceding_process, expected_process)
 

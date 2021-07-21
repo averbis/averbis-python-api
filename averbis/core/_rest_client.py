@@ -476,7 +476,12 @@ class Terminology:
 
 class Process:
     def __init__(
-        self, project: "Project", name: str, document_source_name: str, pipeline_name: str, preceding_process_name=None
+        self,
+        project: "Project",
+        name: str,
+        document_source_name: str,
+        pipeline_name: str,
+        preceding_process_name=None,
     ):
         self.project = project
         self.name = name
@@ -1922,9 +1927,7 @@ class Client:
                 process=process,
                 state=process_details.get("state"),
                 number_of_total_documents=process_details.get("numberOfTotalDocuments"),
-                number_of_successful_documents=process_details.get(
-                    "numberOfSuccessfulDocuments"
-                ),
+                number_of_successful_documents=process_details.get("numberOfSuccessfulDocuments"),
                 number_of_unsuccessful_documents=process_details.get(
                     "numberOfUnsuccessfulDocuments"
                 ),
