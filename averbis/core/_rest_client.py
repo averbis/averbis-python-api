@@ -678,6 +678,19 @@ class DocumentCollection:
         # noinspection PyProtectedMember
         return self.project.client._list_documents(self.project.name, self.name)
 
+    @experimental_api
+    def list_processes(self) -> List[Process]:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Lists the processes of the collection.
+        """
+        return [
+            process
+            for process in self.project.list_processes()
+            if process.document_source_name == self.name
+        ]
+
 
 class Pear:
     def __init__(self, project: "Project", identifier: str):
