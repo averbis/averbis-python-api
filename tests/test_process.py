@@ -21,6 +21,7 @@
 from averbis import Process, Project, Pipeline
 from averbis.core import OperationNotSupported
 from tests.fixtures import *
+from tests.utils import *
 
 
 @pytest.fixture()
@@ -51,6 +52,43 @@ def test_rerun(process, requests_mock):
     )
 
     process.rerun()
+
+
+def test_create_and_run_process_on_process(process, requests_mock):
+    process_name = "process-on-process"
+    pipeline_name = "second-pipeline"
+
+    requests_mock.post(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{process.project.name}/processes",
+        headers={"Content-Type": "application/json"},
+        json={"payload": None, "errorMessages": []},
+    )
+
+    state = "IDLE"
+    number_of_documents = 12
+
+    payload = {
+        "processName": process_name,
+        "pipelineName": pipeline_name,
+        "documentSourceName": process.document_source_name,
+        "state": state,
+        "processedDocuments": number_of_documents,
+        "precedingProcessName": process.name
+    }
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/test-project/"
+        f"documentSources/{process.document_source_name}/processes/{process_name}",
+        headers={"Content-Type": "application/json"},
+        json={"payload": payload, "errorMessages": []},
+    )
+
+    actual_process_with_preceding_process = process.create_and_run_process_on_process(process_name, pipeline_name)
+
+    expected_process = Process(process.project, process_name, process.document_source_name, pipeline_name,
+                               preceding_process_name=process.name)
+
+    assert_process_equal(actual_process_with_preceding_process, expected_process)
 
 
 def test_deprecated_process_state(process, requests_mock):
@@ -90,7 +128,6 @@ def test_process_state(process, requests_mock):
         "numberOfSuccessfulDocuments": 6871,
         "numberOfUnsuccessfulDocuments": 0,
         "errorMessages": [],
-        "precedingProcessName": "precedingProcessName",
     }
 
     requests_mock.get(
@@ -102,7 +139,6 @@ def test_process_state(process, requests_mock):
 
     process_dto = process.get_process_state()
     assert process_dto.processed_documents is None
-    assert process_dto.preceding_process_name == "precedingProcessName"
     assert process_dto.state == "IDLE"
 
 

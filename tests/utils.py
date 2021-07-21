@@ -18,9 +18,12 @@
 #
 #
 
+from averbis import Process
 
-def assert_process_equal(expected_process, actual):
-    assert expected_process.name == actual.name
-    assert expected_process.project.name == actual.project.name
-    assert expected_process.pipeline_name == actual.pipeline_name
-    assert expected_process.document_source_name == actual.document_source_name
+
+def assert_process_equal(expected_process: "Process", actual_process: "Process"):
+    assert expected_process.name == actual_process.name
+    assert expected_process.project.name == actual_process.project.name
+    assert expected_process.pipeline_name == actual_process.pipeline_name
+    assert expected_process.document_source_name == actual_process.document_source_name
+    assert expected_process.preceding_process_name == actual_process.preceding_process_name

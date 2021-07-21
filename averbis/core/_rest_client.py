@@ -476,17 +476,19 @@ class Terminology:
 
 class Process:
     def __init__(
-        self, project: "Project", name: str, document_source_name: str, pipeline_name: str
+        self, project: "Project", name: str, document_source_name: str, pipeline_name: str, preceding_process_name=None
     ):
         self.project = project
         self.name = name
         self.document_source_name = document_source_name
         self.pipeline_name = pipeline_name
+        self.preceding_process_name = preceding_process_name
 
     def __repr__(self):
         return (
             f'{self.__class__.__name__}(name="{self.name}", project="{self.project.name}",'
-            f' pipeline_name="{self.pipeline_name}", document_source_name="{self.document_source_name}")'
+            f' pipeline_name="{self.pipeline_name}", document_source_name="{self.document_source_name}",'
+            f' preceding_process_name="{self.preceding_process_name}")'
         )
 
     class ProcessState:
@@ -513,7 +515,6 @@ class Process:
                 "number_of_unsuccessful_documents"
             )
             self.error_messages: List[str] = kwargs.get("error_messages")
-            self.preceding_process_name: str = kwargs.get("preceding_process_name")
 
     @experimental_api
     def delete(self):
@@ -524,6 +525,28 @@ class Process:
         """
         # noinspection PyProtectedMember
         self.project.client._delete_process(self.project.name, self.name, self.document_source_name)
+
+    @experimental_api
+    def create_and_run_process_on_process(
+        self, process_name: str, pipeline: Union[str, Pipeline]
+    ) -> "Process":
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Creates a process upon the results of this process.
+        """
+
+        document_collection = self.project.get_document_collection(self.document_source_name)
+
+        # noinspection PyProtectedMember
+        self.project.client._create_and_run_process(
+            document_collection=document_collection,
+            process_name=process_name,
+            pipeline=pipeline,
+            preceding_process_name=self.name,
+        )
+
+        return document_collection.get_process(process_name=process_name)
 
     @experimental_api
     def rerun(self):
@@ -1812,6 +1835,7 @@ class Client:
         document_collection: DocumentCollection,
         process_name: str,
         pipeline: Union[str, Pipeline],
+        preceding_process_name=None,
     ) -> dict:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -1819,6 +1843,7 @@ class Client:
         Use DocumentCollection.create_and_run_process() instead.
         """
         pipeline_name = self.__pipeline_name(pipeline)
+
         project = document_collection.project
 
         create_process_dto = {
@@ -1826,6 +1851,9 @@ class Client:
             "documentSourceName": document_collection.name,
             "pipelineName": pipeline_name,
         }
+
+        if preceding_process_name:
+            create_process_dto["precedingProcessName"] = preceding_process_name
 
         response = self.__request_with_json_response(
             "post",
@@ -1856,11 +1884,16 @@ class Client:
 
         process_details_dto = response["payload"]
 
+        preceding_process_name = None
+        if "precedingProcessName" in process_details_dto:
+            preceding_process_name = process_details_dto["precedingProcessName"]
+
         return Process(
             project=project,
             name=process_details_dto["processName"],
             pipeline_name=process_details_dto["pipelineName"],
             document_source_name=process_details_dto["documentSourceName"],
+            preceding_process_name=preceding_process_name,
         )
 
     @experimental_api
