@@ -22,6 +22,7 @@ import tempfile
 
 from averbis import Process
 from tests.fixtures import *
+from tests.utils import *
 
 logging.basicConfig(level=logging.INFO)
 
@@ -99,80 +100,6 @@ def test_delete_pear_success(client_version_6, requests_mock):
     project.delete_pear(pear_identifier)
 
 
-def test_create_and_run_process(client_version_6, requests_mock):
-    project = client_version_6.get_project("test-project")
-    process_name = "my_process"
-    document_source_name = "my_document_source"
-    pipeline_name = "my_pipeline_name"
-    state = "IDLE"
-    number_of_documents = 12
-
-    requests_mock.post(
-        f"{API_EXPERIMENTAL}/textanalysis/projects/test-project/processes",
-        headers={"Content-Type": "application/json"},
-        json={"payload": None, "errorMessages": []},
-    )
-
-    requests_mock.get(
-        f"{API_EXPERIMENTAL}/textanalysis/projects/test-project/"
-        f"documentSources/{document_source_name}/processes/{process_name}",
-        headers={"Content-Type": "application/json"},
-        json={
-            "payload": {
-                "processName": process_name,
-                "pipelineName": pipeline_name,
-                "documentSourceName": document_source_name,
-                "state": state,
-                "processedDocuments": number_of_documents,
-            },
-            "errorMessages": [],
-        },
-    )
-
-    collection = project.get_document_collection(document_source_name)
-    actual_process = collection.create_and_run_process(
-        process_name=process_name, pipeline=pipeline_name
-    )
-
-    expected_process = Process(project, process_name, document_source_name, pipeline_name)
-    assert_process_equal(expected_process, actual_process)
-
-
-def test_get_process(client_version_6, requests_mock):
-    project = client_version_6.get_project("test-project")
-    process_name = "my_process"
-    document_source_name = "my_document_source"
-    pipeline_name = "my_pipeline_name"
-    state = "IDLE"
-    number_of_documents = 12
-
-    expected_process = Process(project, process_name, document_source_name, pipeline_name)
-
-    payload = {
-        "processName": process_name,
-        "pipelineName": pipeline_name,
-        "documentSourceName": document_source_name,
-        "state": state,
-        "processedDocuments": number_of_documents,
-    }
-
-    requests_mock.get(
-        f"{API_EXPERIMENTAL}/textanalysis/projects/test-project/"
-        f"documentSources/{document_source_name}/processes/{process_name}",
-        headers={"Content-Type": "application/json"},
-        json={"payload": payload, "errorMessages": []},
-    )
-    actual = project.get_document_collection(document_source_name).get_process(process_name)
-    assert_process_equal(expected_process, actual)
-
-
-def assert_process_equal(expected_process, actual):
-    assert expected_process.name == actual.name
-    assert expected_process.project.name == actual.project.name
-    assert expected_process.pipeline_name == actual.pipeline_name
-    assert expected_process.document_source_name == actual.document_source_name
-
-
 def test_get_processes(client_version_6, requests_mock):
     project = client_version_6.get_project("test-project")
     pipeline_name = "my_pipeline_name"
@@ -222,6 +149,26 @@ def test_get_processes(client_version_6, requests_mock):
     actual_processes = project.list_processes()
     assert len(expected_processes_payload) == len(actual_processes)
     [assert_process_equal(a, b) for a, b in zip(expected_processes, actual_processes)]
+
+
+def test_list_document_collection(client, requests_mock):
+    project = client.get_project("test-project")
+    requests_mock.get(
+        f"{API_BASE}/importer/projects/test-project/documentCollections",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": [
+                {"name": "collection0", "numberOfDocuments": 5},
+                {"name": "collection1", "numberOfDocuments": 1},
+                {"name": "collection2", "numberOfDocuments": 20},
+            ],
+            "errorMessages": [],
+        },
+    )
+
+    collections = project.list_document_collections()
+
+    assert collections[2].name == "collection2"
 
 
 def test_delete_pear_with_pear_does_not_exist(client_version_6, requests_mock):
