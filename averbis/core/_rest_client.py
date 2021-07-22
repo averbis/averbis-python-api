@@ -22,9 +22,11 @@ import copy
 from cassis import Cas, TypeSystem, load_cas_from_xmi, load_typesystem  # type: ignore
 import json
 import logging
+import zipfile
+import os
 from concurrent.futures.thread import ThreadPoolExecutor
 from functools import wraps
-from io import BytesIO, IOBase
+from io import BytesIO, IOBase, BufferedReader
 from json import JSONDecodeError
 
 from time import sleep, time
@@ -1267,6 +1269,7 @@ class Client:
         """
         return Project(self, name)
 
+    @experimental_api
     def list_resources(self) -> List[str]:
         """
         List the resources that are globally available.
@@ -1274,6 +1277,16 @@ class Client:
         :return: List of resources.
         """
         return self._list_resources()["files"]
+
+    @experimental_api
+    def upload_resources(self, source: Union[IO, Path, str], path_in_zip=None) -> List[str]:
+        """
+        Upload file to the global resources. Existing files with same path/name will be overwritten.
+
+        :return: List of resources after upload.
+        """
+        zip_file = self.__create_zip_io(source, path_in_zip)
+        return self._upload_resources(zip_file)
 
     @experimental_api
     def list_projects(self) -> dict:
@@ -2018,6 +2031,22 @@ class Client:
         endpoint = self.__get_resources_endpoint(pipeline_name, project_name)
         return self.__request_with_json_response("get", endpoint)["payload"]
 
+    @experimental_api
+    def _upload_resources(self, zip_file: IO, project_name=None, pipeline_name=None) -> dict:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Use {client, project, pipeline}.upload_resources() instead.
+        """
+
+        response = self.__request_with_json_response(
+            "post",
+            self.__get_resources_endpoint(project_name=project_name, pipeline_name=pipeline_name),
+            files={"resourcesFile": (zip_file.name, zip_file, "application/zip")},
+        )
+
+        return response["payload"]
+
     @staticmethod
     def __handle_error(raw_response: requests.Response):
         """
@@ -2091,3 +2120,46 @@ class Client:
             endpoint += f"pipelines/{pipeline_name}/"
         endpoint += "resources"
         return endpoint
+
+    @staticmethod
+    def __create_zip_io(
+        source: Union[IO, Path, str], path_in_zip: Union[Path, str] = ""
+    ) -> BytesIO:
+
+        if isinstance(source, (IO, BufferedReader)):
+            return BytesIO(source.read())
+
+        if isinstance(source, (Path, str)) and not os.path.exists(source):
+            raise Exception(f"{source} does not exist.")
+
+        if zipfile.is_zipfile(source):
+            if path_in_zip:
+                raise Exception(
+                    f"{source.name} is already a zip. Nesting the zip using path_in_zip is not supported."
+                )
+            with open(source, "rb") as fh:
+                return BytesIO(fh.read())
+
+        if isinstance(source, str):
+            source = Path(source)
+        if isinstance(path_in_zip, str):
+            path_in_zip = Path(path_in_zip)
+
+        zip_archive = BytesIO()
+        with zipfile.ZipFile(zip_archive, "w", zipfile.ZIP_DEFLATED) as zip_file:
+            if source.is_file():
+                zip_file.write(filename=source, arcname=path_in_zip / source.name)
+
+            elif source.is_dir():
+                if not any(os.scandir(source)):
+                    raise Exception(f"{source.name} is empty.")
+
+                for dir_path, dir_names, file_names in os.walk(source):
+                    for filename in file_names:
+                        rel_path = Path(os.path.relpath(dir_path, source))
+                        arcname = path_in_zip / rel_path / filename
+                        filepath = Path(dir_path) / Path(filename)
+                        zip_file.write(filename=filepath, arcname=arcname)
+
+        zip_archive.seek(0)
+        return zip_archive
