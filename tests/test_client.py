@@ -19,6 +19,7 @@
 #
 import logging
 import zipfile
+import tempfile
 from pathlib import Path
 
 from averbis import Pipeline, Project
@@ -883,28 +884,34 @@ def test_handle_error_no_access(client, requests_mock):
     assert str(ex.value) == expected_error_message
 
 
+def test_upload_resources(client_version_6, requests_mock):
+    requests_mock.post(
+        f"{API_EXPERIMENTAL}/textanalysis/resources",
+        headers={"Content-Type": "application/json"},
+        status_code=200,
+        json={
+            "payload": {
+                "files": [
+                    "text1.txt",
+                ]
+            },
+            "errorMessages": [],
+        },
+    )
+    resources = client_version_6.upload_resources("resources/zip_test/text1.txt")
+    assert len(resources) == 1
+
+
 def test_create_zip_io__file_does_not_exist(client):
     with pytest.raises(Exception) as ex:
-        client._Client__create_zip_io("not-existing-file.txt")
+        client._create_zip_io("not-existing-file.txt")
     expected_error_message = "not-existing-file.txt does not exist."
     assert str(ex.value) == expected_error_message
 
 
 def test_create_zip_io__zip_file_io(client):
     zip_archive_bytes_io = open("resources/zip_test/zip_test.zip", "rb")
-    zip_archive_bytes_io = client._Client__create_zip_io(zip_archive_bytes_io)
-    zip_file = zipfile.ZipFile(zip_archive_bytes_io)
-    files_in_zip = [f.filename for f in zip_file.filelist]
-    assert len(files_in_zip) == 5
-    assert "text1.txt" in files_in_zip
-    assert "text2.txt" in files_in_zip
-    assert "text3.txt" in files_in_zip
-    assert "sub/" in files_in_zip
-    assert "sub/text4.txt" in files_in_zip
-
-
-def test_create_zip_io__zip_file(client):
-    zip_archive_bytes_io = client._Client__create_zip_io("resources/zip_test/zip_test.zip")
+    zip_archive_bytes_io = client._create_zip_io(zip_archive_bytes_io)
     zip_file = zipfile.ZipFile(zip_archive_bytes_io)
     files_in_zip = [f.filename for f in zip_file.filelist]
     assert len(files_in_zip) == 5
@@ -916,7 +923,7 @@ def test_create_zip_io__zip_file(client):
 
 
 def test_create_zip_io__single_file(client):
-    zip_archive_bytes_io = client._Client__create_zip_io("resources/zip_test/text1.txt")
+    zip_archive_bytes_io = client._create_zip_io("resources/zip_test/text1.txt")
     zip_file = zipfile.ZipFile(zip_archive_bytes_io)
     files_in_zip = [f.filename for f in zip_file.filelist]
     assert len(files_in_zip) == 1
@@ -924,9 +931,7 @@ def test_create_zip_io__single_file(client):
 
 
 def test_create_zip_io__single_file_with_path_in_zip(client):
-    zip_archive_bytes_io = client._Client__create_zip_io(
-        "resources/zip_test/text1.txt", path_in_zip="abc"
-    )
+    zip_archive_bytes_io = client._create_zip_io("resources/zip_test/text1.txt", path_in_zip="abc")
     zip_file = zipfile.ZipFile(zip_archive_bytes_io)
     files_in_zip = [f.filename for f in zip_file.filelist]
     assert len(files_in_zip) == 1
@@ -934,19 +939,17 @@ def test_create_zip_io__single_file_with_path_in_zip(client):
 
 
 def test_create_zip_io__folder_with_path_in_zip(client):
-    zip_archive_bytes_io = client._Client__create_zip_io("resources/zip_test", path_in_zip="abc")
+    zip_archive_bytes_io = client._create_zip_io("resources/zip_test", path_in_zip="abc")
     assert_zip_archive_bytes_io_content(zip_archive_bytes_io, "abc/")
 
 
 def test_create_zip_io__folder_as_path_with_path_in_zip(client):
-    zip_archive_bytes_io = client._Client__create_zip_io(
-        Path("resources/zip_test"), path_in_zip="abc"
-    )
+    zip_archive_bytes_io = client._create_zip_io(Path("resources/zip_test"), path_in_zip="abc")
     assert_zip_archive_bytes_io_content(zip_archive_bytes_io, "abc/")
 
 
 def test_create_zip_io__folder(client):
-    zip_archive_bytes_io = client._Client__create_zip_io("resources/zip_test")
+    zip_archive_bytes_io = client._create_zip_io("resources/zip_test")
     assert_zip_archive_bytes_io_content(zip_archive_bytes_io)
 
 

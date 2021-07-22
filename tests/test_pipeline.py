@@ -280,3 +280,24 @@ def test_list_resources(client, requests_mock):
 
     actual_resources_list = pipeline.list_resources()
     assert actual_resources_list == expected_resources_list
+
+
+def test_upload_resources(client_version_6, requests_mock):
+    pipeline = Pipeline(Project(client_version_6, "LoadTesting"), "discharge")
+    requests_mock.post(
+        f"{API_EXPERIMENTAL}/textanalysis"
+        f"/projects/{pipeline.project.name}"
+        f"/pipelines/{pipeline.name}/resources",
+        headers={"Content-Type": "application/json"},
+        status_code=200,
+        json={
+            "payload": {
+                "files": [
+                    "text1.txt",
+                ]
+            },
+            "errorMessages": [],
+        },
+    )
+    resources = pipeline.upload_resources("resources/zip_test/text1.txt")
+    assert len(resources) == 1

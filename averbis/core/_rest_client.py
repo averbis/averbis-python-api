@@ -363,6 +363,22 @@ class Pipeline:
             project_name=self.project.name, pipeline_name=self.name
         )["files"]
 
+    @experimental_api
+    def upload_resources(
+        self, source: Union[IO, Path, str], path_in_zip: Union[Path, str] = ""
+    ) -> List[str]:
+        """
+        Upload file to the pipeline resources. Existing files with same path/name will be overwritten.
+
+        :return: List of resources after upload.
+        """
+        # noinspection PyProtectedMember
+        zip_file = self.project.client._create_zip_io(source, path_in_zip)
+        # noinspection PyProtectedMember
+        return self.project.client._upload_resources(
+            zip_file, project_name=self.project.name, pipeline_name=self.name
+        )["files"]
+
 
 class Terminology:
     EXPORT_STATE_COMPLETED = "COMPLETED"
@@ -970,6 +986,20 @@ class Project:
         # noinspection PyProtectedMember
         return self.client._list_resources(project_name=self.name)["files"]
 
+    @experimental_api
+    def upload_resources(
+        self, source: Union[IO, Path, str], path_in_zip: Union[Path, str] = ""
+    ) -> List[str]:
+        """
+        Upload file to the project resources. Existing files with same path/name will be overwritten.
+
+        :return: List of resources after upload.
+        """
+        # noinspection PyProtectedMember
+        zip_file = self.client._create_zip_io(source, path_in_zip)
+        # noinspection PyProtectedMember
+        return self.client._upload_resources(zip_file, project_name=self.name)["files"]
+
 
 class Client:
     def __init__(
@@ -1279,14 +1309,16 @@ class Client:
         return self._list_resources()["files"]
 
     @experimental_api
-    def upload_resources(self, source: Union[IO, Path, str], path_in_zip=None) -> List[str]:
+    def upload_resources(
+        self, source: Union[IO, Path, str], path_in_zip: Union[Path, str] = ""
+    ) -> List[str]:
         """
         Upload file to the global resources. Existing files with same path/name will be overwritten.
 
         :return: List of resources after upload.
         """
-        zip_file = self.__create_zip_io(source, path_in_zip)
-        return self._upload_resources(zip_file)
+        zip_file = self._create_zip_io(source, path_in_zip)
+        return self._upload_resources(zip_file)["files"]
 
     @experimental_api
     def list_projects(self) -> dict:
@@ -2042,7 +2074,7 @@ class Client:
         response = self.__request_with_json_response(
             "post",
             self.__get_resources_endpoint(project_name=project_name, pipeline_name=pipeline_name),
-            files={"resourcesFile": (zip_file.name, zip_file, "application/zip")},
+            files={"resourcesFile": ("zip_file.name", zip_file, "application/zip")},
         )
 
         return response["payload"]
@@ -2122,12 +2154,10 @@ class Client:
         return endpoint
 
     @staticmethod
-    def __create_zip_io(
-        source: Union[IO, Path, str], path_in_zip: Union[Path, str] = ""
-    ) -> BytesIO:
+    def _create_zip_io(source: Union[IO, Path, str], path_in_zip: Union[Path, str] = "") -> IO:
 
         if isinstance(source, (IO, BufferedReader)):
-            return BytesIO(source.read())
+            return source
 
         if isinstance(source, (Path, str)) and not os.path.exists(source):
             raise Exception(f"{source} does not exist.")
@@ -2137,8 +2167,7 @@ class Client:
                 raise Exception(
                     f"{source.name} is already a zip. Nesting the zip using path_in_zip is not supported."
                 )
-            with open(source, "rb") as fh:
-                return BytesIO(fh.read())
+            return open(source, "rb")
 
         if isinstance(source, str):
             source = Path(source)
