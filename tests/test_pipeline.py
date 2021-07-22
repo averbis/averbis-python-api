@@ -268,5 +268,6 @@ def test_collection_process_complete(client_version_6, requests_mock):
         f"LoadTesting/pipelines/discharge/collectionProcessComplete",
         headers={"Content-Type": "application/json"},
         json={"payload": None, "errorMessages": []},
+        status_code=204
     )
     pipeline.collection_process_complete()
