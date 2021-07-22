@@ -349,6 +349,15 @@ class Pipeline:
             )
         return self.cached_type_system
 
+    @experimental_api
+    def collection_process_complete(self) -> None:
+        """
+        Trigger collection process complete of the given pipeline.
+        """
+        # noinspection PyProtectedMember
+        self.project.client._collection_process_complete(self.project.name, self.name)
+        return None
+
 
 class Terminology:
     EXPORT_STATE_COMPLETED = "COMPLETED"
@@ -1124,6 +1133,21 @@ class Client:
             )
         return raw_response.content
 
+    def __request_without_response(self, method: str, endpoint: str, **kwargs) -> None:
+        """
+        A bytes response is used in the experimental API for encoding CAS objects.
+        """
+        raw_response = self._run_request(method, endpoint, **kwargs)
+        if not raw_response.ok:
+            self.__handle_error(raw_response)
+
+        if not raw_response.status_code == 204:
+            raise TypeError(
+                f"Expected the response to be without content (204), but got {raw_response.status_code}"
+            )
+
+        return None
+
     def _default_headers(self, items=None) -> dict:
         if items is None:
             items = {}
@@ -1752,6 +1776,19 @@ class Client:
             ),
             ENCODING_UTF_8,
         )
+
+    @experimental_api
+    def _collection_process_complete(self, project: str, pipeline: str) -> None:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Use Pipeline.collection_process_complete() instead.
+        """
+        self.__request_without_response(
+            "post",
+            f"/experimental/textanalysis/projects/{project}/pipelines/{pipeline}/collectionProcessComplete",
+        )
+        return None
 
     @experimental_api
     def _get_pipeline_type_system(self, project: str, pipeline: str) -> str:
