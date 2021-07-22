@@ -1269,6 +1269,14 @@ class Client:
         """
         return Project(self, name)
 
+    def list_resources(self) -> List[str]:
+        """
+        List the resources that are globally available.
+
+        :return: List of resources.
+        """
+        return self._list_resources()["files"]
+
     @experimental_api
     def list_resources(self) -> List[str]:
         """
