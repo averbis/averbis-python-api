@@ -1133,21 +1133,6 @@ class Client:
             )
         return raw_response.content
 
-    def __request_without_response(self, method: str, endpoint: str, **kwargs) -> None:
-        """
-        A bytes response is used in the experimental API for encoding CAS objects.
-        """
-        raw_response = self._run_request(method, endpoint, **kwargs)
-        if not raw_response.ok:
-            self.__handle_error(raw_response)
-
-        if not raw_response.status_code == 204:
-            raise TypeError(
-                f"Expected the response to be without content (204), but got {raw_response.status_code}"
-            )
-
-        return None
-
     def _default_headers(self, items=None) -> dict:
         if items is None:
             items = {}
@@ -1784,7 +1769,7 @@ class Client:
 
         Use Pipeline.collection_process_complete() instead.
         """
-        self.__request_without_response(
+        self.__request_with_json_response(
             "post",
             f"/experimental/textanalysis/projects/{project}/pipelines/{pipeline}/collectionProcessComplete",
         )
