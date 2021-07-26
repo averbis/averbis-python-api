@@ -934,7 +934,7 @@ def test_create_zip_io__zip_file_io(client):
 
 
 def test_create_zip_io__single_file(client):
-    zip_archive_bytes_io = client._create_zip_io("resources/zip_test/text1.txt")
+    zip_archive_bytes_io = client._create_zip_io(TEST_DIRECTORY + "/" + "resources/zip_test/text1.txt")
     zip_file = zipfile.ZipFile(zip_archive_bytes_io)
     files_in_zip = [f.filename for f in zip_file.filelist]
     assert len(files_in_zip) == 1
@@ -942,7 +942,7 @@ def test_create_zip_io__single_file(client):
 
 
 def test_create_zip_io__single_file_with_path_in_zip(client):
-    zip_archive_bytes_io = client._create_zip_io("resources/zip_test/text1.txt", path_in_zip="abc")
+    zip_archive_bytes_io = client._create_zip_io(TEST_DIRECTORY + "/" + "resources/zip_test/text1.txt", path_in_zip="abc")
     zip_file = zipfile.ZipFile(zip_archive_bytes_io)
     files_in_zip = [f.filename for f in zip_file.filelist]
     assert len(files_in_zip) == 1
@@ -950,17 +950,17 @@ def test_create_zip_io__single_file_with_path_in_zip(client):
 
 
 def test_create_zip_io__folder_with_path_in_zip(client):
-    zip_archive_bytes_io = client._create_zip_io("resources/zip_test", path_in_zip="abc")
+    zip_archive_bytes_io = client._create_zip_io(TEST_DIRECTORY + "/" + "resources/zip_test", path_in_zip="abc")
     assert_zip_archive_bytes_io_content(zip_archive_bytes_io, "abc/")
 
 
 def test_create_zip_io__folder_as_path_with_path_in_zip(client):
-    zip_archive_bytes_io = client._create_zip_io(Path("resources/zip_test"), path_in_zip="abc")
+    zip_archive_bytes_io = client._create_zip_io(Path(TEST_DIRECTORY) / "resources/zip_test", path_in_zip="abc")
     assert_zip_archive_bytes_io_content(zip_archive_bytes_io, "abc/")
 
 
 def test_create_zip_io__folder(client):
-    zip_archive_bytes_io = client._create_zip_io("resources/zip_test")
+    zip_archive_bytes_io = client._create_zip_io(TEST_DIRECTORY + "/" + "resources/zip_test")
     assert_zip_archive_bytes_io_content(zip_archive_bytes_io)
 
 

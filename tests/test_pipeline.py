@@ -313,5 +313,5 @@ def test_upload_resources(client_version_6, requests_mock):
             "errorMessages": [],
         },
     )
-    resources = pipeline.upload_resources("resources/zip_test/text1.txt")
+    resources = pipeline.upload_resources(TEST_DIRECTORY + "/" + "resources/zip_test/text1.txt")
     assert len(resources) == 1
