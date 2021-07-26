@@ -2198,6 +2198,9 @@ class Client:
         if isinstance(source, (Path, str)) and not os.path.exists(source):
             raise Exception(f"{source} does not exist.")
 
+        if isinstance(source, str):
+            source = Path(source)
+
         if zipfile.is_zipfile(source):
             if path_in_zip:
                 raise Exception(
