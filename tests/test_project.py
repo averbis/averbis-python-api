@@ -190,6 +190,18 @@ def test_list_resources(client_version_6, requests_mock):
     assert actual_resources_list == expected_resources_list
 
 
+def test_delete_resources(client, requests_mock):
+    project = client.get_project("test-project")
+
+    requests_mock.delete(
+        f"{API_EXPERIMENTAL}/textanalysis" f"/projects/{project.name}" f"/resources",
+        headers={"Content-Type": "application/json"},
+        json={"payload": None, "errorMessages": []},
+    )
+
+    project.delete_resources()
+
+
 def test_upload_resources(client_version_6, requests_mock):
     project = client_version_6.get_project("test-project")
 

@@ -765,6 +765,17 @@ def test_list_resources(client, requests_mock):
     assert actual_resources_list == expected_resources_list
 
 
+def test_delete_resources(client, requests_mock):
+
+    requests_mock.delete(
+        f"{API_EXPERIMENTAL}/textanalysis" f"/resources",
+        headers={"Content-Type": "application/json"},
+        json={"payload": None, "errorMessages": []},
+    )
+
+    client.delete_resources()
+
+
 def test_select(client, requests_mock):
     requests_mock.get(
         f"{API_BASE}/search/projects/LoadTesting/select",

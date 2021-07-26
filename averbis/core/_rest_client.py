@@ -364,6 +364,16 @@ class Pipeline:
         )["files"]
 
     @experimental_api
+    def delete_resources(self) -> None:
+        """
+        Delete the resources of the pipeline.
+        """
+        # noinspection PyProtectedMember
+        self.project.client._delete_resources(
+            project_name=self.project.name, pipeline_name=self.name
+        )
+
+    @experimental_api
     def upload_resources(
         self, source: Union[IO, Path, str], path_in_zip: Union[Path, str] = ""
     ) -> List[str]:
@@ -987,6 +997,14 @@ class Project:
         return self.client._list_resources(project_name=self.name)["files"]
 
     @experimental_api
+    def delete_resources(self) -> None:
+        """
+        Delete the resources of the project.
+        """
+        # noinspection PyProtectedMember
+        self.client._delete_resources(project_name=self.name)
+
+    @experimental_api
     def upload_resources(
         self, source: Union[IO, Path, str], path_in_zip: Union[Path, str] = ""
     ) -> List[str]:
@@ -1307,6 +1325,14 @@ class Client:
         :return: List of resources.
         """
         return self._list_resources()["files"]
+
+    @experimental_api
+    def delete_resources(self) -> None:
+        """
+        Delete the global resources.
+        """
+        # noinspection PyProtectedMember
+        self._delete_resources()
 
     @experimental_api
     def upload_resources(
@@ -2062,6 +2088,16 @@ class Client:
         """
         endpoint = self.__get_resources_endpoint(pipeline_name, project_name)
         return self.__request_with_json_response("get", endpoint)["payload"]
+
+    @experimental_api
+    def _delete_resources(self, project_name=None, pipeline_name=None) -> None:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Use {client, project, pipeline}.delete_resources() instead.
+        """
+        endpoint = self.__get_resources_endpoint(pipeline_name, project_name)
+        self.__request_with_json_response("delete", endpoint)
 
     @experimental_api
     def _upload_resources(self, zip_file: IO, project_name=None, pipeline_name=None) -> dict:
