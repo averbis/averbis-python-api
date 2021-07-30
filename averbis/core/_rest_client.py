@@ -389,6 +389,13 @@ class Pipeline:
             zip_file, project_name=self.project.name, pipeline_name=self.name
         )["files"]
 
+    def collection_process_complete(self) -> dict:
+        """
+        Trigger collection process complete of the given pipeline.
+        """
+        # noinspection PyProtectedMember
+        return self.project.client._collection_process_complete(self.project.name, self.name)
+
 
 class Terminology:
     EXPORT_STATE_COMPLETED = "COMPLETED"
@@ -954,15 +961,14 @@ class Project:
         return self.client._list_pears(self.name)
 
     @experimental_api
-    def delete_pear(self, pear_identifier: str) -> None:
+    def delete_pear(self, pear_identifier: str) -> dict:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
         Delete the pear by identifier.
         """
         # noinspection PyProtectedMember
-        self.client._delete_pear(self.name, pear_identifier)
-        return None
+        return self.client._delete_pear(self.name, pear_identifier)
 
     @experimental_api
     def install_pear(self, file_or_path: Union[IO, Path, str]) -> Pear:
@@ -1830,7 +1836,7 @@ class Client:
         pipeline: str,
         source: Union[IO, str],
         annotation_types: str = None,
-        language: str = "de",
+        language: str = None,
     ) -> str:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -1853,6 +1859,20 @@ class Client:
             ),
             ENCODING_UTF_8,
         )
+
+    @experimental_api
+    def _collection_process_complete(self, project: str, pipeline: str) -> dict:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Use Pipeline.collection_process_complete() instead.
+        """
+        response = self.__request_with_json_response(
+            "post",
+            f"/experimental/textanalysis/projects/{project}/pipelines/{pipeline}/collectionProcessComplete",
+        )
+
+        return response["payload"]
 
     @experimental_api
     def _get_pipeline_type_system(self, project: str, pipeline: str) -> str:
@@ -1882,20 +1902,22 @@ class Client:
         response = self.__request_with_json_response(
             "get", f"/experimental/textanalysis/projects/{project}/pearComponents"
         )
+
         return response["payload"]
 
     @experimental_api
-    def _delete_pear(self, project: str, pear_identifier: str):
+    def _delete_pear(self, project: str, pear_identifier: str) -> dict:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
         Use Project.delete_pear() instead.
         """
-        self.__request_with_json_response(
+        response = self.__request_with_json_response(
             "delete",
             f"/experimental/textanalysis/projects/{project}/pearComponents/{pear_identifier}",
         )
-        return None
+
+        return response["payload"]
 
     @experimental_api
     def _install_pear(self, project: str, file_or_path: Union[IO, Path, str]) -> str:
@@ -1918,6 +1940,7 @@ class Client:
             f"/experimental/textanalysis/projects/{project}/pearComponents",
             files={"pearPackage": (file_or_path.name, file_or_path, "application/octet-stream")},
         )
+
         return response["payload"][0]
 
     @experimental_api
@@ -1930,6 +1953,7 @@ class Client:
         response = self.__request_with_json_response(
             "get", f"/experimental/textanalysis/projects/{project}/pearComponents/{pear_identifier}"
         )
+
         return response["payload"]
 
     @experimental_api
