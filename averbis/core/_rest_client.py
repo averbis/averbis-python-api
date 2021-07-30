@@ -1738,7 +1738,7 @@ class Client:
         pipeline: str,
         source: Union[IO, str],
         annotation_types: str = None,
-        language: str = "de",
+        language: str = None,
     ) -> str:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
