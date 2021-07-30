@@ -247,6 +247,7 @@ def test_analyse_texts_(client, pipeline_analyse_text_mock):
 
 def test_delete_pipeline_v5(client_version_5):
     pipeline = Pipeline(Project(client_version_5, "LoadTesting"), "discharge")
+
     with pytest.raises(OperationNotSupported):
         pipeline.delete()
 
@@ -258,7 +259,10 @@ def test_delete_pipeline_v6(client_version_6, requests_mock):
         headers={"Content-Type": "application/json"},
         json={"payload": None, "errorMessages": []},
     )
-    pipeline.delete()
+
+    response = pipeline.delete()
+
+    assert response is None;
 
 
 def test_collection_process_complete(client_version_6, requests_mock):
@@ -268,6 +272,9 @@ def test_collection_process_complete(client_version_6, requests_mock):
         f"LoadTesting/pipelines/discharge/collectionProcessComplete",
         headers={"Content-Type": "application/json"},
         json={"payload": None, "errorMessages": []},
-        status_code=204
+        status_code=200,
     )
-    pipeline.collection_process_complete()
+
+    response = pipeline.collection_process_complete()
+
+    assert response is None;
