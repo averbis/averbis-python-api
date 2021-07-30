@@ -22,9 +22,11 @@ import copy
 from cassis import Cas, TypeSystem, load_cas_from_xmi, load_typesystem  # type: ignore
 import json
 import logging
+import zipfile
+import os
 from concurrent.futures.thread import ThreadPoolExecutor
 from functools import wraps
-from io import BytesIO, IOBase
+from io import BytesIO, IOBase, BufferedReader
 from json import JSONDecodeError
 
 from time import sleep, time
@@ -350,6 +352,43 @@ class Pipeline:
         return self.cached_type_system
 
     @experimental_api
+    def list_resources(self) -> List[str]:
+        """
+        List the resources of the pipeline.
+
+        :return: The list of pipeline resources.
+        """
+        # noinspection PyProtectedMember
+        return self.project.client._list_resources(
+            project_name=self.project.name, pipeline_name=self.name
+        )["files"]
+
+    @experimental_api
+    def delete_resources(self) -> None:
+        """
+        Delete the resources of the pipeline.
+        """
+        # noinspection PyProtectedMember
+        self.project.client._delete_resources(
+            project_name=self.project.name, pipeline_name=self.name
+        )
+
+    @experimental_api
+    def upload_resources(
+        self, source: Union[IO, Path, str], path_in_zip: Union[Path, str] = ""
+    ) -> List[str]:
+        """
+        Upload file to the pipeline resources. Existing files with same path/name will be overwritten.
+
+        :return: List of resources after upload.
+        """
+        # noinspection PyProtectedMember
+        zip_file = self.project.client._create_zip_io(source, path_in_zip)
+        # noinspection PyProtectedMember
+        return self.project.client._upload_resources(
+            zip_file, project_name=self.project.name, pipeline_name=self.name
+        )["files"]
+
     def collection_process_complete(self) -> dict:
         """
         Trigger collection process complete of the given pipeline.
@@ -953,6 +992,38 @@ class Project:
         # noinspection PyProtectedMember
         return self.client._list_processes(self)
 
+    @experimental_api
+    def list_resources(self) -> List[str]:
+        """
+        List the resources of the project.
+
+        :return: The list of project resources.
+        """
+        # noinspection PyProtectedMember
+        return self.client._list_resources(project_name=self.name)["files"]
+
+    @experimental_api
+    def delete_resources(self) -> None:
+        """
+        Delete the resources of the project.
+        """
+        # noinspection PyProtectedMember
+        self.client._delete_resources(project_name=self.name)
+
+    @experimental_api
+    def upload_resources(
+        self, source: Union[IO, Path, str], path_in_zip: Union[Path, str] = ""
+    ) -> List[str]:
+        """
+        Upload file to the project resources. Existing files with same path/name will be overwritten.
+
+        :return: List of resources after upload.
+        """
+        # noinspection PyProtectedMember
+        zip_file = self.client._create_zip_io(source, path_in_zip)
+        # noinspection PyProtectedMember
+        return self.client._upload_resources(zip_file, project_name=self.name)["files"]
+
 
 class Client:
     def __init__(
@@ -1251,6 +1322,35 @@ class Client:
         :return: The project.
         """
         return Project(self, name)
+
+    @experimental_api
+    def list_resources(self) -> List[str]:
+        """
+        List the resources that are globally available.
+
+        :return: List of resources.
+        """
+        return self._list_resources()["files"]
+
+    @experimental_api
+    def delete_resources(self) -> None:
+        """
+        Delete the global resources.
+        """
+        # noinspection PyProtectedMember
+        self._delete_resources()
+
+    @experimental_api
+    def upload_resources(
+        self, source: Union[IO, Path, str], path_in_zip: Union[Path, str] = ""
+    ) -> List[str]:
+        """
+        Upload file to the global resources. Existing files with same path/name will be overwritten.
+
+        :return: List of resources after upload.
+        """
+        zip_file = self._create_zip_io(source, path_in_zip)
+        return self._upload_resources(zip_file)["files"]
 
     @experimental_api
     def list_projects(self) -> dict:
@@ -2003,6 +2103,42 @@ class Client:
         )
         return None
 
+    @experimental_api
+    def _list_resources(self, project_name=None, pipeline_name=None) -> dict:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Use {client, project, pipeline}.list_resources() instead.
+        """
+        endpoint = self.__get_resources_endpoint(pipeline_name, project_name)
+        return self.__request_with_json_response("get", endpoint)["payload"]
+
+    @experimental_api
+    def _delete_resources(self, project_name=None, pipeline_name=None) -> None:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Use {client, project, pipeline}.delete_resources() instead.
+        """
+        endpoint = self.__get_resources_endpoint(pipeline_name, project_name)
+        self.__request_with_json_response("delete", endpoint)
+
+    @experimental_api
+    def _upload_resources(self, zip_file: IO, project_name=None, pipeline_name=None) -> dict:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Use {client, project, pipeline}.upload_resources() instead.
+        """
+
+        response = self.__request_with_json_response(
+            "post",
+            self.__get_resources_endpoint(project_name=project_name, pipeline_name=pipeline_name),
+            files={"resourcesFile": ("zip_file.name", zip_file, "application/zip")},
+        )
+
+        return response["payload"]
+
     @staticmethod
     def __handle_error(raw_response: requests.Response):
         """
@@ -2066,3 +2202,56 @@ class Client:
             if isinstance(document_collection, DocumentCollection)
             else document_collection
         )
+
+    @staticmethod
+    def __get_resources_endpoint(pipeline_name, project_name):
+        endpoint = "/experimental/textanalysis/"
+        if project_name:
+            endpoint += f"projects/{project_name}/"
+        if pipeline_name:
+            endpoint += f"pipelines/{pipeline_name}/"
+        endpoint += "resources"
+        return endpoint
+
+    @staticmethod
+    def _create_zip_io(source: Union[IO, Path, str], path_in_zip: Union[Path, str] = "") -> IO:
+
+        if isinstance(source, (IO, BufferedReader)):
+            return source
+
+        if isinstance(source, str):
+            source = Path(source)
+
+        if not source.exists():
+            raise Exception(f"{source} does not exist.")
+
+        if zipfile.is_zipfile(source):
+            if path_in_zip:
+                raise Exception(
+                    f"{source.name} is already a zip. Nesting the zip using path_in_zip is not supported."
+                )
+            return open(source, "rb")
+
+        if isinstance(source, str):
+            source = Path(source)
+        if isinstance(path_in_zip, str):
+            path_in_zip = Path(path_in_zip)
+
+        zip_archive = BytesIO()
+        with zipfile.ZipFile(zip_archive, "w", zipfile.ZIP_DEFLATED) as zip_file:
+            if source.is_file():
+                zip_file.write(filename=source, arcname=path_in_zip / source.name)
+
+            elif source.is_dir():
+                if not any(os.scandir(source)):
+                    raise Exception(f"{source.name} is empty.")
+
+                for dir_path, dir_names, file_names in os.walk(source):
+                    for filename in file_names:
+                        rel_path = Path(os.path.relpath(dir_path, source))
+                        arcname = path_in_zip / rel_path / filename
+                        filepath = Path(dir_path) / Path(filename)
+                        zip_file.write(filename=filepath, arcname=arcname)
+
+        zip_archive.seek(0)
+        return zip_archive

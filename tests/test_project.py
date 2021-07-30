@@ -171,6 +171,57 @@ def test_list_document_collection(client, requests_mock):
     assert collections[2].name == "collection2"
 
 
+def test_list_resources(client_version_6, requests_mock):
+    project = client_version_6.get_project("test-project")
+
+    expected_resources_list = [
+        "test1.txt",
+        "test2.txt",
+        "test3.txt",
+    ]
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/resources",
+        headers={"Content-Type": "application/json"},
+        json={"payload": {"files": expected_resources_list}, "errorMessages": []},
+    )
+
+    actual_resources_list = project.list_resources()
+    assert actual_resources_list == expected_resources_list
+
+
+def test_delete_resources(client, requests_mock):
+    project = client.get_project("test-project")
+
+    requests_mock.delete(
+        f"{API_EXPERIMENTAL}/textanalysis" f"/projects/{project.name}" f"/resources",
+        headers={"Content-Type": "application/json"},
+        json={"payload": None, "errorMessages": []},
+    )
+
+    project.delete_resources()
+
+
+def test_upload_resources(client_version_6, requests_mock):
+    project = client_version_6.get_project("test-project")
+
+    requests_mock.post(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/resources",
+        headers={"Content-Type": "application/json"},
+        status_code=200,
+        json={
+            "payload": {
+                "files": [
+                    "text1.txt",
+                ]
+            },
+            "errorMessages": [],
+        },
+    )
+    resources = project.upload_resources(TEST_DIRECTORY + "/" + "resources/zip_test/text1.txt")
+    assert len(resources) == 1
+
+
 def test_delete_pear_with_pear_does_not_exist(client_version_6, requests_mock):
     project = client_version_6.get_project("test-project")
     pear_identifier = "pear0"

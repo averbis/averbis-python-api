@@ -262,7 +262,63 @@ def test_delete_pipeline_v6(client_version_6, requests_mock):
 
     response = pipeline.delete()
 
-    assert response is None;
+    assert response is None
+
+
+def test_list_resources(client, requests_mock):
+    pipeline = Pipeline(Project(client, "LoadTesting"), "discharge")
+
+    expected_resources_list = [
+        "test1.txt",
+        "test2.txt",
+        "test3.txt",
+    ]
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis"
+        f"/projects/{pipeline.project.name}"
+        f"/pipelines/{pipeline.name}/resources",
+        headers={"Content-Type": "application/json"},
+        json={"payload": {"files": expected_resources_list}, "errorMessages": []},
+    )
+
+    actual_resources_list = pipeline.list_resources()
+    assert actual_resources_list == expected_resources_list
+
+
+def test_delete_resources(client, requests_mock):
+    pipeline = Pipeline(Project(client, "LoadTesting"), "discharge")
+
+    requests_mock.delete(
+        f"{API_EXPERIMENTAL}/textanalysis"
+        f"/projects/{pipeline.project.name}"
+        f"/pipelines/{pipeline.name}/resources",
+        headers={"Content-Type": "application/json"},
+        json={"payload": None, "errorMessages": []},
+    )
+
+    pipeline.delete_resources()
+
+
+def test_upload_resources(client_version_6, requests_mock):
+    pipeline = Pipeline(Project(client_version_6, "LoadTesting"), "discharge")
+    requests_mock.post(
+        f"{API_EXPERIMENTAL}/textanalysis"
+        f"/projects/{pipeline.project.name}"
+        f"/pipelines/{pipeline.name}/resources",
+        headers={"Content-Type": "application/json"},
+        status_code=200,
+        json={
+            "payload": {
+                "files": [
+                    "text1.txt",
+                ]
+            },
+            "errorMessages": [],
+        },
+    )
+    resources = pipeline.upload_resources(TEST_DIRECTORY + "/" + "resources/zip_test/text1.txt")
+    assert len(resources) == 1
 
 
 def test_collection_process_complete(client_version_6, requests_mock):
@@ -277,4 +333,4 @@ def test_collection_process_complete(client_version_6, requests_mock):
 
     response = pipeline.collection_process_complete()
 
-    assert response is None;
+    assert response is None

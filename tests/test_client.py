@@ -18,6 +18,8 @@
 #
 #
 import logging
+import zipfile
+import tempfile
 from pathlib import Path
 
 from averbis import Pipeline, Project
@@ -29,7 +31,6 @@ from averbis.core import (
     DOCUMENT_IMPORTER_TEXT,
 )
 from tests.fixtures import *
-
 
 TEST_DIRECTORY = os.path.dirname(__file__)
 
@@ -747,6 +748,34 @@ def test_classify_document(client, requests_mock):
     assert response["classifications"][0]["documentIdentifier"] == "UNKNOWN"
 
 
+def test_list_resources(client, requests_mock):
+    expected_resources_list = [
+        "test1.txt",
+        "test2.txt",
+        "test3.txt",
+    ]
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/resources",
+        headers={"Content-Type": "application/json"},
+        json={"payload": {"files": expected_resources_list}, "errorMessages": []},
+    )
+
+    actual_resources_list = client.list_resources()
+    assert actual_resources_list == expected_resources_list
+
+
+def test_delete_resources(client, requests_mock):
+
+    requests_mock.delete(
+        f"{API_EXPERIMENTAL}/textanalysis" f"/resources",
+        headers={"Content-Type": "application/json"},
+        json={"payload": None, "errorMessages": []},
+    )
+
+    client.delete_resources()
+
+
 def test_select(client, requests_mock):
     requests_mock.get(
         f"{API_BASE}/search/projects/LoadTesting/select",
@@ -864,3 +893,93 @@ def test_handle_error_no_access(client, requests_mock):
         )
     expected_error_message = "401 Server Error: 'None' for url: 'https://localhost:8080/information-discovery/rest/v1/url/that/cannot/be/accessed'."
     assert str(ex.value) == expected_error_message
+
+
+def test_upload_resources(client_version_6, requests_mock):
+    requests_mock.post(
+        f"{API_EXPERIMENTAL}/textanalysis/resources",
+        headers={"Content-Type": "application/json"},
+        status_code=200,
+        json={
+            "payload": {
+                "files": [
+                    "text1.txt",
+                ]
+            },
+            "errorMessages": [],
+        },
+    )
+    resources = client_version_6.upload_resources(
+        Path(TEST_DIRECTORY) / "resources/zip_test/text1.txt"
+    )
+    assert len(resources) == 1
+
+
+def test_create_zip_io__file_does_not_exist(client):
+    with pytest.raises(Exception) as ex:
+        client._create_zip_io("not-existing-file.txt")
+    expected_error_message = "not-existing-file.txt does not exist."
+    assert str(ex.value) == expected_error_message
+
+
+def test_create_zip_io__zip_file_io(client):
+    zip_archive_bytes_io = open(Path(TEST_DIRECTORY) / "resources/zip_test/zip_test.zip", "rb")
+    zip_archive_bytes_io = client._create_zip_io(zip_archive_bytes_io)
+    zip_file = zipfile.ZipFile(zip_archive_bytes_io)
+    files_in_zip = [f.filename for f in zip_file.filelist]
+    assert len(files_in_zip) == 5
+    assert "text1.txt" in files_in_zip
+    assert "text2.txt" in files_in_zip
+    assert "text3.txt" in files_in_zip
+    assert "sub/" in files_in_zip
+    assert "sub/text4.txt" in files_in_zip
+
+
+def test_create_zip_io__single_file(client):
+    zip_archive_bytes_io = client._create_zip_io(
+        TEST_DIRECTORY + "/" + "resources/zip_test/text1.txt"
+    )
+    zip_file = zipfile.ZipFile(zip_archive_bytes_io)
+    files_in_zip = [f.filename for f in zip_file.filelist]
+    assert len(files_in_zip) == 1
+    assert "text1.txt" in files_in_zip
+
+
+def test_create_zip_io__single_file_with_path_in_zip(client):
+    zip_archive_bytes_io = client._create_zip_io(
+        TEST_DIRECTORY + "/" + "resources/zip_test/text1.txt", path_in_zip="abc"
+    )
+    zip_file = zipfile.ZipFile(zip_archive_bytes_io)
+    files_in_zip = [f.filename for f in zip_file.filelist]
+    assert len(files_in_zip) == 1
+    assert "abc/text1.txt" in files_in_zip
+
+
+def test_create_zip_io__folder_with_path_in_zip(client):
+    zip_archive_bytes_io = client._create_zip_io(
+        TEST_DIRECTORY + "/" + "resources/zip_test", path_in_zip="abc"
+    )
+    assert_zip_archive_bytes_io_content(zip_archive_bytes_io, "abc/")
+
+
+def test_create_zip_io__folder_as_path_with_path_in_zip(client):
+    zip_archive_bytes_io = client._create_zip_io(
+        Path(TEST_DIRECTORY) / "resources/zip_test", path_in_zip="abc"
+    )
+    assert_zip_archive_bytes_io_content(zip_archive_bytes_io, "abc/")
+
+
+def test_create_zip_io__folder(client):
+    zip_archive_bytes_io = client._create_zip_io(TEST_DIRECTORY + "/" + "resources/zip_test")
+    assert_zip_archive_bytes_io_content(zip_archive_bytes_io)
+
+
+def assert_zip_archive_bytes_io_content(zip_archive_bytes_io, prefix=""):
+    zip_file = zipfile.ZipFile(zip_archive_bytes_io)
+    files_in_zip = [f.filename for f in zip_file.filelist]
+    assert len(files_in_zip) == 5
+    assert f"{prefix}text2.txt" in files_in_zip
+    assert f"{prefix}text1.txt" in files_in_zip
+    assert f"{prefix}text3.txt" in files_in_zip
+    assert f"{prefix}sub/text4.txt" in files_in_zip
+    assert f"{prefix}zip_test.zip" in files_in_zip
