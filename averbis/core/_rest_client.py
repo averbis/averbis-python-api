@@ -1034,10 +1034,30 @@ class Client:
         settings: Union[str, Path, dict] = None,
         username: str = None,
         password: str = None,
+        timeout: float = None,
     ):
+        """
+        A Client is the base object for all calls within the Averbis Python API.
+
+        The Client can be initialized by passing the required parameters (e.g. URL and API Token) or
+        by creating a client-settings.json file in which the information is stored.
+        The client-settings.json allows specifying different profiles for different servers.
+        Please see the example in the project README for more information.
+
+        :param url_or_id:  The URL to the platform instance or an identifier of a profile in a client settings file
+        :param api_token:  The API Token enabling users to perform requests in the platform
+        :param verify_ssl: Whether the SSL verifcation should be activated (default=True)
+        :param settings:   Either a dictionary containing settings information or a path to the settings file.
+                           As fallback, a "client-settings.json" file is searched in the current directory and in $HOME/.averbis/
+        :param username:   If no API token is provided, then a username can be provided together with a password to generate a new API token
+        :param password:   If no API token is provided, then a username can be provided together with a password to generate a new API token
+        :param timeout:    An optional global timeout (in seconds) specifiying how long the Client is waiting for a server response (default=None).
+        """
+
         self.__logger = logging.getLogger(self.__class__.__module__ + "." + self.__class__.__name__)
         self._api_token = api_token
         self._verify_ssl = verify_ssl
+        self._timeout = timeout
 
         if isinstance(settings, dict):
             self._settings = settings
@@ -1060,7 +1080,6 @@ class Client:
                     + "You can either pass it directly with: Client(url,api_token=your_token) or you can\n"
                     + "generate a new API token with: Client(url, username='your_user_name', password='your_password')."
                 )
-
         self._build_info: dict = {}
         self._spec_version: str = ""
 
@@ -1086,8 +1105,16 @@ class Client:
             self._api_token = connection_profile["api-token"]
         if "verify-ssl" in connection_profile:
             self._verify_ssl = connection_profile["verify-ssl"]
+        if "timeout" in connection_profile:
+            self._timeout = connection_profile["timeout"]
 
     def _load_settings(self, path: Union[str, Path] = None) -> dict:
+        """
+        Loads the client settings from a given path or (as fallback) searches for a "client-settings.json" file in the current path or in $HOME/.averbis.
+
+        :param path: Direct path to the settings json file (optional)
+        :return: A dictionary containing information about the client (URL, API Token, etc.).
+        """
         if path:
             path = path if isinstance(path, Path) else Path(path)
             self.__logger.info(f"Loading settings from {path}")
@@ -1108,7 +1135,17 @@ class Client:
 
         return {}
 
-    def ensure_available(self, timeout: int = 120) -> "Client":
+    def set_timeout(self, timeout: float) -> "Client":
+        """
+        Overwriting the Client-level timeout with a new timeout.
+
+        :param timeout: Timeout duration in seconds
+        :return: The client.
+        """
+        self._timeout = timeout
+        return self
+
+    def ensure_available(self, timeout: float = 120) -> "Client":
         """
         Checks whether the server is available and responding. The call will block for a given time if the server
         is not available. If the time has passed without the server becoming available , an exception will be generated.
@@ -1157,6 +1194,9 @@ class Client:
             }
 
         kwargs["verify"] = self._verify_ssl
+
+        if "timeout" not in kwargs or kwargs["timeout"] is None:
+            kwargs["timeout"] = self._timeout
 
         url = self._build_url(endpoint)
         raw_response = requests.request(method, url, **kwargs)
@@ -1690,6 +1730,7 @@ class Client:
         data,
         classification_set: str = "Default",
         data_format=DOCUMENT_IMPORTER_TEXT,
+        timeout: float = None,
     ) -> dict:
         def get_media_type_for_format() -> str:
             if data_format == DOCUMENT_IMPORTER_TEXT:
@@ -1703,6 +1744,7 @@ class Client:
             data=data,
             params={"type": data_format},
             headers={HEADER_CONTENT_TYPE: get_media_type_for_format()},
+            timeout=timeout,
         )
         return response["payload"]
 
@@ -1713,6 +1755,7 @@ class Client:
         source: Union[Path, IO, str],
         annotation_types: str = None,
         language: str = None,
+        timeout: float = None,
     ) -> dict:
         if isinstance(source, Path):
             with source.open("r", encoding=ENCODING_UTF_8) as file:
@@ -1726,6 +1769,7 @@ class Client:
             data=data,
             params={"annotationTypes": annotation_types, "language": language},
             headers={HEADER_CONTENT_TYPE: MEDIA_TYPE_TEXT_PLAIN_UTF8},
+            timeout=timeout,
         )
         return response["payload"]
 
@@ -1736,6 +1780,7 @@ class Client:
         source: Union[Path, IO, str],
         annotation_types: str = None,
         language: str = None,
+        timeout: float = None,
     ) -> dict:
         if isinstance(source, Path):
             with source.open("r", encoding=ENCODING_UTF_8) as file:
@@ -1749,6 +1794,7 @@ class Client:
             data=data,
             params={"annotationTypes": annotation_types, "language": language},
             headers={HEADER_CONTENT_TYPE: MEDIA_TYPE_TEXT_PLAIN_UTF8},
+            timeout=timeout,
         )
         return response["payload"]
 
@@ -1837,6 +1883,7 @@ class Client:
         source: Union[IO, str],
         annotation_types: str = None,
         language: str = None,
+        timeout: float = None,
     ) -> str:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -1856,6 +1903,7 @@ class Client:
                     HEADER_CONTENT_TYPE: MEDIA_TYPE_TEXT_PLAIN_UTF8,
                     HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_XMI,
                 },
+                timeout=timeout,
             ),
             ENCODING_UTF_8,
         )
