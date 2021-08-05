@@ -132,7 +132,8 @@ Restricting returned annotation types
       annotation_types='*Diagnosis') # will return only annotations that end with 'Diagnosis'
 
 Upload documents, process them using a pipeline, and export results
-~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 In contrast to the simple text analysis endpoint above, one can also upload the documents into the product and create an analysis process there using experimental endpoints (may change soon). This has some advantages, namely that the results can be inspected in our product using the AnnotationViewer, and that the same document collection could be re-processed several times.
 
 .. code:: python
