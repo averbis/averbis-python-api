@@ -35,7 +35,9 @@ AUTHOR = "Averbis GmbH"
 REQUIRES_PYTHON = ">=3.6.0"
 
 install_requires = [
-    "requests"
+    "requests",
+    "types-requests",
+    "dkpro-cassis"
 ]
 
 test_dependencies = [
@@ -119,9 +121,9 @@ setup(
         # Full list: https://pypi.python.org/pypi?%3Aaction=list_classifiers
         "Development Status :: 4 - Beta",
         "Programming Language :: Python :: 3 :: Only",
-        "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
         "License :: OSI Approved :: Apache Software License"
     ],
 )

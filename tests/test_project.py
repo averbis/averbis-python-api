@@ -20,15 +20,17 @@
 import logging
 import tempfile
 
+from averbis import Process
 from tests.fixtures import *
+from tests.utils import *
 
 logging.basicConfig(level=logging.INFO)
 
 
 def test_that_create_pipeline_accepts_name_override(client_version_5, requests_mock):
-    project = client_version_5.get_project("LoadTesting")
+    project = client_version_5.get_project("test-project")
     requests_mock.post(
-        f"{API_BASE}/textanalysis/projects/LoadTesting/pipelines",
+        f"{API_BASE}/textanalysis/projects/test-project/pipelines",
         headers={"Content-Type": "application/json"},
         json={"payload": None, "errorMessages": []},
     )
@@ -40,9 +42,9 @@ def test_that_create_pipeline_accepts_name_override(client_version_5, requests_m
 
 def test_that_create_pipeline_schema_1(client_version_5, requests_mock):
     # The pipeline name parameter is "name" in version 5 and "pipelineName" in version 6
-    project = client_version_5.get_project("LoadTesting")
+    project = client_version_5.get_project("test-project")
     requests_mock.post(
-        f"{API_BASE}/textanalysis/projects/LoadTesting/pipelines",
+        f"{API_BASE}/textanalysis/projects/test-project/pipelines",
         headers={"Content-Type": "application/json"},
         json={"payload": None, "errorMessages": []},
     )
@@ -54,9 +56,9 @@ def test_that_create_pipeline_schema_1(client_version_5, requests_mock):
 
 def test_that_create_pipeline_schema_2(client_version_6, requests_mock):
     # The pipeline name parameter is "name" in version 5 and "pipelineName" in version 6
-    project = client_version_6.get_project("LoadTesting")
+    project = client_version_6.get_project("test-project")
     requests_mock.post(
-        f"{API_BASE}/textanalysis/projects/LoadTesting/pipelines",
+        f"{API_BASE}/textanalysis/projects/test-project/pipelines",
         headers={"Content-Type": "application/json"},
         json={"payload": None, "errorMessages": []},
     )
@@ -67,7 +69,7 @@ def test_that_create_pipeline_schema_2(client_version_6, requests_mock):
 
 
 def test_that_get_pipeline_returns_same_instance_on_consecutive_calls(client):
-    project = client.get_project("LoadTesting")
+    project = client.get_project("test-project")
     pipeline1 = project.get_pipeline("discharge")
     pipeline2 = project.get_pipeline("discharge")
 
@@ -98,6 +100,128 @@ def test_delete_pear_success(client_version_6, requests_mock):
     project.delete_pear(pear_identifier)
 
 
+def test_get_processes(client_version_6, requests_mock):
+    project = client_version_6.get_project("test-project")
+    pipeline_name = "my_pipeline_name"
+    state = "IDLE"
+
+    expected_processes_payload = [
+        {"processName": "process1", "documentSourceName": "document_source_1"},
+        {"processName": "process2", "documentSourceName": "document_source_2"},
+        {"processName": "process3", "documentSourceName": "document_source_3"},
+    ]
+
+    expected_processes = []
+    for i, item in enumerate(expected_processes_payload):
+        process_name = item["processName"]
+        document_source_name = item["documentSourceName"]
+        p = Process(
+            project=project,
+            name=process_name,
+            document_source_name=document_source_name,
+            pipeline_name=pipeline_name,
+        )
+        expected_processes.append(p)
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/test-project/processes",
+        headers={"Content-Type": "application/json"},
+        json={"payload": expected_processes_payload, "errorMessages": []},
+    )
+
+    for i, item in enumerate(expected_processes_payload):
+        process_name = item["processName"]
+        document_source_name = item["documentSourceName"]
+        payload = {
+            "processName": process_name,
+            "pipelineName": pipeline_name,
+            "documentSourceName": document_source_name,
+            "state": state,
+            "processedDocuments": i,
+        }
+        requests_mock.get(
+            f"{API_EXPERIMENTAL}/textanalysis/projects/test-project/"
+            f"documentSources/{document_source_name}/processes/{process_name}",
+            headers={"Content-Type": "application/json"},
+            json={"payload": payload, "errorMessages": []},
+        )
+
+    actual_processes = project.list_processes()
+    assert len(expected_processes_payload) == len(actual_processes)
+    [assert_process_equal(a, b) for a, b in zip(expected_processes, actual_processes)]
+
+
+def test_list_document_collection(client, requests_mock):
+    project = client.get_project("test-project")
+    requests_mock.get(
+        f"{API_BASE}/importer/projects/test-project/documentCollections",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": [
+                {"name": "collection0", "numberOfDocuments": 5},
+                {"name": "collection1", "numberOfDocuments": 1},
+                {"name": "collection2", "numberOfDocuments": 20},
+            ],
+            "errorMessages": [],
+        },
+    )
+
+    collections = project.list_document_collections()
+
+    assert collections[2].name == "collection2"
+
+
+def test_list_resources(client_version_6, requests_mock):
+    project = client_version_6.get_project("test-project")
+
+    expected_resources_list = [
+        "test1.txt",
+        "test2.txt",
+        "test3.txt",
+    ]
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/resources",
+        headers={"Content-Type": "application/json"},
+        json={"payload": {"files": expected_resources_list}, "errorMessages": []},
+    )
+
+    actual_resources_list = project.list_resources()
+    assert actual_resources_list == expected_resources_list
+
+
+def test_delete_resources(client, requests_mock):
+    project = client.get_project("test-project")
+
+    requests_mock.delete(
+        f"{API_EXPERIMENTAL}/textanalysis" f"/projects/{project.name}" f"/resources",
+        headers={"Content-Type": "application/json"},
+        json={"payload": None, "errorMessages": []},
+    )
+
+    project.delete_resources()
+
+
+def test_upload_resources(client_version_6, requests_mock):
+    project = client_version_6.get_project("test-project")
+
+    requests_mock.post(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/resources",
+        headers={"Content-Type": "application/json"},
+        status_code=200,
+        json={
+            "payload": {
+                "files": [
+                    "text1.txt",
+                ]
+            },
+            "errorMessages": [],
+        },
+    )
+    resources = project.upload_resources(TEST_DIRECTORY + "/" + "resources/zip_test/text1.txt")
+    assert len(resources) == 1
+
+
 def test_delete_pear_with_pear_does_not_exist(client_version_6, requests_mock):
     project = client_version_6.get_project("test-project")
     pear_identifier = "pear0"
@@ -111,9 +235,11 @@ def test_delete_pear_with_pear_does_not_exist(client_version_6, requests_mock):
     with pytest.raises(Exception) as ex:
         project.delete_pear(pear_identifier)
 
-    # the assert needs to be on this level
-    expected_error_message = "Unable to perform request: The requested resource could not be found."
-    assert expected_error_message in str(ex.value)
+    expected_error_message = (
+        "404 Server Error: 'None' for url: 'https://localhost:8080/information-discovery/rest/experimental/textanalysis/projects/test-project/pearComponents/pear0'.\n"
+        "Endpoint error message is: 'The requested resource could not be found.'"
+    )
+    assert str(ex.value) == expected_error_message
 
 
 def test_install_pear(client_version_6, requests_mock):
@@ -143,7 +269,6 @@ def test_install_pear_with_file_does_not_exist(client_version_6, requests_mock):
 def test_install_pear_with_file_is_not_a_pear(client_version_6, requests_mock):
     project = client_version_6.get_project("test-project")
     with tempfile.NamedTemporaryFile(suffix="xyz.bear") as tf:
-
         with pytest.raises(Exception) as ex:
             project.install_pear(tf.name)
 
@@ -156,7 +281,7 @@ def test_install_pear_with_pear_already_exists(client_version_6, requests_mock):
     requests_mock.post(
         f"{API_EXPERIMENTAL}/textanalysis/projects/test-project/pearComponents",
         headers={"Content-Type": "application/json"},
-        status_code=404,
+        status_code=500,
         json={
             "payload": None,
             "errorMessages": [
@@ -170,7 +295,7 @@ def test_install_pear_with_pear_already_exists(client_version_6, requests_mock):
             project.install_pear(tf.name)
 
         expected_error_message = (
-            "Unable to perform request: The PEAR component 'xyz.pear' could not be installed "
-            "since another PEAR component with the ID 'xyz' already exists. "
+            "500 Server Error: 'None' for url: 'https://localhost:8080/information-discovery/rest/experimental/textanalysis/projects/test-project/pearComponents'.\n"
+            "Endpoint error message is: 'The PEAR component 'xyz.pear' could not be installed since another PEAR component with the ID 'xyz' already exists. '"
         )
-        assert expected_error_message in str(ex.value)
+        assert expected_error_message == str(ex.value)

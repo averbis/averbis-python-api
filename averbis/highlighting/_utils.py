@@ -196,7 +196,7 @@ def _render_highlighted(
     context_size: int = 0,
     highlight_color: str = "On_Green",
 ) -> str:
-    """  Actual internal print method that assembles the output string. """
+    """Actual internal print method that assembles the output string."""
     black_color = _get_text_color_from_list("Color_off")
     return (
         document_text[begin - context_size : begin]

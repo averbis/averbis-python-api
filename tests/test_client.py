@@ -18,6 +18,9 @@
 #
 #
 import logging
+import zipfile
+import tempfile
+from pathlib import Path
 
 from averbis import Pipeline, Project
 from averbis.core import (
@@ -28,7 +31,6 @@ from averbis.core import (
     DOCUMENT_IMPORTER_TEXT,
 )
 from tests.fixtures import *
-
 
 TEST_DIRECTORY = os.path.dirname(__file__)
 
@@ -41,6 +43,14 @@ def test_default_headers(client):
 
     assert headers["Accept"] == "application/json"
     assert TEST_API_TOKEN == headers["api-token"]
+
+
+def test_build_url(client):
+    client._url = "http://some-machine/health-discovery/"
+    assert (
+        client._build_url("v1/some-endpoint/")
+        == "http://some-machine/health-discovery/rest/v1/some-endpoint/"
+    )
 
 
 def test_default_headers_with_override(client):
@@ -165,9 +175,45 @@ def test_get_project(client):
     assert project.name == "LoadTesting"
 
 
-def test_list_projects(client):
-    with pytest.raises(OperationNotSupported):
-        client.list_projects()
+def test_list_projects(client, requests_mock):
+    def callback(request, _):
+        return {
+            "payload": [
+                {"name": "Jumble", "description": ""},
+                {"name": "Bumble", "description": ""},
+            ],
+            "errorMessages": [],
+        }
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/projects", headers={"Content-Type": "application/json"}, json=callback
+    )
+
+    project_list = client.list_projects()
+
+    assert project_list[0]["name"] == "Jumble"
+    assert project_list[1]["name"] == "Bumble"
+
+
+def test_exists_project(client, requests_mock):
+    def callback(request, _):
+        return {
+            "payload": [
+                {"name": "Jumble", "description": ""},
+                {"name": "Bumble", "description": ""},
+            ],
+            "errorMessages": [],
+        }
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/projects", headers={"Content-Type": "application/json"}, json=callback
+    )
+
+    project_list = client.list_projects()
+
+    assert client.exists_project("Jumble") is True
+    assert client.exists_project("Bumble") is True
+    assert client.exists_project("Mumble") is False
 
 
 def test_delete_projects(client):
@@ -381,10 +427,10 @@ def test_import_txt_into_collection(client, requests_mock):
     )
     file_path = os.path.join(TEST_DIRECTORY, "resources/texts/text1.txt")
     with open(file_path, "r", encoding="UTF-8") as input_io:
-        response = client._import_document(
+        response = client._import_documents(
             project.name, "collection0", input_io, mime_type="text/plain"
         )
-    assert response["original_document_name"] == "text1.txt"
+    assert response[0]["original_document_name"] == "text1.txt"
 
 
 def test_import_solr_xml_into_collection(client, requests_mock):
@@ -401,10 +447,17 @@ def test_import_solr_xml_into_collection(client, requests_mock):
     )
     file_path = os.path.join(TEST_DIRECTORY, "resources/xml/disease_solr.xml")
     with open(file_path, "r", encoding="UTF-8") as input_io:
-        response = client._import_document(
+        response = client._import_documents(
             project.name, "collection0", input_io, mime_type="application/vnd.averbis.solr+xml"
         )
-    assert response["original_document_name"] == "disease_solr.xml"
+
+    assert response[0]["original_document_name"] == "disease_solr.xml"
+
+    # Otherwise, we get a ValueError
+    with pytest.raises(Exception):
+        client._import_documents(
+            Path("dummy"), mime_type="application/vnd.averbis.solr+xml", filename="Dummy.txt"
+        )
 
 
 def test_list_terminologies(client, requests_mock):
@@ -597,9 +650,10 @@ def test_analyse_texts_with_some_working_and_some_failing(client_version_5, requ
         },
     )
 
-    def callback(request, _):
+    def callback(request, context):
         doc_text = request.text.read().decode("utf-8")
         if doc_text == "works":
+            context.status_code = 200
             return {
                 "payload": [
                     {
@@ -613,6 +667,7 @@ def test_analyse_texts_with_some_working_and_some_failing(client_version_5, requ
                 "errorMessages": [],
             }
         else:
+            context.status_code = 500
             return {
                 "payload": [],
                 "errorMessages": ["Kaputt!"],
@@ -693,6 +748,34 @@ def test_classify_document(client, requests_mock):
     assert response["classifications"][0]["documentIdentifier"] == "UNKNOWN"
 
 
+def test_list_resources(client, requests_mock):
+    expected_resources_list = [
+        "test1.txt",
+        "test2.txt",
+        "test3.txt",
+    ]
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/resources",
+        headers={"Content-Type": "application/json"},
+        json={"payload": {"files": expected_resources_list}, "errorMessages": []},
+    )
+
+    actual_resources_list = client.list_resources()
+    assert actual_resources_list == expected_resources_list
+
+
+def test_delete_resources(client, requests_mock):
+
+    requests_mock.delete(
+        f"{API_EXPERIMENTAL}/textanalysis" f"/resources",
+        headers={"Content-Type": "application/json"},
+        json={"payload": None, "errorMessages": []},
+    )
+
+    client.delete_resources()
+
+
 def test_select(client, requests_mock):
     requests_mock.get(
         f"{API_BASE}/search/projects/LoadTesting/select",
@@ -750,3 +833,153 @@ def test_with_settings_file_with_defaults_id(requests_mock_id6):
     assert id_client._url == "https://localhost:8080/information-discovery"
     assert id_client._api_token == "dummy-token"
     assert id_client._verify_ssl == "id.pem"
+
+
+def test_handle_error_outside_platform(client, requests_mock):
+    """Simulates an error that is outside the scope of our platform."""
+    requests_mock.get(
+        f"{API_BASE}/invalid_url",
+        headers={"Content-Type": "application/json"},
+        reason="Not found",
+        status_code=404,
+    )
+    with pytest.raises(Exception) as ex:
+        client._Client__request_with_json_response(method="get", endpoint=f"v1/invalid_url")
+    expected_error_message = "404 Server Error: 'Not found' for url: 'https://localhost:8080/information-discovery/rest/v1/invalid_url'."
+    assert str(ex.value) == expected_error_message
+
+
+def test_handle_error_in_non_existing_endpoint(client, requests_mock):
+    """Simulates the scenario that an invalid URL is called. The URL is in the namespace of a platform."""
+    requests_mock.get(
+        f"{API_BASE}/invalid_url",
+        headers={"Content-Type": "application/json"},
+        json={
+            "servlet": "Platform",
+            "message": "Not Found",
+            "url": f"{API_BASE}/invalid_url",
+        },
+        status_code=404,
+    )
+    with pytest.raises(Exception) as ex:
+        client._Client__request_with_json_response(method="get", endpoint="v1/invalid_url")
+    expected_error_message = "404 Server Error: 'None' for url: 'https://localhost:8080/information-discovery/rest/v1/invalid_url'.\nPlatform error message is: 'Not Found'"
+    assert str(ex.value) == expected_error_message
+
+
+def test_handle_error_bad_request(client, requests_mock):
+    """Simulates a bad request with error message 400, e.g. creating a project that already exists."""
+    requests_mock.get(
+        f"{API_BASE}/invalid_url",
+        headers={"Content-Type": "application/json"},
+        json={"payload": None, "errorMessages": ["A project with name 'test' already exists."]},
+        status_code=400,
+    )
+    with pytest.raises(Exception) as ex:
+        client._Client__request_with_json_response(method="get", endpoint="v1/invalid_url")
+    expected_error_message = (
+        "400 Server Error: 'None' for url: 'https://localhost:8080/information-discovery/rest/v1/invalid_url'.\n"
+        "Endpoint error message is: 'A project with name 'test' already exists.'"
+    )
+    assert str(ex.value) == expected_error_message
+
+
+def test_handle_error_no_access(client, requests_mock):
+    """Simulates the scenario where the user has no access."""
+    requests_mock.get(f"{API_BASE}/url/that/cannot/be/accessed", status_code=401)
+    with pytest.raises(Exception) as ex:
+        client._Client__request_with_json_response(
+            method="get", endpoint="v1/url/that/cannot/be/accessed"
+        )
+    expected_error_message = "401 Server Error: 'None' for url: 'https://localhost:8080/information-discovery/rest/v1/url/that/cannot/be/accessed'."
+    assert str(ex.value) == expected_error_message
+
+
+def test_upload_resources(client_version_6, requests_mock):
+    requests_mock.post(
+        f"{API_EXPERIMENTAL}/textanalysis/resources",
+        headers={"Content-Type": "application/json"},
+        status_code=200,
+        json={
+            "payload": {
+                "files": [
+                    "text1.txt",
+                ]
+            },
+            "errorMessages": [],
+        },
+    )
+    resources = client_version_6.upload_resources(
+        Path(TEST_DIRECTORY) / "resources/zip_test/text1.txt"
+    )
+    assert len(resources) == 1
+
+
+def test_create_zip_io__file_does_not_exist(client):
+    with pytest.raises(Exception) as ex:
+        client._create_zip_io("not-existing-file.txt")
+    expected_error_message = "not-existing-file.txt does not exist."
+    assert str(ex.value) == expected_error_message
+
+
+def test_create_zip_io__zip_file_io(client):
+    zip_archive_bytes_io = open(Path(TEST_DIRECTORY) / "resources/zip_test/zip_test.zip", "rb")
+    zip_archive_bytes_io = client._create_zip_io(zip_archive_bytes_io)
+    zip_file = zipfile.ZipFile(zip_archive_bytes_io)
+    files_in_zip = [f.filename for f in zip_file.filelist]
+    assert len(files_in_zip) == 5
+    assert "text1.txt" in files_in_zip
+    assert "text2.txt" in files_in_zip
+    assert "text3.txt" in files_in_zip
+    assert "sub/" in files_in_zip
+    assert "sub/text4.txt" in files_in_zip
+
+
+def test_create_zip_io__single_file(client):
+    zip_archive_bytes_io = client._create_zip_io(
+        TEST_DIRECTORY + "/" + "resources/zip_test/text1.txt"
+    )
+    zip_file = zipfile.ZipFile(zip_archive_bytes_io)
+    files_in_zip = [f.filename for f in zip_file.filelist]
+    assert len(files_in_zip) == 1
+    assert "text1.txt" in files_in_zip
+
+
+def test_create_zip_io__single_file_with_path_in_zip(client):
+    zip_archive_bytes_io = client._create_zip_io(
+        TEST_DIRECTORY + "/" + "resources/zip_test/text1.txt", path_in_zip="abc"
+    )
+    zip_file = zipfile.ZipFile(zip_archive_bytes_io)
+    files_in_zip = [f.filename for f in zip_file.filelist]
+    assert len(files_in_zip) == 1
+    assert "abc/text1.txt" in files_in_zip
+
+
+def test_create_zip_io__folder_with_path_in_zip(client):
+    zip_archive_bytes_io = client._create_zip_io(
+        TEST_DIRECTORY + "/" + "resources/zip_test", path_in_zip="abc"
+    )
+    assert_zip_archive_bytes_io_content(zip_archive_bytes_io, "abc/")
+
+
+def test_create_zip_io__folder_as_path_with_path_in_zip(client):
+    zip_archive_bytes_io = client._create_zip_io(
+        Path(TEST_DIRECTORY) / "resources/zip_test", path_in_zip="abc"
+    )
+    assert_zip_archive_bytes_io_content(zip_archive_bytes_io, "abc/")
+
+
+def test_create_zip_io__folder(client):
+    zip_archive_bytes_io = client._create_zip_io(TEST_DIRECTORY + "/" + "resources/zip_test")
+    assert_zip_archive_bytes_io_content(zip_archive_bytes_io)
+
+
+def assert_zip_archive_bytes_io_content(zip_archive_bytes_io, prefix=""):
+    zip_file = zipfile.ZipFile(zip_archive_bytes_io)
+    files_in_zip = [f.filename for f in zip_file.filelist]
+    assert len(files_in_zip) == 5
+    assert f"{prefix}text2.txt" in files_in_zip
+    assert f"{prefix}text1.txt" in files_in_zip
+    assert f"{prefix}text3.txt" in files_in_zip
+    assert f"{prefix}sub/text4.txt" in files_in_zip
+    assert f"{prefix}zip_test.zip" in files_in_zip

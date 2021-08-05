@@ -17,19 +17,24 @@
 # limitations under the License.
 #
 #
-from averbis import DocumentCollection
+from pathlib import Path
+
+from cassis import Cas, TypeSystem
+
+from averbis import DocumentCollection, Process
 from tests.fixtures import *
+from tests.utils import *
 
 
 @pytest.fixture()
 def document_collection(client) -> DocumentCollection:
-    project = client.get_project("LoadTesting")
-    return DocumentCollection(project, "my_collection")
+    project = client.get_project("test-project")
+    return DocumentCollection(project, "test-collection")
 
 
-def test_infer_mime_type_for_plain_text(document_collection, requests_mock):
+def test_import_plain_text(document_collection, requests_mock):
     requests_mock.post(
-        f"{API_BASE}/importer/projects/LoadTesting/documentCollections/my_collection/documents",
+        f"{API_BASE}/importer/projects/test-project/documentCollections/test-collection/documents",
         json={
             "payload": {"original_document_name": "text1.txt", "document_name": "text1.txt"},
             "errorMessages": [],
@@ -38,47 +43,174 @@ def test_infer_mime_type_for_plain_text(document_collection, requests_mock):
     file_path = os.path.join(TEST_DIRECTORY, "resources/texts/text1.txt")
     with open(file_path, "r", encoding="UTF-8") as input_io:
         # Please note that we do not set mime_type = plain/text here, but it is automatically inferred
-        document_collection.import_documents(input_io)
+        result = document_collection.import_documents(input_io)
+
+    assert result[0]["document_name"] == "text1.txt"
 
 
-def test_infer_mime_type_for_solr_xml(client, requests_mock):
-    project = client.get_project("LoadTesting")
-    document_collection = DocumentCollection(project, "my_collection")
+def test_import_cas(document_collection, requests_mock):
     requests_mock.post(
-        f"{API_BASE}/importer/projects/LoadTesting/documentCollections/my_collection/documents",
+        f"{API_BASE}/importer/projects/test-project/documentCollections/test-collection/documents",
         json={
-            "payload": {
-                "original_document_name": "disease_solr.xml",
-                "document_name": "disease_solr.xml",
-            },
+            "payload": {"original_document_name": "text1.xmi", "document_name": "text1.xmi"},
             "errorMessages": [],
         },
     )
-    file_path_xml = os.path.join(TEST_DIRECTORY, "resources/xml/disease_solr.xml")
-    with open(file_path_xml, "r", encoding="UTF-8") as input_io:
-        # Please note that it only works for solr-xml, if we explicitly set the mime-type
-        document_collection.import_documents(input_io, mime_type="application/vnd.averbis.solr+xml")
 
-        # Otherwise, we get a ValueError
-        with pytest.raises(ValueError):
-            document_collection.import_documents(input_io)
+    cas = Cas(typesystem=TypeSystem())
+
+    result = document_collection.import_documents(cas, filename="text1.xmi")
+
+    assert result[0]["document_name"] == "text1.xmi"
 
 
-def test_list_document_collection(client, requests_mock):
-    project = client.get_project("LoadTesting")
-    requests_mock.get(
-        f"{API_BASE}/importer/projects/LoadTesting/documentCollections",
-        headers={"Content-Type": "application/json"},
+def test_import_solr_xml(document_collection, requests_mock):
+    requests_mock.post(
+        f"{API_BASE}/importer/projects/test-project/documentCollections/test-collection/documents",
         json={
             "payload": [
-                {"name": "collection0", "numberOfDocuments": 5},
-                {"name": "collection1", "numberOfDocuments": 1},
-                {"name": "collection2", "numberOfDocuments": 20},
+                {
+                    "original_document_name": "disease_solr-1.xml",
+                    "document_name": "disease_solr-1.xml",
+                },
+                {
+                    "original_document_name": "disease_solr-2.xml",
+                    "document_name": "disease_solr-2.xml",
+                },
             ],
             "errorMessages": [],
         },
     )
+    file_path_xml = Path(TEST_DIRECTORY, "resources/xml/disease_solr.xml")
 
-    collections = project.list_document_collections()
+    # Please note that it only works for solr-xml, if we explicitly set the mime-type
+    result = document_collection.import_documents(
+        file_path_xml, mime_type="application/vnd.averbis.solr+xml"
+    )
 
-    assert collections[2].name == "collection2"
+    assert result[0]["document_name"] == "disease_solr-1.xml"
+    assert result[1]["document_name"] == "disease_solr-2.xml"
+
+    # Otherwise, we get a ValueError
+    with pytest.raises(ValueError):
+        document_collection.import_documents(file_path_xml)
+
+
+def test_create_and_run_process(document_collection, requests_mock):
+    pipeline_name = "test-pipeline"
+    process_name = "test-process"
+    state = "IDLE"
+    number_of_documents = 12
+
+    requests_mock.post(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/test-project/processes",
+        headers={"Content-Type": "application/json"},
+        json={"payload": None, "errorMessages": []},
+    )
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/test-project/"
+        f"documentSources/{document_collection.name}/processes/{process_name}",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": {
+                "processName": process_name,
+                "pipelineName": pipeline_name,
+                "documentSourceName": document_collection.name,
+                "state": state,
+                "processedDocuments": number_of_documents,
+            },
+            "errorMessages": [],
+        },
+    )
+
+    actual_process = document_collection.create_and_run_process(
+        process_name=process_name, pipeline=pipeline_name
+    )
+
+    expected_process = Process(
+        document_collection.project, process_name, document_collection.name, pipeline_name
+    )
+    assert_process_equal(expected_process, actual_process)
+
+
+def test_list_processes(client_version_6, requests_mock):
+    project = client_version_6.get_project("test-project")
+    document_collection = DocumentCollection(project, "my_collection")
+    pipeline_name = "my_pipeline_name"
+    state = "IDLE"
+
+    all_processes_payload = [
+        {"processName": "process1", "documentSourceName": "my_collection"},
+        {"processName": "process2", "documentSourceName": "document_source_2"},
+        {"processName": "process3", "documentSourceName": "document_source_3"},
+    ]
+
+    expected_processes = []
+    for i, item in enumerate(all_processes_payload):
+        process_name = item["processName"]
+        document_source_name = item["documentSourceName"]
+        p = Process(
+            project=project,
+            name=process_name,
+            document_source_name=document_source_name,
+            pipeline_name=pipeline_name,
+        )
+        expected_processes.append(p)
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/test-project/processes",
+        headers={"Content-Type": "application/json"},
+        json={"payload": all_processes_payload, "errorMessages": []},
+    )
+
+    for i, item in enumerate(all_processes_payload):
+        process_name = item["processName"]
+        document_source_name = item["documentSourceName"]
+        payload = {
+            "processName": process_name,
+            "pipelineName": pipeline_name,
+            "documentSourceName": document_source_name,
+            "state": state,
+            "processedDocuments": i,
+        }
+        requests_mock.get(
+            f"{API_EXPERIMENTAL}/textanalysis/projects/test-project/"
+            f"documentSources/{document_source_name}/processes/{process_name}",
+            headers={"Content-Type": "application/json"},
+            json={"payload": payload, "errorMessages": []},
+        )
+
+    actual_processes = document_collection.list_processes()
+    assert len(actual_processes) == 1
+
+    assert actual_processes[0].name == "process1"
+    assert actual_processes[0].project.name == "test-project"
+    assert actual_processes[0].pipeline_name == "my_pipeline_name"
+    assert actual_processes[0].document_source_name == "my_collection"
+
+
+def test_get_process(client_version_6, requests_mock):
+    project = client_version_6.get_project("test-project")
+    process_name = "my_process"
+    document_source_name = "my_document_source"
+    pipeline_name = "my_pipeline_name"
+
+    expected_process = Process(project, process_name, document_source_name, pipeline_name)
+
+    payload = {
+        "processName": process_name,
+        "pipelineName": pipeline_name,
+        "documentSourceName": document_source_name,
+        "state": "IDLE",
+        "processedDocuments": 12,
+    }
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/test-project/"
+        f"documentSources/{document_source_name}/processes/{process_name}",
+        headers={"Content-Type": "application/json"},
+        json={"payload": payload, "errorMessages": []},
+    )
+    actual = project.get_document_collection(document_source_name).get_process(process_name)
+    assert_process_equal(expected_process, actual)

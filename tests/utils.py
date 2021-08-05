@@ -17,15 +17,13 @@
 # limitations under the License.
 #
 #
-from .core import Client, Project, Pipeline, Result, Terminology, DocumentCollection, Pear, Process
 
-__all__ = [
-    "Client",
-    "Project",
-    "Pipeline",
-    "Result",
-    "Terminology",
-    "DocumentCollection",
-    "Pear",
-    "Process",
-]
+from averbis import Process
+
+
+def assert_process_equal(expected_process: "Process", actual_process: "Process"):
+    assert expected_process.name == actual_process.name
+    assert expected_process.project.name == actual_process.project.name
+    assert expected_process.pipeline_name == actual_process.pipeline_name
+    assert expected_process.document_source_name == actual_process.document_source_name
+    assert expected_process.preceding_process_name == actual_process.preceding_process_name
