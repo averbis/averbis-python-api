@@ -40,7 +40,7 @@ sys.path.insert(0, os.path.abspath('..'))
 # -- Project information -----------------------------------------------------
 
 project = 'averbis-python-api'
-copyright = '2020, Averbis GmbH'
+copyright = '2021, Averbis GmbH'
 author = 'Averbis GmbH'
 
 # The short X.Y version

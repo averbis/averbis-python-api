@@ -6,23 +6,9 @@ API Reference
 .. automodule:: averbis
     :members:
     :undoc-members:
+    :exclude-members: Client
 
-.. autoclass:: averbis.platform.Client
+.. autoclass:: averbis.Client
    :members:
    :inherited-members:
-   :exclude-members: __init__
-
-.. autoclass:: averbis.platform.Project
-   :members:
-   :inherited-members:
-   :exclude-members: __init__
-
-.. autoclass:: averbis.platform.Pipeline
-   :members:
-   :inherited-members:
-   :exclude-members: __init__
-
-.. autoclass:: averbis.platform.Terminology
-   :members:
-   :inherited-members:
-   :exclude-members: __init__
+   :special-members: __init__
