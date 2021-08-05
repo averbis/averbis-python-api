@@ -44,16 +44,18 @@ Supported products are:
 Status
 ------
 
-The Averbis Python API is currently in an open alpha development stage. We try to keep breaking changes minimal but they may happen on the way to the first stable release.
+The Averbis Python API is currently in an open alpha development stage. We try to keep breaking changes minimal, but they may happen on the way to the first stable release.
 
 Features
 --------
 
-Currently supported features are:
+Currently, supported features are:
 
 - Managing projects
 - Managing pipelines
 - Managing terminologies
+- Managing collection of documents
+- Managing pears
 - Analysing text using a server-side text mining pipeline
 - Classifying texts using a server-side classifier
 
@@ -71,12 +73,12 @@ Documentation
 
 To get an overview over the methods provided with the client and the corresponding documentation, we refer to our `readthedocs API reference <https://averbis-python-api.readthedocs.io/en/latest/index.html>`_.
 
-Moreover, we will provide a number of example jupyter notebooks that showcase the usage of the client to solve different use cases in an upcoming release.
+Moreover, we will provide a number of example Jupyter notebooks that showcase the usage of the client to solve different use cases in an upcoming release.
 
+The usage for a selected number of API endpoints is given below.
 
 Usage
 -----
-
 
 Connecting the client to a platform
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -95,8 +97,9 @@ Connecting to a pipeline and assure that it is started
 
 .. code:: python
 
-  pipeline = client.get_project('YOUR_PROJECT_NAME').get_pipeline('YOUR_PIPELINE_NAME')
-  pipeline.ensure_started()
+    project = client.get_project('YOUR_PROJECT_NAME')
+    pipeline = project.get_pipeline('YOUR_PIPELINE_NAME')
+    pipeline.ensure_started()
 
 
 Analysing a string
@@ -120,7 +123,6 @@ Analysing a text file
       for annotation in annotations:
           print(annotation)
 
-
 Restricting returned annotation types
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -129,6 +131,40 @@ Restricting returned annotation types
   annotations = pipeline.analyse_text(document, language='en',
       annotation_types='*Diagnosis') # will return only annotations that end with 'Diagnosis'
 
+Upload documents, process them using a pipeline, and export results
+~~~~~~~~~~~~~~~~~~~~~
+In contrast to the simple text analysis endpoint above, one can also upload the documents into the product and create an analysis process there using experimental endpoints (may change soon). This has some advantages, namely that the results can be inspected in our product using the AnnotationViewer, and that the same document collection could be re-processed several times.
+
+.. code:: python
+
+    document_collection = project.create_document_collection("COLLECTION_NAME")
+
+    file_path = "path/to/text/file.txt"
+    with open(file_path, "r", encoding="UTF-8") as input_io:
+        document_collection.import_documents(input_io)
+    print(f"Number of documents: {document_collection.get_number_of_documents()}")
+
+    pipeline = project.get_pipeline("MY_PIPELINE_NAME")
+
+    # Using experimental endpoints to run the analysis and monitor the process state
+    process = document_collection.create_and_run_process(process_name="MY_PROCESS", pipeline=pipeline)
+    while process.get_process_state().state == "PROCESSING":
+        time.sleep(1)
+
+    results = process.export_text_analysis()
+    print(results)
+
+Pear Management
+~~~~~~~~~~~~~~~~~~~~~
+
+A `PEAR <https://uima.apache.org/doc-uima-pears.html/>`_ (Processing Engine ARchive) file is the UIMA standard packaging format for UIMA components like analysis engines (annotators) or CAS consumers. We provdie some (experimental - may change soon) endpoints to upload, delete and list PEARs.
+
+.. code:: python
+
+    project.list_pears()
+    pear = project.install_pear("path/to/mypear.pear")
+    print(pear.get_default_configuration())
+    pear.delete()
 
 Connection profiles
 ~~~~~~~~~~~~~~~~~~~
@@ -138,11 +174,12 @@ possible to store the keys for commonly used servers in a configuration file. Th
 must be called :code:`client-settings.json` and it must be located either in the working directory
 of the script or in the user's home folder in :code:`.averbis/client-settings.json`.
 
-Each profile has three settings:
+Each profile has four settings:
 
 - :code:`url`: the base URL of the server application
 - :code:`api-token`: the API token
 - :code:`verify-ssl`: the path to a PEM file used to validate the server certificate if SSL is used
+- :code:`timeout`: An optional timeout parameter (in seconds)
 
 Default settings which should be applied to all profiles can be stored in the special profile :code:`*` (star).
 
@@ -165,6 +202,13 @@ Default settings which should be applied to all profiles can be stored in the sp
     }
   }
 
+An existing profile can then be loaded with
+
+.. code:: python
+
+  from averbis import Client
+  client = Client("localhost-id")
+
 
 Development
 ------------
@@ -182,4 +226,4 @@ To install the latest development version of the library directly from GitHub, y
 
 .. code-block:: shell
 
-  $ pip install --upgrade git+https://github.com/averbis/averbis-python-api.git
+  $ pip install --force-reinstall --upgrade git+https://github.com/averbis/averbis-python-api.git@refs/heads/dev
