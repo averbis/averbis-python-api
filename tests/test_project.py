@@ -19,6 +19,7 @@
 #
 import logging
 import tempfile
+from pathlib import Path
 
 from averbis import Process
 from tests.fixtures import *
@@ -188,6 +189,31 @@ def test_list_resources(client_version_6, requests_mock):
 
     actual_resources_list = project.list_resources()
     assert actual_resources_list == expected_resources_list
+
+
+def test_download_resources(client_version_6, requests_mock):
+    project = client_version_6.get_project("test-project")
+
+    target_path = Path(TEST_DIRECTORY) / "resources/download/zip_test.zip"
+    try:
+        os.remove(target_path)
+    except OSError:
+        pass
+
+    example_text = "some text"
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis"
+        f"/projects/{project.name}/resources",
+        headers={"Content-Type": "application/zip"},
+        text=example_text,
+    )
+
+    project.download_resources(target_path)
+
+    assert os.path.exists(target_path)
+    assert example_text == target_path.read_text()
+
+    os.remove(target_path)
 
 
 def test_delete_resources(client, requests_mock):

@@ -46,6 +46,7 @@ MEDIA_TYPE_ANY = "*/*"
 MEDIA_TYPE_APPLICATION_XMI = "application/vnd.uima.cas+xmi"
 MEDIA_TYPE_APPLICATION_JSON = "application/json"
 MEDIA_TYPE_APPLICATION_XML = "application/xml"
+MEDIA_TYPE_APPLICATION_ZIP = "application/zip"
 MEDIA_TYPE_APPLICATION_SOLR_XML = "application/vnd.averbis.solr+xml"
 MEDIA_TYPE_TEXT_PLAIN = "text/plain"
 MEDIA_TYPE_TEXT_PLAIN_UTF8 = "text/plain; charset=utf-8"
@@ -388,6 +389,26 @@ class Pipeline:
         return self.project.client._upload_resources(
             zip_file, project_name=self.project.name, pipeline_name=self.name
         )["files"]
+
+    @experimental_api
+    def download_resources(self, target_zip_path: Union[Path, str]) -> None:
+        """
+        Download pipeline resources and store in given path.
+        """
+        # noinspection PyProtectedMember
+        self.project.client._download_resources(
+            target_zip_path, project_name=self.project.name, pipeline_name=self.name
+        )
+
+    @experimental_api
+    def list_resources(self) -> None:
+        """
+        List pipeline resources and store in given path.
+        """
+        # noinspection PyProtectedMember
+        return self.project.client._list_resources(
+            project_name=self.project.name, pipeline_name=self.name
+        )['files']
 
     def collection_process_complete(self) -> dict:
         """
@@ -1003,6 +1024,16 @@ class Project:
         return self.client._list_resources(project_name=self.name)["files"]
 
     @experimental_api
+    def download_resources(self, target_zip_path: Union[Path, str]) -> None:
+        """
+        Download pipeline resources and store in given path.
+        """
+        # noinspection PyProtectedMember
+        self.client._download_resources(
+            target_zip_path, project_name=self.name
+        )
+
+    @experimental_api
     def delete_resources(self) -> None:
         """
         Delete the resources of the project.
@@ -1371,6 +1402,16 @@ class Client:
         :return: List of resources.
         """
         return self._list_resources()["files"]
+
+    @experimental_api
+    def download_resources(self, target_zip_path: Union[Path, str]) -> None:
+        """
+        Download pipeline resources and store in given path.
+        """
+        # noinspection PyProtectedMember
+        self._download_resources(
+            target_zip_path
+        )
 
     @experimental_api
     def delete_resources(self) -> None:
@@ -2186,6 +2227,26 @@ class Client:
         )
 
         return response["payload"]
+
+    @experimental_api
+    def _download_resources(self, target_zip_path: [Path, str], project_name=None, pipeline_name=None) -> None:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Use {client, project, pipeline}.download_resources() instead.
+        """
+        if isinstance(target_zip_path, str):
+            target_zip_path = Path(target_zip_path)
+
+        target_zip_path.parent.mkdir(parents=True, exist_ok=True)
+        zip_file = open(target_zip_path, 'wb')
+        response = self.__request_with_bytes_response(
+            "get",
+            self.__get_resources_endpoint(project_name=project_name, pipeline_name=pipeline_name),
+            headers={HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_ZIP}
+        )
+        zip_file.write(response)
+        zip_file.close()
 
     @staticmethod
     def __handle_error(raw_response: requests.Response):
