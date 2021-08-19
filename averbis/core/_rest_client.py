@@ -400,16 +400,6 @@ class Pipeline:
             target_zip_path, project_name=self.project.name, pipeline_name=self.name
         )
 
-    @experimental_api
-    def list_resources(self) -> None:
-        """
-        List pipeline resources and store in given path.
-        """
-        # noinspection PyProtectedMember
-        return self.project.client._list_resources(
-            project_name=self.project.name, pipeline_name=self.name
-        )['files']
-
     def collection_process_complete(self) -> dict:
         """
         Trigger collection process complete of the given pipeline.
@@ -2229,7 +2219,7 @@ class Client:
         return response["payload"]
 
     @experimental_api
-    def _download_resources(self, target_zip_path: [Path, str], project_name=None, pipeline_name=None) -> None:
+    def _download_resources(self, target_zip_path: Union[Path, str], project_name=None, pipeline_name=None) -> None:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
