@@ -1019,9 +1019,7 @@ class Project:
         Download pipeline resources and store in given path.
         """
         # noinspection PyProtectedMember
-        self.client._download_resources(
-            target_zip_path, project_name=self.name
-        )
+        self.client._download_resources(target_zip_path, project_name=self.name)
 
     @experimental_api
     def delete_resources(self) -> None:
@@ -1399,9 +1397,7 @@ class Client:
         Download pipeline resources and store in given path.
         """
         # noinspection PyProtectedMember
-        self._download_resources(
-            target_zip_path
-        )
+        self._download_resources(target_zip_path)
 
     @experimental_api
     def delete_resources(self) -> None:
@@ -2219,7 +2215,9 @@ class Client:
         return response["payload"]
 
     @experimental_api
-    def _download_resources(self, target_zip_path: Union[Path, str], project_name=None, pipeline_name=None) -> None:
+    def _download_resources(
+        self, target_zip_path: Union[Path, str], project_name=None, pipeline_name=None
+    ) -> None:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
@@ -2229,11 +2227,11 @@ class Client:
             target_zip_path = Path(target_zip_path)
 
         target_zip_path.parent.mkdir(parents=True, exist_ok=True)
-        zip_file = open(target_zip_path, 'wb')
+        zip_file = open(target_zip_path, "wb")
         response = self.__request_with_bytes_response(
             "get",
             self.__get_resources_endpoint(project_name=project_name, pipeline_name=pipeline_name),
-            headers={HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_ZIP}
+            headers={HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_ZIP},
         )
         zip_file.write(response)
         zip_file.close()

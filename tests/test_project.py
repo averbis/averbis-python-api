@@ -202,8 +202,7 @@ def test_download_resources(client_version_6, requests_mock):
 
     example_text = "some text"
     requests_mock.get(
-        f"{API_EXPERIMENTAL}/textanalysis"
-        f"/projects/{project.name}/resources",
+        f"{API_EXPERIMENTAL}/textanalysis" f"/projects/{project.name}/resources",
         headers={"Content-Type": "application/zip"},
         text=example_text,
     )
