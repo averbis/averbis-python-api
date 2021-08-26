@@ -1016,7 +1016,7 @@ class Project:
     @experimental_api
     def download_resources(self, target_zip_path: Union[Path, str]) -> None:
         """
-        Download pipeline resources and store in given path.
+        Download Project-level pipeline resources and store in given path.
         """
         # noinspection PyProtectedMember
         self.client._download_resources(target_zip_path, project_name=self.name)
@@ -1394,7 +1394,7 @@ class Client:
     @experimental_api
     def download_resources(self, target_zip_path: Union[Path, str]) -> None:
         """
-        Download pipeline resources and store in given path.
+        Download Client-level pipeline resources and store in given path.
         """
         # noinspection PyProtectedMember
         self._download_resources(target_zip_path)
@@ -2305,8 +2305,8 @@ class Client:
         endpoint = "/experimental/textanalysis/"
         if project_name:
             endpoint += f"projects/{project_name}/"
-        if pipeline_name:
-            endpoint += f"pipelines/{pipeline_name}/"
+            if pipeline_name:
+                endpoint += f"pipelines/{pipeline_name}/"
         endpoint += "resources"
         return endpoint
 
