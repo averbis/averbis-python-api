@@ -18,7 +18,7 @@
 #
 #
 
-from averbis import Process, Project, Pipeline
+from averbis import Project, Pipeline
 from averbis.core import OperationNotSupported
 from tests.fixtures import *
 from tests.utils import *

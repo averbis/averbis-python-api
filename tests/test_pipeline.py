@@ -255,7 +255,7 @@ def test_delete_pipeline_v5(client_version_5):
 def test_delete_pipeline_v6(client_version_6, requests_mock):
     pipeline = Pipeline(Project(client_version_6, "LoadTesting"), "discharge")
     requests_mock.delete(
-        f"{URL_BASE_ID}/rest/experimental/textanalysis/projects/LoadTesting/pipelines/discharge",
+        f"{URL_BASE_ID}/rest/experimental/textanalysis/projects/{pipeline.project.name}/pipelines/{pipeline.name}",
         headers={"Content-Type": "application/json"},
         json={"payload": None, "errorMessages": []},
     )
@@ -275,15 +275,37 @@ def test_list_resources(client, requests_mock):
     ]
 
     requests_mock.get(
-        f"{API_EXPERIMENTAL}/textanalysis"
-        f"/projects/{pipeline.project.name}"
-        f"/pipelines/{pipeline.name}/resources",
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{pipeline.project.name}/pipelines/{pipeline.name}/resources",
         headers={"Content-Type": "application/json"},
         json={"payload": {"files": expected_resources_list}, "errorMessages": []},
     )
 
     actual_resources_list = pipeline.list_resources()
     assert actual_resources_list == expected_resources_list
+
+
+def test_download_resources(client, requests_mock):
+    pipeline = Pipeline(Project(client, "LoadTesting"), "discharge")
+
+    target_path = Path(TEST_DIRECTORY) / "resources/download/zip_test.zip"
+    try:
+        os.remove(target_path)
+    except OSError:
+        pass
+
+    example_text = "some text"
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{pipeline.project.name}/pipelines/{pipeline.name}/resources",
+        headers={"Content-Type": "application/zip"},
+        text=example_text,
+    )
+
+    pipeline.download_resources(target_path)
+
+    assert os.path.exists(target_path)
+    assert example_text == target_path.read_text()
+
+    os.remove(target_path)
 
 
 def test_delete_resources(client, requests_mock):

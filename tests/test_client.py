@@ -765,6 +765,28 @@ def test_list_resources(client, requests_mock):
     assert actual_resources_list == expected_resources_list
 
 
+def test_download_resources(client, requests_mock):
+    target_path = Path(TEST_DIRECTORY) / "resources/download/zip_test.zip"
+    try:
+        os.remove(target_path)
+    except OSError:
+        pass
+
+    example_text = "some text"
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/resources",
+        headers={"Content-Type": "application/zip"},
+        text=example_text,
+    )
+
+    client.download_resources(target_path)
+
+    assert os.path.exists(target_path)
+    assert example_text == target_path.read_text()
+
+    os.remove(target_path)
+
+
 def test_delete_resources(client, requests_mock):
 
     requests_mock.delete(
