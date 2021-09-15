@@ -216,9 +216,21 @@ def test_exists_project(client, requests_mock):
     assert client.exists_project("Mumble") is False
 
 
-def test_delete_projects(client):
+def test_delete_project(client_version_5):
     with pytest.raises(OperationNotSupported):
-        client._delete_project("LoadTesting")
+        client._delete_project(PROJECT_NAME)
+
+
+def test_delete_project(client_version_6, requests_mock):
+    project = client_version_6.get_project(PROJECT_NAME)
+    requests_mock.delete(
+        f"{API_EXPERIMENTAL}/projects/{project.name}",
+        headers={"Content-Type": "application/json"},
+        json={"payload": None, "errorMessages": []},
+    )
+    response = project.delete()
+
+    assert response is None
 
 
 def test_create_pipeline(client, requests_mock):
