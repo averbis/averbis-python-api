@@ -238,21 +238,51 @@ class Pipeline:
         """
         return self.get_info()["pipelineState"] == "STARTED"
 
-    def analyse_text(self, source: Union[Path, IO, str], **kwargs) -> dict:
+    def analyse_text(
+        self,
+        source: Union[Path, IO, str],
+        annotation_types: str = None,
+        language: str = None,
+        timeout: float = None,
+    ) -> dict:
         """
         Analyze the given text or text file using the pipeline.
+
+        :param source:           The document to be analyzed.
+        :param annotation_types: Optional parameter indicating which types should be returned. Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types with prefix "de.averbis.types"
+        :param language:         Optional parameter setting the language of the document, e.g. "en" or "de".
+        :param timeout:          Optional timeout (in seconds) specifiying how long the request is waiting for a server response.
 
         :return: The raw payload of the server response. Future versions of this library may return a better-suited
                  representation.
         """
+
         # noinspection PyProtectedMember
-        return self.project.client._analyse_text(self.project.name, self.name, source, **kwargs)
+        return self.project.client._analyse_text(
+            project=self.project.name,
+            pipeline=self.name,
+            source=source,
+            annotation_types=annotation_types,
+            language=language,
+            timeout=timeout,
+        )
 
     def analyse_texts(
-        self, sources: Iterable[Union[Path, IO, str]], parallelism: int = 0, **kwargs
+        self,
+        sources: Iterable[Union[Path, IO, str]],
+        parallelism: int = 0,
+        annotation_types: str = None,
+        language: str = None,
+        timeout: float = None,
     ) -> Iterator[Result]:
         """
         Analyze the given texts or files using the pipeline. If feasible, multiple documents are processed in parallel.
+
+        :param sources:          The documents to be analyzed.
+        :param parallelism:      Number of parallel instances in the platform.
+        :param annotation_types: Optional parameter indicating which types should be returned. Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types with prefix "de.averbis.types"
+        :param language:         Optional parameter setting the language of the document, e.g. "en" or "de".
+        :param timeout:          Optional timeout (in seconds) specifiying how long the request is waiting for a server response.
 
         :return: An iterator over the results produced by the pipeline.
         """
@@ -277,22 +307,49 @@ class Pipeline:
 
         def run_analysis(source):
             try:
-                return Result(data=self.analyse_text(source, **kwargs), source=source)
+                return Result(
+                    data=self.analyse_text(
+                        source=source,
+                        annotation_types=annotation_types,
+                        language=language,
+                        timeout=timeout,
+                    ),
+                    source=source,
+                )
             except Exception as e:
                 return Result(exception=e, source=source)
 
         with ThreadPoolExecutor(max_workers=parallel_request_count) as executor:
             return executor.map(run_analysis, sources)
 
-    def analyse_html(self, source: Union[Path, IO, str], **kwargs) -> dict:
+    def analyse_html(
+        self,
+        source: Union[Path, IO, str],
+        annotation_types: str = None,
+        language: str = None,
+        timeout: float = None,
+    ) -> dict:
         """
         Analyze the given HTML string or HTML file using the pipeline.
+
+        :param source:           The document to be analyzed.
+        :param annotation_types: Optional parameter indicating which types should be returned. Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types with prefix "de.averbis.types"
+        :param language:         Optional parameter setting the language of the document, e.g. "en" or "de".
+        :param timeout:          Optional timeout (in seconds) specifiying how long the request is waiting for a server response.
 
         :return: The raw payload of the server response. Future versions of this library may return a better-suited
                  representation.
         """
+
         # noinspection PyProtectedMember
-        return self.project.client._analyse_html(self.project.name, self.name, source, **kwargs)
+        return self.project.client._analyse_html(
+            project=self.project.name,
+            pipeline=self.name,
+            source=source,
+            annotation_types=annotation_types,
+            language=language,
+            timeout=timeout,
+        )
 
     def get_configuration(self) -> dict:
         """
@@ -326,14 +383,34 @@ class Pipeline:
     # Ignoring errors as linter (compiler) cannot resolve dynamically loaded lib
     # (with type:ignore for mypy) and (noinspection PyProtectedMember for pycharm)
     @experimental_api
-    def analyse_text_to_cas(self, source: Union[IO, str], **kwargs) -> Cas:
+    def analyse_text_to_cas(
+        self,
+        source: Union[Path, IO, str],
+        annotation_types: str = None,
+        language: str = None,
+        timeout: float = None,
+    ) -> Cas:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear. Processes text using a pipeline and returns the result
         as a UIMA CAS.
+
+        :param source:           The document to be analyzed.
+        :param annotation_types: Optional parameter indicating which types should be returned. Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types with prefix "de.averbis.types"
+        :param language:         Optional parameter setting the language of the document, e.g. "en" or "de".
+        :param timeout:          Optional timeout (in seconds) specifiying how long the request is waiting for a server response.
+
+        :return: A cassis.Cas object
         """
         # noinspection PyProtectedMember
         return load_cas_from_xmi(
-            self.project.client._analyse_text_xmi(self.project.name, self.name, source, **kwargs),
+            self.project.client._analyse_text_xmi(
+                project=self.project.name,
+                pipeline=self.name,
+                source=source,
+                annotation_types=annotation_types,
+                language=language,
+                timeout=timeout,
+            ),
             typesystem=self.get_type_system(),
         )
 
