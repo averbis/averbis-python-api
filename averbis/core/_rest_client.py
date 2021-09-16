@@ -937,7 +937,7 @@ class Project:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
-        Create a new pipeline.
+        List pipelines for the current project.
 
         :return: List of pipelines.
         """
@@ -1833,6 +1833,12 @@ class Client:
 
         Use Project.list_pipelines() instead.
         """
+        if self.project.client.get_spec_version().startswith("5."):
+            raise OperationNotSupported(
+                "Listing pipelines is not supported by the REST API in platform version 5.x, but only from 6.x "
+                "onwards."
+            )
+
         response = self.__request_with_json_response(
             "get", f"/experimental/textanalysis/projects/{project}/pipelines"
         )
