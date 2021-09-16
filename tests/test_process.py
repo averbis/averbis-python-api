@@ -18,7 +18,7 @@
 #
 #
 
-from averbis import Process, Project, Pipeline
+from averbis import Project, Pipeline
 from averbis.core import OperationNotSupported
 from tests.fixtures import *
 from tests.utils import *
@@ -26,14 +26,14 @@ from tests.utils import *
 
 @pytest.fixture()
 def process(client) -> Process:
-    project = client.get_project("test-project")
+    project = client.get_project(PROJECT_NAME)
     return Process(project, "my_process", "my_doc_source", "my_pipeline")
 
 
 def test_delete(process, requests_mock):
 
     requests_mock.delete(
-        f"{API_EXPERIMENTAL}/textanalysis/projects/test-project/"
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{PROJECT_NAME}/"
         f"documentSources/{process.document_source_name}/processes/{process.name}",
         headers={"Content-Type": "application/json"},
         json={"payload": None, "errorMessages": []},
@@ -45,7 +45,7 @@ def test_delete(process, requests_mock):
 def test_rerun(process, requests_mock):
 
     requests_mock.post(
-        f"{API_EXPERIMENTAL}/textanalysis/projects/test-project/"
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{PROJECT_NAME}/"
         f"documentSources/{process.document_source_name}/processes/{process.name}/reprocess",
         headers={"Content-Type": "application/json"},
         json={"payload": None, "errorMessages": []},
@@ -74,7 +74,7 @@ def test_create_and_run_process(process, requests_mock):
     }
 
     requests_mock.get(
-        f"{API_EXPERIMENTAL}/textanalysis/projects/test-project/"
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{PROJECT_NAME}/"
         f"documentSources/{process.document_source_name}/processes/{process_name}",
         headers={"Content-Type": "application/json"},
         json={"payload": payload, "errorMessages": []},
@@ -106,7 +106,7 @@ def test_deprecated_process_state(process, requests_mock):
     }
 
     requests_mock.get(
-        f"{API_EXPERIMENTAL}/textanalysis/projects/test-project/"
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{PROJECT_NAME}/"
         f"documentSources/{process.document_source_name}/processes/{process.name}",
         headers={"Content-Type": "application/json"},
         json={"payload": payload, "errorMessages": []},
@@ -129,7 +129,7 @@ def test_process_state(process, requests_mock):
     }
 
     requests_mock.get(
-        f"{API_EXPERIMENTAL}/textanalysis/projects/test-project/"
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{PROJECT_NAME}/"
         f"documentSources/{process.document_source_name}/processes/{process.name}",
         headers={"Content-Type": "application/json"},
         json={"payload": payload, "errorMessages": []},
@@ -142,7 +142,7 @@ def test_process_state(process, requests_mock):
 
 def test_export_text_analysis_export_v5(client_version_5):
     process = Process(
-        project=Project(client_version_5, "LoadTesting"),
+        project=Project(client_version_5, PROJECT_NAME),
         name="my-process",
         pipeline_name="my-pipeline",
         document_source_name="my-collection",
@@ -153,7 +153,7 @@ def test_export_text_analysis_export_v5(client_version_5):
 
 
 def test_export_text_analysis_export_v6(client_version_6, requests_mock):
-    project = Project(client_version_6, "LoadTesting")
+    project = Project(client_version_6, PROJECT_NAME)
     collection = project.get_document_collection("my-collection")
     process_name = "my-process"
 
@@ -216,7 +216,7 @@ def test_export_text_analysis_export_v6(client_version_6, requests_mock):
 def test_export_text_analysis_to_cas_v5(client_version_5):
     document_id = "document0001"
     process = Process(
-        project=Project(client_version_5, "LoadTesting"),
+        project=Project(client_version_5, PROJECT_NAME),
         name="my-process",
         pipeline_name="my-pipeline",
         document_source_name="my-collection",
@@ -227,7 +227,7 @@ def test_export_text_analysis_to_cas_v5(client_version_5):
 
 
 def test_export_text_analysis_to_cas_v6(client_version_6, requests_mock):
-    project = client_version_6.get_project("LoadTesting")
+    project = client_version_6.get_project(PROJECT_NAME)
     collection = project.get_document_collection("my-collection")
     document_id = "document0001"
     expected_xmi = """<?xml version="1.0" encoding="UTF-8"?>

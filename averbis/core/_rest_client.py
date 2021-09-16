@@ -46,6 +46,7 @@ MEDIA_TYPE_ANY = "*/*"
 MEDIA_TYPE_APPLICATION_XMI = "application/vnd.uima.cas+xmi"
 MEDIA_TYPE_APPLICATION_JSON = "application/json"
 MEDIA_TYPE_APPLICATION_XML = "application/xml"
+MEDIA_TYPE_APPLICATION_ZIP = "application/zip"
 MEDIA_TYPE_APPLICATION_SOLR_XML = "application/vnd.averbis.solr+xml"
 MEDIA_TYPE_TEXT_PLAIN = "text/plain"
 MEDIA_TYPE_TEXT_PLAIN_UTF8 = "text/plain; charset=utf-8"
@@ -237,21 +238,51 @@ class Pipeline:
         """
         return self.get_info()["pipelineState"] == "STARTED"
 
-    def analyse_text(self, source: Union[Path, IO, str], **kwargs) -> dict:
+    def analyse_text(
+        self,
+        source: Union[Path, IO, str],
+        annotation_types: str = None,
+        language: str = None,
+        timeout: float = None,
+    ) -> dict:
         """
         Analyze the given text or text file using the pipeline.
+
+        :param source:           The document to be analyzed.
+        :param annotation_types: Optional parameter indicating which types should be returned. Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types with prefix "de.averbis.types"
+        :param language:         Optional parameter setting the language of the document, e.g. "en" or "de".
+        :param timeout:          Optional timeout (in seconds) specifiying how long the request is waiting for a server response.
 
         :return: The raw payload of the server response. Future versions of this library may return a better-suited
                  representation.
         """
+
         # noinspection PyProtectedMember
-        return self.project.client._analyse_text(self.project.name, self.name, source, **kwargs)
+        return self.project.client._analyse_text(
+            project=self.project.name,
+            pipeline=self.name,
+            source=source,
+            annotation_types=annotation_types,
+            language=language,
+            timeout=timeout,
+        )
 
     def analyse_texts(
-        self, sources: Iterable[Union[Path, IO, str]], parallelism: int = 0, **kwargs
+        self,
+        sources: Iterable[Union[Path, IO, str]],
+        parallelism: int = 0,
+        annotation_types: str = None,
+        language: str = None,
+        timeout: float = None,
     ) -> Iterator[Result]:
         """
         Analyze the given texts or files using the pipeline. If feasible, multiple documents are processed in parallel.
+
+        :param sources:          The documents to be analyzed.
+        :param parallelism:      Number of parallel instances in the platform.
+        :param annotation_types: Optional parameter indicating which types should be returned. Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types with prefix "de.averbis.types"
+        :param language:         Optional parameter setting the language of the document, e.g. "en" or "de".
+        :param timeout:          Optional timeout (in seconds) specifiying how long the request is waiting for a server response.
 
         :return: An iterator over the results produced by the pipeline.
         """
@@ -276,22 +307,49 @@ class Pipeline:
 
         def run_analysis(source):
             try:
-                return Result(data=self.analyse_text(source, **kwargs), source=source)
+                return Result(
+                    data=self.analyse_text(
+                        source=source,
+                        annotation_types=annotation_types,
+                        language=language,
+                        timeout=timeout,
+                    ),
+                    source=source,
+                )
             except Exception as e:
                 return Result(exception=e, source=source)
 
         with ThreadPoolExecutor(max_workers=parallel_request_count) as executor:
             return executor.map(run_analysis, sources)
 
-    def analyse_html(self, source: Union[Path, IO, str], **kwargs) -> dict:
+    def analyse_html(
+        self,
+        source: Union[Path, IO, str],
+        annotation_types: str = None,
+        language: str = None,
+        timeout: float = None,
+    ) -> dict:
         """
         Analyze the given HTML string or HTML file using the pipeline.
+
+        :param source:           The document to be analyzed.
+        :param annotation_types: Optional parameter indicating which types should be returned. Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types with prefix "de.averbis.types"
+        :param language:         Optional parameter setting the language of the document, e.g. "en" or "de".
+        :param timeout:          Optional timeout (in seconds) specifiying how long the request is waiting for a server response.
 
         :return: The raw payload of the server response. Future versions of this library may return a better-suited
                  representation.
         """
+
         # noinspection PyProtectedMember
-        return self.project.client._analyse_html(self.project.name, self.name, source, **kwargs)
+        return self.project.client._analyse_html(
+            project=self.project.name,
+            pipeline=self.name,
+            source=source,
+            annotation_types=annotation_types,
+            language=language,
+            timeout=timeout,
+        )
 
     def get_configuration(self) -> dict:
         """
@@ -325,14 +383,34 @@ class Pipeline:
     # Ignoring errors as linter (compiler) cannot resolve dynamically loaded lib
     # (with type:ignore for mypy) and (noinspection PyProtectedMember for pycharm)
     @experimental_api
-    def analyse_text_to_cas(self, source: Union[IO, str], **kwargs) -> Cas:
+    def analyse_text_to_cas(
+        self,
+        source: Union[Path, IO, str],
+        annotation_types: str = None,
+        language: str = None,
+        timeout: float = None,
+    ) -> Cas:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear. Processes text using a pipeline and returns the result
         as a UIMA CAS.
+
+        :param source:           The document to be analyzed.
+        :param annotation_types: Optional parameter indicating which types should be returned. Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types with prefix "de.averbis.types"
+        :param language:         Optional parameter setting the language of the document, e.g. "en" or "de".
+        :param timeout:          Optional timeout (in seconds) specifiying how long the request is waiting for a server response.
+
+        :return: A cassis.Cas object
         """
         # noinspection PyProtectedMember
         return load_cas_from_xmi(
-            self.project.client._analyse_text_xmi(self.project.name, self.name, source, **kwargs),
+            self.project.client._analyse_text_xmi(
+                project=self.project.name,
+                pipeline=self.name,
+                source=source,
+                annotation_types=annotation_types,
+                language=language,
+                timeout=timeout,
+            ),
             typesystem=self.get_type_system(),
         )
 
@@ -388,6 +466,16 @@ class Pipeline:
         return self.project.client._upload_resources(
             zip_file, project_name=self.project.name, pipeline_name=self.name
         )["files"]
+
+    @experimental_api
+    def download_resources(self, target_zip_path: Union[Path, str]) -> None:
+        """
+        Download pipeline resources and store in given path.
+        """
+        # noinspection PyProtectedMember
+        self.project.client._download_resources(
+            target_zip_path, project_name=self.project.name, pipeline_name=self.name
+        )
 
     def collection_process_complete(self) -> dict:
         """
@@ -844,6 +932,30 @@ class Project:
         self.__cached_pipelines[name] = new_pipeline
         return new_pipeline
 
+    @experimental_api
+    def list_pipelines(self) -> List[Pipeline]:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        List pipelines for the current project.
+
+        :return: List of pipelines.
+        """
+        response = self.client._list_pipelines(self.name)
+
+        return [Pipeline(self, p["name"]) for p in response]
+
+    @experimental_api
+    def exists_pipeline(self, name: str) -> bool:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Checks if a pipeline exists.
+        """
+
+        pipelines = self.list_pipelines()
+        return any(p.name == name for p in pipelines)
+
     def create_terminology(
         self,
         terminology_name: str,
@@ -1001,6 +1113,14 @@ class Project:
         """
         # noinspection PyProtectedMember
         return self.client._list_resources(project_name=self.name)["files"]
+
+    @experimental_api
+    def download_resources(self, target_zip_path: Union[Path, str]) -> None:
+        """
+        Download Project-level pipeline resources and store in given path.
+        """
+        # noinspection PyProtectedMember
+        self.client._download_resources(target_zip_path, project_name=self.name)
 
     @experimental_api
     def delete_resources(self) -> None:
@@ -1373,6 +1493,14 @@ class Client:
         return self._list_resources()["files"]
 
     @experimental_api
+    def download_resources(self, target_zip_path: Union[Path, str]) -> None:
+        """
+        Download Client-level pipeline resources and store in given path.
+        """
+        # noinspection PyProtectedMember
+        self._download_resources(target_zip_path)
+
+    @experimental_api
     def delete_resources(self) -> None:
         """
         Delete the global resources.
@@ -1421,7 +1549,13 @@ class Client:
 
         Use Project.delete() instead.
         """
-        raise OperationNotSupported("Deleting projects is not supported by the REST API yet")
+        if self.get_build_info()["specVersion"].startswith("5."):
+            raise OperationNotSupported(
+                "Deleting projects is not supported in platform version 5.x."
+            )
+
+        response = self.__request_with_json_response("delete", f"/experimental/projects/{name}")
+        return response["payload"]
 
     def _list_document_collections(self, project: str) -> dict:
         """
@@ -1690,6 +1824,23 @@ class Client:
         """
         response = self.__request_with_json_response(
             "delete", f"/experimental/textanalysis/projects/{project}/pipelines/{pipeline}"
+        )
+        return response["payload"]
+
+    def _list_pipelines(self, project: str) -> dict:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Use Project.list_pipelines() instead.
+        """
+        if self.get_spec_version().startswith("5."):
+            raise OperationNotSupported(
+                "Listing pipelines is not supported by the REST API in platform version 5.x, but only from 6.x "
+                "onwards."
+            )
+
+        response = self.__request_with_json_response(
+            "get", f"/experimental/textanalysis/projects/{project}/pipelines"
         )
         return response["payload"]
 
@@ -2187,6 +2338,28 @@ class Client:
 
         return response["payload"]
 
+    @experimental_api
+    def _download_resources(
+        self, target_zip_path: Union[Path, str], project_name=None, pipeline_name=None
+    ) -> None:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Use {client, project, pipeline}.download_resources() instead.
+        """
+        if isinstance(target_zip_path, str):
+            target_zip_path = Path(target_zip_path)
+
+        target_zip_path.parent.mkdir(parents=True, exist_ok=True)
+        zip_file = open(target_zip_path, "wb")
+        response = self.__request_with_bytes_response(
+            "get",
+            self.__get_resources_endpoint(project_name=project_name, pipeline_name=pipeline_name),
+            headers={HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_ZIP},
+        )
+        zip_file.write(response)
+        zip_file.close()
+
     @staticmethod
     def __handle_error(raw_response: requests.Response):
         """
@@ -2256,8 +2429,8 @@ class Client:
         endpoint = "/experimental/textanalysis/"
         if project_name:
             endpoint += f"projects/{project_name}/"
-        if pipeline_name:
-            endpoint += f"pipelines/{pipeline_name}/"
+            if pipeline_name:
+                endpoint += f"pipelines/{pipeline_name}/"
         endpoint += "resources"
         return endpoint
 
