@@ -932,6 +932,30 @@ class Project:
         self.__cached_pipelines[name] = new_pipeline
         return new_pipeline
 
+    @experimental_api
+    def list_pipelines(self) -> List[Pipeline]:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Create a new pipeline.
+
+        :return: List of pipelines.
+        """
+        response = self.client._list_pipelines(self.name)
+
+        return [Pipeline(self, p['name']) for p in response]
+
+    @experimental_api
+    def exists_pipeline(self, name: str) -> bool:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Checks if a pipeline exists.
+        """
+
+        pipelines = self.list_pipelines()
+        return any(p.name == name for p in pipelines)
+
     def create_terminology(
         self,
         terminology_name: str,
@@ -1794,6 +1818,17 @@ class Client:
         """
         response = self.__request_with_json_response(
             "delete", f"/experimental/textanalysis/projects/{project}/pipelines/{pipeline}"
+        )
+        return response["payload"]
+
+    def _list_pipelines(self, project: str) -> dict:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Use Project.list_pipelines() instead.
+        """
+        response = self.__request_with_json_response(
+            "get", f"/experimental/textanalysis/projects/{project}/pipelines"
         )
         return response["payload"]
 

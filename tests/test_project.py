@@ -76,6 +76,68 @@ def test_that_get_pipeline_returns_same_instance_on_consecutive_calls(client):
     assert pipeline1 is pipeline2
 
 
+def test_list_pipelines(client_version_6, requests_mock):
+    project = client_version_6.get_project("test-project")
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/pipelines",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": [
+                {
+                    "id": 1,
+                    "identifier": "dummy-id1",
+                    "name": "Project 1",
+                    "description": "",
+                    "pipelineState": "STOPPED",
+                    "pipelineStateMessage": None,
+                    "preconfigured": False,
+                },
+                {
+                    "id": 2,
+                    "identifier": "dummy-id2",
+                    "name": "Project 2",
+                    "description": "",
+                    "pipelineState": "STOPPED",
+                    "pipelineStateMessage": None,
+                    "preconfigured": False,
+                },
+            ],
+            "errorMessages": [],
+        },
+    )
+    pipelines = project.list_pipelines()
+
+    assert pipelines[0].name == "Project 1"
+    assert pipelines[0].project == project
+    assert pipelines[1].name == "Project 2"
+    assert pipelines[1].project == project
+
+
+def test_list_pipelines(client_version_6, requests_mock):
+    project = client_version_6.get_project("test-project")
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/pipelines",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": [
+                {
+                    "id": 1,
+                    "identifier": "dummy-id1",
+                    "name": "Project 1",
+                    "description": "",
+                    "pipelineState": "STOPPED",
+                    "pipelineStateMessage": None,
+                    "preconfigured": False,
+                }
+            ],
+            "errorMessages": [],
+        },
+    )
+
+    assert project.exists_pipeline("Project 1") is True
+    assert project.exists_pipeline("Project 2") is False
+
+
 def test_list_pear_components(client_version_6, requests_mock):
     project = client_version_6.get_project("test-project")
     expected_pears = ["pear0", "pear1", "pear2"]
