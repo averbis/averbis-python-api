@@ -164,15 +164,15 @@ def test_create_project(client, requests_mock):
         f"{API_BASE}/projects", headers={"Content-Type": "application/json"}, json=callback
     )
 
-    project = client.create_project("LoadTesting", "Project for load testing")
+    project = client.create_project(PROJECT_NAME, "Project for load testing")
 
-    assert project.name == "LoadTesting"
+    assert project.name == PROJECT_NAME
 
 
 def test_get_project(client):
-    project = client.get_project("LoadTesting")
+    project = client.get_project(PROJECT_NAME)
 
-    assert project.name == "LoadTesting"
+    assert project.name == PROJECT_NAME
 
 
 def test_list_projects(client, requests_mock):
@@ -216,14 +216,26 @@ def test_exists_project(client, requests_mock):
     assert client.exists_project("Mumble") is False
 
 
-def test_delete_projects(client):
+def test_delete_project(client_version_5):
     with pytest.raises(OperationNotSupported):
-        client._delete_project("LoadTesting")
+        client._delete_project(PROJECT_NAME)
+
+
+def test_delete_project(client_version_6, requests_mock):
+    project = client_version_6.get_project(PROJECT_NAME)
+    requests_mock.delete(
+        f"{API_EXPERIMENTAL}/projects/{project.name}",
+        headers={"Content-Type": "application/json"},
+        json={"payload": None, "errorMessages": []},
+    )
+    response = project.delete()
+
+    assert response is None
 
 
 def test_create_pipeline(client, requests_mock):
     requests_mock.post(
-        f"{API_BASE}/textanalysis/projects/LoadTesting/pipelines",
+        f"{API_BASE}/textanalysis/projects/{PROJECT_NAME}/pipelines",
         headers={"Content-Type": "application/json"},
         json={"payload": None, "errorMessages": []},
     )
@@ -237,14 +249,14 @@ def test_create_pipeline(client, requests_mock):
         # ... truncated ...
     }
 
-    new_pipeline = client._create_pipeline("LoadTesting", configuration)
+    new_pipeline = client._create_pipeline(PROJECT_NAME, configuration)
 
     assert new_pipeline is None
 
 
 def test_create_pipeline_schema_version_two(client, requests_mock):
     requests_mock.post(
-        f"{API_BASE}/textanalysis/projects/LoadTesting/pipelines",
+        f"{API_BASE}/textanalysis/projects/{PROJECT_NAME}/pipelines",
         headers={"Content-Type": "application/json"},
         json={"payload": None, "errorMessages": []},
     )
@@ -257,38 +269,38 @@ def test_create_pipeline_schema_version_two(client, requests_mock):
         # ... truncated ...
     }
 
-    new_pipeline = client._create_pipeline("LoadTesting", configuration)
+    new_pipeline = client._create_pipeline(PROJECT_NAME, configuration)
 
     assert new_pipeline is None
 
 
 def test_start_pipeline(client, requests_mock):
     requests_mock.put(
-        f"{API_BASE}/textanalysis/projects/LoadTesting/pipelines/discharge/start",
+        f"{API_BASE}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/start",
         headers={"Content-Type": "application/json"},
         json={"payload": None, "errorMessages": []},
     )
 
-    response = client._start_pipeline("LoadTesting", "discharge")
+    response = client._start_pipeline(PROJECT_NAME, "discharge")
 
     assert response is None
 
 
 def test_stop_pipeline(client, requests_mock):
     requests_mock.put(
-        f"{API_BASE}/textanalysis/projects/LoadTesting/pipelines/discharge/stop",
+        f"{API_BASE}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/stop",
         headers={"Content-Type": "application/json"},
         json={"payload": None, "errorMessages": []},
     )
 
-    response = client._stop_pipeline("LoadTesting", "discharge")
+    response = client._stop_pipeline(PROJECT_NAME, "discharge")
 
     assert response is None
 
 
 def test_get_pipeline_info(client, requests_mock):
     requests_mock.get(
-        f"{API_BASE}/textanalysis/projects/LoadTesting/pipelines/discharge",
+        f"{API_BASE}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge",
         headers={"Content-Type": "application/json"},
         json={
             "payload": {
@@ -304,7 +316,7 @@ def test_get_pipeline_info(client, requests_mock):
         },
     )
 
-    response = client._get_pipeline_info("LoadTesting", "discharge")
+    response = client._get_pipeline_info(PROJECT_NAME, "discharge")
 
     assert response["id"] == 94034
     assert response["name"] == "discharge"
@@ -317,7 +329,7 @@ def test_get_pipeline_info(client, requests_mock):
 
 def test_get_pipeline_configuration(client, requests_mock):
     requests_mock.get(
-        f"{API_BASE}/textanalysis/projects/LoadTesting/pipelines/discharge/configuration",
+        f"{API_BASE}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/configuration",
         headers={"Content-Type": "application/json"},
         json={
             "payload": {
@@ -332,7 +344,7 @@ def test_get_pipeline_configuration(client, requests_mock):
         },
     )
 
-    response = client._get_pipeline_configuration("LoadTesting", "discharge")
+    response = client._get_pipeline_configuration(PROJECT_NAME, "discharge")
 
     assert response["name"] == "discharge"
     assert response["description"] is None
@@ -342,7 +354,7 @@ def test_get_pipeline_configuration(client, requests_mock):
 
 def test_set_pipeline_configuration(client, requests_mock):
     requests_mock.put(
-        f"{API_BASE}/textanalysis/projects/LoadTesting/pipelines/discharge/configuration",
+        f"{API_BASE}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/configuration",
         headers={"Content-Type": "application/json"},
         json={"payload": None, "errorMessages": []},
     )
@@ -356,25 +368,25 @@ def test_set_pipeline_configuration(client, requests_mock):
         # ... truncated...
     }
 
-    client._set_pipeline_configuration("LoadTesting", "discharge", configuration)
+    client._set_pipeline_configuration(PROJECT_NAME, "discharge", configuration)
 
 
 def test_create_document_collection(client, requests_mock):
     requests_mock.post(
-        f"{API_BASE}/importer/projects/LoadTesting/documentCollections",
+        f"{API_BASE}/importer/projects/{PROJECT_NAME}/documentCollections",
         headers={"Content-Type": "application/json"},
         json={
             "payload": {"name": "collection0"},
             "errorMessages": [],
         },
     )
-    response = client._create_document_collection("LoadTesting", "collection0")
+    response = client._create_document_collection(PROJECT_NAME, "collection0")
     assert response.name == "collection0"
 
 
 def test_list_document_collections(client, requests_mock):
     requests_mock.get(
-        f"{API_BASE}/importer/projects/LoadTesting/documentCollections",
+        f"{API_BASE}/importer/projects/{PROJECT_NAME}/documentCollections",
         headers={"Content-Type": "application/json"},
         json={
             "payload": [
@@ -385,15 +397,15 @@ def test_list_document_collections(client, requests_mock):
             "errorMessages": [],
         },
     )
-    response = client._list_document_collections("LoadTesting")
+    response = client._list_document_collections(PROJECT_NAME)
 
     assert response[1]["name"] == "collection1"
 
 
 def test_get_documents_collection(client, requests_mock):
-    project = client.get_project("LoadTesting")
+    project = client.get_project(PROJECT_NAME)
     requests_mock.get(
-        f"{API_BASE}/importer/projects/LoadTesting/documentCollections/collection0",
+        f"{API_BASE}/importer/projects/{PROJECT_NAME}/documentCollections/collection0",
         headers={"Content-Type": "application/json"},
         json={
             "payload": {"name": "collection0", "numberOfDocuments": 5},
@@ -405,9 +417,9 @@ def test_get_documents_collection(client, requests_mock):
 
 
 def test_delete_document_collection(client, requests_mock):
-    project = client.get_project("LoadTesting")
+    project = client.get_project(PROJECT_NAME)
     requests_mock.delete(
-        f"{API_BASE}/importer/projects/LoadTesting/documentCollections/collection0",
+        f"{API_BASE}/importer/projects/{PROJECT_NAME}/documentCollections/collection0",
         json={
             "payload": {},
             "errorMessages": [],
@@ -417,9 +429,9 @@ def test_delete_document_collection(client, requests_mock):
 
 
 def test_import_txt_into_collection(client, requests_mock):
-    project = client.get_project("LoadTesting")
+    project = client.get_project(PROJECT_NAME)
     requests_mock.post(
-        f"{API_BASE}/importer/projects/LoadTesting/documentCollections/collection0/documents",
+        f"{API_BASE}/importer/projects/{PROJECT_NAME}/documentCollections/collection0/documents",
         json={
             "payload": {"original_document_name": "text1.txt", "document_name": "text1.txt"},
             "errorMessages": [],
@@ -434,9 +446,9 @@ def test_import_txt_into_collection(client, requests_mock):
 
 
 def test_import_solr_xml_into_collection(client, requests_mock):
-    project = client.get_project("LoadTesting")
+    project = client.get_project(PROJECT_NAME)
     requests_mock.post(
-        f"{API_BASE}/importer/projects/LoadTesting/documentCollections/collection0/documents",
+        f"{API_BASE}/importer/projects/{PROJECT_NAME}/documentCollections/collection0/documents",
         json={
             "payload": {
                 "original_document_name": "disease_solr.xml",
@@ -462,7 +474,7 @@ def test_import_solr_xml_into_collection(client, requests_mock):
 
 def test_list_terminologies(client, requests_mock):
     requests_mock.get(
-        f"{API_BASE}/terminology/projects/LoadTesting/terminologies",
+        f"{API_BASE}/terminology/projects/{PROJECT_NAME}/terminologies",
         headers={"Content-Type": "application/json"},
         json={
             "payload": [
@@ -479,14 +491,14 @@ def test_list_terminologies(client, requests_mock):
         },
     )
 
-    response = client._list_terminologies("LoadTesting")
+    response = client._list_terminologies(PROJECT_NAME)
 
     assert response[0]["terminologyName"] == "Test"
 
 
 def test_create_terminology(client, requests_mock):
     requests_mock.post(
-        f"{API_BASE}/terminology/projects/LoadTesting/terminologies",
+        f"{API_BASE}/terminology/projects/{PROJECT_NAME}/terminologies",
         headers={"Content-Type": "application/json"},
         json={
             "payload": {
@@ -502,7 +514,7 @@ def test_create_terminology(client, requests_mock):
     )
 
     terminology = client._create_terminology(
-        "LoadTesting", "term1", "someLabel", ["de"], version="1.0"
+        PROJECT_NAME, "term1", "someLabel", ["de"], version="1.0"
     )
 
     assert terminology["terminologyName"] == "term1"
@@ -515,30 +527,30 @@ def test_create_terminology(client, requests_mock):
 def test_delete_terminology(client, requests_mock):
     requests_mock.request(
         "delete",
-        f"{API_BASE}/terminology/projects/LoadTesting/terminologies/term1",
+        f"{API_BASE}/terminology/projects/{PROJECT_NAME}/terminologies/term1",
         json={"payload": None, "errorMessages": []},
     )
 
-    client._delete_terminology("LoadTesting", "term1")
+    client._delete_terminology(PROJECT_NAME, "term1")
 
 
 def test_start_terminology_export(client, requests_mock):
     requests_mock.request(
         "post",
-        f"{API_BASE}/terminology/projects/LoadTesting/terminologies/term1/terminologyExports",
+        f"{API_BASE}/terminology/projects/{PROJECT_NAME}/terminologies/term1/terminologyExports",
         json={
             "payload": None,
             "errorMessages": [],
         },
     )
 
-    client._start_terminology_export("LoadTesting", "term1", TERMINOLOGY_EXPORTER_OBO_1_4)
+    client._start_terminology_export(PROJECT_NAME, "term1", TERMINOLOGY_EXPORTER_OBO_1_4)
 
 
 def test_get_terminology_export_info(client, requests_mock):
     requests_mock.request(
         "get",
-        f"{API_BASE}/terminology/projects/LoadTesting/terminologies/term1/terminologyExports",
+        f"{API_BASE}/terminology/projects/{PROJECT_NAME}/terminologies/term1/terminologyExports",
         headers={"Content-Type": "application/json"},
         json={
             "payload": {
@@ -558,7 +570,7 @@ def test_get_terminology_export_info(client, requests_mock):
         },
     )
 
-    response = client._get_terminology_export_info("LoadTesting", "term1")
+    response = client._get_terminology_export_info(PROJECT_NAME, "term1")
 
     assert response["state"] == "PREPARING"
 
@@ -566,7 +578,7 @@ def test_get_terminology_export_info(client, requests_mock):
 def test_start_terminology_import(client, requests_mock):
     requests_mock.request(
         "post",
-        f"{API_BASE}/terminology/projects/LoadTesting/terminologies/term1/terminologyImports",
+        f"{API_BASE}/terminology/projects/{PROJECT_NAME}/terminologies/term1/terminologyImports",
         headers={"Content-Type": "application/json"},
         json={
             "payload": None,
@@ -574,13 +586,13 @@ def test_start_terminology_import(client, requests_mock):
         },
     )
 
-    client._start_terminology_import("LoadTesting", "term1", TERMINOLOGY_IMPORTER_OBO, "<no data/>")
+    client._start_terminology_import(PROJECT_NAME, "term1", TERMINOLOGY_IMPORTER_OBO, "<no data/>")
 
 
 def test_get_terminology_import_info(client, requests_mock):
     requests_mock.request(
         "get",
-        f"{API_BASE}/terminology/projects/LoadTesting/terminologies/term1/terminologyImports",
+        f"{API_BASE}/terminology/projects/{PROJECT_NAME}/terminologies/term1/terminologyImports",
         headers={"Content-Type": "application/json"},
         json={
             "payload": {
@@ -603,14 +615,14 @@ def test_get_terminology_import_info(client, requests_mock):
         },
     )
 
-    response = client._get_terminology_import_info("LoadTesting", "term1")
+    response = client._get_terminology_import_info(PROJECT_NAME, "term1")
 
     assert response["state"] == "COMPLETED"
 
 
 def test_analyse_text(client, requests_mock):
     requests_mock.post(
-        f"{API_BASE}/textanalysis/projects/LoadTesting/pipelines/discharge/analyseText",
+        f"{API_BASE}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/analyseText",
         headers={"Content-Type": "application/json"},
         json={
             "payload": [
@@ -634,7 +646,7 @@ def test_analyse_text(client, requests_mock):
     )
 
     response = client._analyse_text(
-        "LoadTesting", "discharge", "Der Patient leidet an einer Appendizitis.", language="de"
+        PROJECT_NAME, "discharge", "Der Patient leidet an einer Appendizitis.", language="de"
     )
 
     assert response[0]["coveredText"] == "Appendizitis"
@@ -642,7 +654,7 @@ def test_analyse_text(client, requests_mock):
 
 def test_analyse_texts_with_some_working_and_some_failing(client_version_5, requests_mock):
     requests_mock.get(
-        f"{API_BASE}/textanalysis/projects/LoadTesting/pipelines/discharge/configuration",
+        f"{API_BASE}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/configuration",
         headers={"Content-Type": "application/json"},
         json={
             "payload": {"analysisEnginePoolSize": 4},
@@ -674,12 +686,12 @@ def test_analyse_texts_with_some_working_and_some_failing(client_version_5, requ
             }
 
     requests_mock.post(
-        f"{API_BASE}/textanalysis/projects/LoadTesting/pipelines/discharge/analyseText",
+        f"{API_BASE}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/analyseText",
         headers={"Content-Type": "application/json"},
         json=callback,
     )
 
-    pipeline = Pipeline(Project(client_version_5, "LoadTesting"), "discharge")
+    pipeline = Pipeline(Project(client_version_5, PROJECT_NAME), "discharge")
     results = list(pipeline.analyse_texts(["works", "fails"]))
 
     assert results[0].successful() is True
@@ -688,7 +700,7 @@ def test_analyse_texts_with_some_working_and_some_failing(client_version_5, requ
 
 def test_analyse_html(client, requests_mock):
     requests_mock.post(
-        f"{API_BASE}/textanalysis/projects/LoadTesting/pipelines/discharge/analyseHtml",
+        f"{API_BASE}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/analyseHtml",
         headers={"Content-Type": "application/json"},
         json={
             "payload": [
@@ -713,7 +725,7 @@ def test_analyse_html(client, requests_mock):
     )
 
     response = client._analyse_html(
-        "LoadTesting",
+        PROJECT_NAME,
         "discharge",
         "<html><body>Der Patient leidet an einer Appendizitis.</body></html>",
         language="de",
@@ -724,7 +736,7 @@ def test_analyse_html(client, requests_mock):
 
 def test_classify_document(client, requests_mock):
     requests_mock.post(
-        f"{API_BASE}/classification/projects/LoadTesting/classificationSets/Default/classifyDocument",
+        f"{API_BASE}/classification/projects/{PROJECT_NAME}/classificationSets/Default/classifyDocument",
         headers={"Content-Type": "application/json"},
         json={
             "payload": {
@@ -742,7 +754,7 @@ def test_classify_document(client, requests_mock):
     )
 
     response = client._classify_document(
-        "LoadTesting", "This is a test.".encode(ENCODING_UTF_8), "Default", DOCUMENT_IMPORTER_TEXT
+        PROJECT_NAME, "This is a test.".encode(ENCODING_UTF_8), "Default", DOCUMENT_IMPORTER_TEXT
     )
 
     assert response["classifications"][0]["documentIdentifier"] == "UNKNOWN"
@@ -800,7 +812,7 @@ def test_delete_resources(client, requests_mock):
 
 def test_select(client, requests_mock):
     requests_mock.get(
-        f"{API_BASE}/search/projects/LoadTesting/select",
+        f"{API_BASE}/search/projects/{PROJECT_NAME}/select",
         headers={"Content-Type": "application/json"},
         json={
             "payload": {
@@ -815,7 +827,7 @@ def test_select(client, requests_mock):
         },
     )
 
-    response = client._select("LoadTesting")
+    response = client._select(PROJECT_NAME)
 
     assert "solrResponse" in response
 

@@ -36,17 +36,17 @@ def pipeline_endpoint_behavior_mock():
 @pytest.fixture(autouse=True)
 def pipeline_requests_mock(pipeline_endpoint_behavior_mock, requests_mock):
     requests_mock.get(
-        f"{API_BASE}/textanalysis/projects/LoadTesting/pipelines/discharge",
+        f"{API_BASE}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge",
         headers={"Content-Type": "application/json"},
         json=pipeline_endpoint_behavior_mock.info_callback,
     )
     requests_mock.put(
-        f"{API_BASE}/textanalysis/projects/LoadTesting/pipelines/discharge/start",
+        f"{API_BASE}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/start",
         headers={"Content-Type": "application/json"},
         json=pipeline_endpoint_behavior_mock.start_callback,
     )
     requests_mock.put(
-        f"{API_BASE}/textanalysis/projects/LoadTesting/pipelines/discharge/stop",
+        f"{API_BASE}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/stop",
         headers={"Content-Type": "application/json"},
         json=pipeline_endpoint_behavior_mock.stop_callback,
     )
@@ -61,7 +61,7 @@ def pipeline_analyse_text_mock(client, requests_mock):
         payload = {"numberOfInstances": 4}
 
     requests_mock.get(
-        f"{API_BASE}/textanalysis/projects/LoadTesting/pipelines/discharge/configuration",
+        f"{API_BASE}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/configuration",
         headers={"Content-Type": "application/json"},
         json={
             "payload": payload,
@@ -85,7 +85,7 @@ def pipeline_analyse_text_mock(client, requests_mock):
         }
 
     requests_mock.post(
-        f"{API_BASE}/textanalysis/projects/LoadTesting/pipelines/discharge/analyseText",
+        f"{API_BASE}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/analyseText",
         headers={"Content-Type": "application/json"},
         json=callback,
     )
@@ -94,7 +94,7 @@ def pipeline_analyse_text_mock(client, requests_mock):
 def test_ensure_started(client, pipeline_endpoint_behavior_mock):
     pipeline_endpoint_behavior_mock.set_state(Pipeline.STATE_STOPPED)
 
-    pipeline = client.get_project("LoadTesting").get_pipeline("discharge")
+    pipeline = client.get_project(PROJECT_NAME).get_pipeline("discharge")
     pipeline.pipeline_state_change_timeout = 3
     pipeline.pipeline_state_poll_interval = 1
 
@@ -106,7 +106,7 @@ def test_ensure_started(client, pipeline_endpoint_behavior_mock):
 def test_ensure_stopped(client, pipeline_endpoint_behavior_mock):
     pipeline_endpoint_behavior_mock.set_state(Pipeline.STATE_STARTED)
 
-    pipeline = client.get_project("LoadTesting").get_pipeline("discharge")
+    pipeline = client.get_project(PROJECT_NAME).get_pipeline("discharge")
     pipeline.pipeline_state_change_timeout = 3
     pipeline.pipeline_state_poll_interval = 1
 
@@ -118,7 +118,7 @@ def test_ensure_stopped(client, pipeline_endpoint_behavior_mock):
 def test_ensure_started_timeout(client, pipeline_endpoint_behavior_mock):
     pipeline_endpoint_behavior_mock.set_state(Pipeline.STATE_STOPPED, locked=True)
 
-    pipeline = client.get_project("LoadTesting").get_pipeline("discharge")
+    pipeline = client.get_project(PROJECT_NAME).get_pipeline("discharge")
     pipeline.pipeline_state_change_timeout = 2
     pipeline.pipeline_state_poll_interval = 1
 
@@ -137,7 +137,7 @@ def test_ensure_started_failure_to_start(client, pipeline_endpoint_behavior_mock
         pipeline_state_message=error_message,
     )
 
-    pipeline = client.get_project("LoadTesting").get_pipeline("discharge")
+    pipeline = client.get_project(PROJECT_NAME).get_pipeline("discharge")
     pipeline.pipeline_state_change_timeout = 2
     pipeline.pipeline_state_poll_interval = 1
 
@@ -202,7 +202,7 @@ class PipelineEndpointMock:
 
 
 def test_analyse_texts_with_paths(client, pipeline_analyse_text_mock):
-    pipeline = Pipeline(Project(client, "LoadTesting"), "discharge")
+    pipeline = Pipeline(Project(client, PROJECT_NAME), "discharge")
 
     results = pipeline.analyse_texts(Path("tests/resources/texts").glob("*.txt"))
 
@@ -220,7 +220,7 @@ def test_analyse_texts_with_paths(client, pipeline_analyse_text_mock):
 
 
 def test_analyse_texts_with_files(client, pipeline_analyse_text_mock):
-    pipeline = Pipeline(Project(client, "LoadTesting"), "discharge")
+    pipeline = Pipeline(Project(client, PROJECT_NAME), "discharge")
     file1_path = os.path.join(TEST_DIRECTORY, "resources/texts/text1.txt")
     file2_path = os.path.join(TEST_DIRECTORY, "resources/texts/text2.txt")
 
@@ -233,7 +233,7 @@ def test_analyse_texts_with_files(client, pipeline_analyse_text_mock):
 
 
 def test_analyse_texts_(client, pipeline_analyse_text_mock):
-    pipeline = Pipeline(Project(client, "LoadTesting"), "discharge")
+    pipeline = Pipeline(Project(client, PROJECT_NAME), "discharge")
     file1_path = os.path.join(TEST_DIRECTORY, "resources/texts/text1.txt")
     file2_path = os.path.join(TEST_DIRECTORY, "resources/texts/text2.txt")
 
@@ -246,14 +246,14 @@ def test_analyse_texts_(client, pipeline_analyse_text_mock):
 
 
 def test_delete_pipeline_v5(client_version_5):
-    pipeline = Pipeline(Project(client_version_5, "LoadTesting"), "discharge")
+    pipeline = Pipeline(Project(client_version_5, PROJECT_NAME), "discharge")
 
     with pytest.raises(OperationNotSupported):
         pipeline.delete()
 
 
 def test_delete_pipeline_v6(client_version_6, requests_mock):
-    pipeline = Pipeline(Project(client_version_6, "LoadTesting"), "discharge")
+    pipeline = Pipeline(Project(client_version_6, PROJECT_NAME), "discharge")
     requests_mock.delete(
         f"{URL_BASE_ID}/rest/experimental/textanalysis/projects/{pipeline.project.name}/pipelines/{pipeline.name}",
         headers={"Content-Type": "application/json"},
@@ -266,7 +266,7 @@ def test_delete_pipeline_v6(client_version_6, requests_mock):
 
 
 def test_list_resources(client, requests_mock):
-    pipeline = Pipeline(Project(client, "LoadTesting"), "discharge")
+    pipeline = Pipeline(Project(client, PROJECT_NAME), "discharge")
 
     expected_resources_list = [
         "test1.txt",
@@ -285,7 +285,7 @@ def test_list_resources(client, requests_mock):
 
 
 def test_download_resources(client, requests_mock):
-    pipeline = Pipeline(Project(client, "LoadTesting"), "discharge")
+    pipeline = Pipeline(Project(client, PROJECT_NAME), "discharge")
 
     target_path = Path(TEST_DIRECTORY) / "resources/download/zip_test.zip"
     try:
@@ -309,7 +309,7 @@ def test_download_resources(client, requests_mock):
 
 
 def test_delete_resources(client, requests_mock):
-    pipeline = Pipeline(Project(client, "LoadTesting"), "discharge")
+    pipeline = Pipeline(Project(client, PROJECT_NAME), "discharge")
 
     requests_mock.delete(
         f"{API_EXPERIMENTAL}/textanalysis"
@@ -323,7 +323,7 @@ def test_delete_resources(client, requests_mock):
 
 
 def test_upload_resources(client_version_6, requests_mock):
-    pipeline = Pipeline(Project(client_version_6, "LoadTesting"), "discharge")
+    pipeline = Pipeline(Project(client_version_6, PROJECT_NAME), "discharge")
     requests_mock.post(
         f"{API_EXPERIMENTAL}/textanalysis"
         f"/projects/{pipeline.project.name}"
@@ -344,10 +344,10 @@ def test_upload_resources(client_version_6, requests_mock):
 
 
 def test_collection_process_complete(client_version_6, requests_mock):
-    pipeline = Pipeline(Project(client_version_6, "LoadTesting"), "discharge")
+    pipeline = Pipeline(Project(client_version_6, PROJECT_NAME), "discharge")
     requests_mock.post(
         f"{URL_BASE_ID}/rest/experimental/textanalysis/projects/"
-        f"LoadTesting/pipelines/discharge/collectionProcessComplete",
+        f"{PROJECT_NAME}/pipelines/discharge/collectionProcessComplete",
         headers={"Content-Type": "application/json"},
         json={"payload": None, "errorMessages": []},
         status_code=200,

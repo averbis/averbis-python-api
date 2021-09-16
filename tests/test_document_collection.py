@@ -28,13 +28,13 @@ from tests.utils import *
 
 @pytest.fixture()
 def document_collection(client) -> DocumentCollection:
-    project = client.get_project("test-project")
+    project = client.get_project(PROJECT_NAME)
     return DocumentCollection(project, "test-collection")
 
 
 def test_import_plain_text(document_collection, requests_mock):
     requests_mock.post(
-        f"{API_BASE}/importer/projects/test-project/documentCollections/test-collection/documents",
+        f"{API_BASE}/importer/projects/{PROJECT_NAME}/documentCollections/test-collection/documents",
         json={
             "payload": {"original_document_name": "text1.txt", "document_name": "text1.txt"},
             "errorMessages": [],
@@ -50,7 +50,7 @@ def test_import_plain_text(document_collection, requests_mock):
 
 def test_import_cas(document_collection, requests_mock):
     requests_mock.post(
-        f"{API_BASE}/importer/projects/test-project/documentCollections/test-collection/documents",
+        f"{API_BASE}/importer/projects/{PROJECT_NAME}/documentCollections/test-collection/documents",
         json={
             "payload": {"original_document_name": "text1.xmi", "document_name": "text1.xmi"},
             "errorMessages": [],
@@ -66,7 +66,7 @@ def test_import_cas(document_collection, requests_mock):
 
 def test_import_solr_xml(document_collection, requests_mock):
     requests_mock.post(
-        f"{API_BASE}/importer/projects/test-project/documentCollections/test-collection/documents",
+        f"{API_BASE}/importer/projects/{PROJECT_NAME}/documentCollections/test-collection/documents",
         json={
             "payload": [
                 {
@@ -103,13 +103,13 @@ def test_create_and_run_process(document_collection, requests_mock):
     number_of_documents = 12
 
     requests_mock.post(
-        f"{API_EXPERIMENTAL}/textanalysis/projects/test-project/processes",
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{PROJECT_NAME}/processes",
         headers={"Content-Type": "application/json"},
         json={"payload": None, "errorMessages": []},
     )
 
     requests_mock.get(
-        f"{API_EXPERIMENTAL}/textanalysis/projects/test-project/"
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{PROJECT_NAME}/"
         f"documentSources/{document_collection.name}/processes/{process_name}",
         headers={"Content-Type": "application/json"},
         json={
@@ -135,7 +135,7 @@ def test_create_and_run_process(document_collection, requests_mock):
 
 
 def test_list_processes(client_version_6, requests_mock):
-    project = client_version_6.get_project("test-project")
+    project = client_version_6.get_project(PROJECT_NAME)
     document_collection = DocumentCollection(project, "my_collection")
     pipeline_name = "my_pipeline_name"
     state = "IDLE"
@@ -159,7 +159,7 @@ def test_list_processes(client_version_6, requests_mock):
         expected_processes.append(p)
 
     requests_mock.get(
-        f"{API_EXPERIMENTAL}/textanalysis/projects/test-project/processes",
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{PROJECT_NAME}/processes",
         headers={"Content-Type": "application/json"},
         json={"payload": all_processes_payload, "errorMessages": []},
     )
@@ -175,7 +175,7 @@ def test_list_processes(client_version_6, requests_mock):
             "processedDocuments": i,
         }
         requests_mock.get(
-            f"{API_EXPERIMENTAL}/textanalysis/projects/test-project/"
+            f"{API_EXPERIMENTAL}/textanalysis/projects/{PROJECT_NAME}/"
             f"documentSources/{document_source_name}/processes/{process_name}",
             headers={"Content-Type": "application/json"},
             json={"payload": payload, "errorMessages": []},
@@ -185,13 +185,13 @@ def test_list_processes(client_version_6, requests_mock):
     assert len(actual_processes) == 1
 
     assert actual_processes[0].name == "process1"
-    assert actual_processes[0].project.name == "test-project"
+    assert actual_processes[0].project.name == PROJECT_NAME
     assert actual_processes[0].pipeline_name == "my_pipeline_name"
     assert actual_processes[0].document_source_name == "my_collection"
 
 
 def test_get_process(client_version_6, requests_mock):
-    project = client_version_6.get_project("test-project")
+    project = client_version_6.get_project(PROJECT_NAME)
     process_name = "my_process"
     document_source_name = "my_document_source"
     pipeline_name = "my_pipeline_name"
@@ -207,7 +207,7 @@ def test_get_process(client_version_6, requests_mock):
     }
 
     requests_mock.get(
-        f"{API_EXPERIMENTAL}/textanalysis/projects/test-project/"
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{PROJECT_NAME}/"
         f"documentSources/{document_source_name}/processes/{process_name}",
         headers={"Content-Type": "application/json"},
         json={"payload": payload, "errorMessages": []},
