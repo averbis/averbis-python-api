@@ -943,7 +943,7 @@ class Project:
         """
         response = self.client._list_pipelines(self.name)
 
-        return [Pipeline(self, p['name']) for p in response]
+        return [Pipeline(self, p["name"]) for p in response]
 
     @experimental_api
     def exists_pipeline(self, name: str) -> bool:
@@ -1833,7 +1833,7 @@ class Client:
 
         Use Project.list_pipelines() instead.
         """
-        if self.project.client.get_spec_version().startswith("5."):
+        if self.get_spec_version().startswith("5."):
             raise OperationNotSupported(
                 "Listing pipelines is not supported by the REST API in platform version 5.x, but only from 6.x "
                 "onwards."
