@@ -1549,7 +1549,13 @@ class Client:
 
         Use Project.delete() instead.
         """
-        raise OperationNotSupported("Deleting projects is not supported by the REST API yet")
+        if self.get_build_info()["specVersion"].startswith("5."):
+            raise OperationNotSupported(
+                "Deleting projects is not supported in platform version 5.x."
+            )
+
+        response = self.__request_with_json_response("delete", f"/experimental/projects/{name}")
+        return response["payload"]
 
     def _list_document_collections(self, project: str) -> dict:
         """
