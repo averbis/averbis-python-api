@@ -22,10 +22,17 @@ import time
 from pathlib import Path
 
 from averbis import Project, Pipeline, Process
-from averbis.core import OperationTimeoutError, OperationNotSupported
+from averbis.core import (
+    OperationTimeoutError,
+    OperationNotSupported,
+    MEDIA_TYPE_APPLICATION_XMI,
+    MEDIA_TYPE_APPLICATION_XML,
+)
 from tests.fixtures import *
 
 logging.basicConfig(level=logging.INFO)
+
+EMPTY_TYPESYSTEM = '<typeSystemDescription xmlns="http://uima.apache.org/resourceSpecifier"/>'
 
 
 @pytest.fixture
@@ -69,6 +76,12 @@ def pipeline_analyse_text_mock(client, requests_mock):
         },
     )
 
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/exportTypesystem",
+        headers={"Content-Type": MEDIA_TYPE_APPLICATION_XML},
+        text=EMPTY_TYPESYSTEM,
+    )
+
     def callback(request, _content):
         doc_text = request.text.read().decode("utf-8")
         return {
@@ -88,6 +101,50 @@ def pipeline_analyse_text_mock(client, requests_mock):
         f"{API_BASE}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/analyseText",
         headers={"Content-Type": "application/json"},
         json=callback,
+    )
+
+
+@pytest.fixture
+def pipeline_analyse_text_to_cas_mock(client, requests_mock):
+    # In the pipeline configuration, the name for the number of instances differs between platform version 5 and 6.
+    if client.get_spec_version().startswith("5."):
+        payload = {"analysisEnginePoolSize": 4}
+    else:
+        payload = {"numberOfInstances": 4}
+
+    requests_mock.get(
+        f"{API_BASE}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/configuration",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": payload,
+            "errorMessages": [],
+        },
+    )
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/exportTypesystem",
+        headers={"Content-Type": MEDIA_TYPE_APPLICATION_XML},
+        text=EMPTY_TYPESYSTEM,
+    )
+
+    def callback(request, _content):
+        doc_text = request.text.read().decode("utf-8")
+        return f"""<?xml version="1.0" encoding="UTF-8"?>
+            <xmi:XMI xmlns:tcas="http:///uima/tcas.ecore" xmlns:xmi="http://www.omg.org/XMI" xmlns:cas="http:///uima/cas.ecore"
+                     xmlns:cassis="http:///cassis.ecore" xmi:version="2.0">
+                <cas:NULL xmi:id="0"/>
+                <tcas:DocumentAnnotation xmi:id="2" sofa="1" begin="0" end="{len(doc_text)}" language="x-unspecified"/>
+            
+                <cas:Sofa xmi:id="42" sofaNum="2" sofaID="EmptyView" />
+                <cas:Sofa xmi:id="1" sofaNum="1" sofaID="_InitialView" mimeType="text/plain" sofaString="{doc_text}"/>
+                <cas:View sofa="1" members="2"/>
+            </xmi:XMI>
+            """
+
+    requests_mock.post(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/analyzeTextToCas",
+        headers={"Content-Type": MEDIA_TYPE_APPLICATION_XMI},
+        text=callback,
     )
 
 
@@ -225,24 +282,51 @@ def test_analyse_texts_with_files(client, pipeline_analyse_text_mock):
     file2_path = os.path.join(TEST_DIRECTORY, "resources/texts/text2.txt")
 
     with open(file1_path, "rb") as file1, open(file2_path, "rb") as file2:
-        results = pipeline.analyse_texts([file1, file2])
+        results = list(pipeline.analyse_texts([file1, file2]))
         sources = [result.source.replace(os.sep, "/") for result in results]
+        cases = [result.data for result in results]
+        exceptions = [result.exception for result in results]
 
+    assert not exceptions[0]
+    assert not exceptions[1]
     assert sources[0].endswith("tests/resources/texts/text1.txt")
     assert sources[1].endswith("tests/resources/texts/text2.txt")
 
 
-def test_analyse_texts_(client, pipeline_analyse_text_mock):
+def test_analyse_texts(client, pipeline_analyse_text_mock):
     pipeline = Pipeline(Project(client, PROJECT_NAME), "discharge")
     file1_path = os.path.join(TEST_DIRECTORY, "resources/texts/text1.txt")
     file2_path = os.path.join(TEST_DIRECTORY, "resources/texts/text2.txt")
 
     with open(file1_path, "rb") as file1, open(file2_path, "rb") as file2:
-        results = pipeline.analyse_texts([file1, file2])
+        results = list(pipeline.analyse_texts([file1, file2]))
         sources = [result.source.replace(os.sep, "/") for result in results]
+        cases = [result.data for result in results]
+        exceptions = [result.exception for result in results]
 
+    assert not exceptions[0]
+    assert not exceptions[1]
     assert sources[0].endswith("tests/resources/texts/text1.txt")
     assert sources[1].endswith("tests/resources/texts/text2.txt")
+
+
+def test_analyse_texts_to_cas(client, pipeline_analyse_text_to_cas_mock):
+    pipeline = Pipeline(Project(client, PROJECT_NAME), "discharge")
+    file1_path = os.path.join(TEST_DIRECTORY, "resources/texts/text1.txt")
+    file2_path = os.path.join(TEST_DIRECTORY, "resources/texts/text2.txt")
+
+    with open(file1_path, "rb") as file1, open(file2_path, "rb") as file2:
+        results = list(pipeline.analyse_texts_to_cas([file1, file2]))
+        sources = [result.source.replace(os.sep, "/") for result in results]
+        cases = [result.data for result in results]
+        exceptions = [result.exception for result in results]
+
+    assert not exceptions[0]
+    assert not exceptions[1]
+    assert sources[0].endswith("tests/resources/texts/text1.txt")
+    assert cases[0].sofa_string == "This is a test."
+    assert sources[1].endswith("tests/resources/texts/text2.txt")
+    assert cases[1].sofa_string == "I am another test."
 
 
 def test_delete_pipeline_v5(client_version_5):
