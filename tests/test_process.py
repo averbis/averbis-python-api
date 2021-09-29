@@ -247,7 +247,7 @@ def test_export_text_analysis_to_cas_v6(client_version_6, requests_mock):
 
     requests_mock.get(
         f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/documentCollections/{collection.name}"
-        f"/documents/{document_id}/processes/{process.name}/exportTypesystem",
+        f"/documents/{document_id}/processes/{process.name}/exportTextAnalysisResultTypeSystem",
         headers={"Content-Type": "application/xml"},
         text=empty_typesystem,
     )

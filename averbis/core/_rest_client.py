@@ -2073,7 +2073,7 @@ class Client:
             self.__request_with_bytes_response(
                 "get",
                 f"/experimental/textanalysis/projects/{project}/documentCollections/{collection_name}"
-                f"/documents/{document_id}/processes/{process_name}/exportTypesystem",
+                f"/documents/{document_id}/processes/{process_name}/exportTextAnalysisResultTypeSystem",
                 headers={HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_XML},
             ),
             ENCODING_UTF_8,
