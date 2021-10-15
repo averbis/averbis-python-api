@@ -414,6 +414,59 @@ class Pipeline:
             typesystem=self.get_type_system(),
         )
 
+    @experimental_api
+    def analyse_texts_to_cas(
+        self,
+        sources: Iterable[Union[Path, IO, str]],
+        parallelism: int = 0,
+        language: str = None,
+        timeout: float = None,
+    ) -> Iterator[Result]:
+        """
+        Analyze the given texts or files using the pipeline. If feasible, multiple documents are processed in parallel.
+
+        :param sources:          The documents to be analyzed.
+        :param parallelism:      Number of parallel instances in the platform.
+        :param language:         Optional parameter setting the language of the document, e.g. "en" or "de".
+        :param timeout:          Optional timeout (in seconds) specifiying how long the request is waiting for a server response.
+
+        :return: An iterator over the results produced by the pipeline.
+        """
+        if self.project.client.get_spec_version().startswith("5."):
+            pipeline_instances = self.get_configuration()["analysisEnginePoolSize"]
+        else:
+            pipeline_instances = self.get_configuration()["numberOfInstances"]
+
+        if parallelism < 0:
+            parallel_request_count = max(pipeline_instances + parallelism, 1)
+        elif parallelism > 0:
+            parallel_request_count = parallelism
+        else:
+            parallel_request_count = pipeline_instances
+
+        if parallel_request_count > 1:
+            self.__logger.debug(f"Triggering {parallel_request_count} requests in parallel")
+        else:
+            self.__logger.debug(
+                f"Not performing parallel requests (remote supports max {pipeline_instances} parallel requests)"
+            )
+
+        def run_analysis(source):
+            try:
+                return Result(
+                    data=self.analyse_text_to_cas(
+                        source=source,
+                        language=language,
+                        timeout=timeout,
+                    ),
+                    source=source,
+                )
+            except Exception as e:
+                return Result(exception=e, source=source)
+
+        with ThreadPoolExecutor(max_workers=parallel_request_count) as executor:
+            return executor.map(run_analysis, sources)
+
     # Ignoring errors as linter (compiler) cannot resolve dynamically loaded lib
     # (with type:ignore for mypy) and (noinspection PyProtectedMember for pycharm)
     @experimental_api
@@ -2020,7 +2073,7 @@ class Client:
             self.__request_with_bytes_response(
                 "get",
                 f"/experimental/textanalysis/projects/{project}/documentCollections/{collection_name}"
-                f"/documents/{document_id}/processes/{process_name}/exportTypesystem",
+                f"/documents/{document_id}/processes/{process_name}/exportTextAnalysisResultTypeSystem",
                 headers={HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_XML},
             ),
             ENCODING_UTF_8,
