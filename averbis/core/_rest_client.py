@@ -18,6 +18,7 @@
 #
 #
 import copy
+from urllib.parse import quote
 
 from cassis import Cas, TypeSystem, load_cas_from_xmi, load_typesystem  # type: ignore
 import json
@@ -1379,7 +1380,7 @@ class Client:
         return raw_response
 
     def _build_url(self, endpoint):
-        return f"{self._url.rstrip('/')}/rest/{endpoint.lstrip('/')}"
+        return f"{self._url.rstrip('/')}/rest/{quote(endpoint.lstrip('/'))}"
 
     def __request_with_json_response(self, method: str, endpoint: str, **kwargs) -> dict:
         """
