@@ -30,6 +30,7 @@ API_EXPERIMENTAL = URL_BASE_ID + "/rest/experimental"
 TEST_DIRECTORY = os.path.dirname(__file__)
 TEST_API_TOKEN = "I-am-a-dummy-API-token"
 PROJECT_NAME = "test-project"
+COLLECTION_NAME = "my-collection"
 
 ## Mock different platforms. The difference between the platforms is in the URL and in the specVersion number.
 
