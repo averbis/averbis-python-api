@@ -266,6 +266,10 @@ def test_export_text_analysis_with_page_and_pagsize(client_version_6, requests_m
     assert len(export2["textAnalysisResultDtos"]) == 4
     assert export2["textAnalysisResultDtos"][-1]["documentName"] == "Document (8).txt"
 
+    export3 = process.export_text_analysis(page=2)
+    assert len(export3["textAnalysisResultDtos"]) == 100
+    assert export3["textAnalysisResultDtos"][-1]["documentName"] == "Document (200).txt"
+
 
 def test_export_text_analysis_to_cas_v5(client_version_5):
     document_id = "document0001"

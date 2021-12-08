@@ -764,18 +764,19 @@ class Process:
         return self.project.client._get_process_state(self.project, self)
 
     def export_text_analysis(
-        self, annotation_types: str = None, page: int = None, page_size: int = None
+        self, annotation_types: str = None, page: int = None, page_size: int = 100
     ) -> dict:
         """
         Exports a given text analysis process as a json.
 
         The parameter `page` and `page_size` can be used to only export a subset of all results.
-        For instance, setting page=1 and page_size=10 will export document 1-10 of the text analysis result.
-        Setting page=2 and page_size=30 will export document 31-60 of the text analysis result.
+        For instance, setting `page=1` and `page_size=10` will export documents 1-10 of the text analysis result.
+        Setting `page=2` and `page_size=30` will export document 31-60 of the text analysis result.
+        Documents are currently sorted by their internal ID and not by the filename.
 
         :param annotation_types: Optional parameter indicating which types should be returned. Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types with prefix "de.averbis.types"
-        :param page: Optional parameter indicating which batch of pages should be export. Only works in combination with `page_size`.
-        :param page_size: Optional parameter defining how many documents are exported at once. Only works in combination with parameter `page`.
+        :param page: Optional parameter indicating which batch of pages should be export.
+        :param page_size: Optional parameter defining how many documents are exported at once (default=100). Only restricts the number of documents to that number if the parameter `page` is given.
 
         :return: The raw payload of the server response. Future versions of this library may return a better-suited
          representation.
@@ -785,10 +786,9 @@ class Process:
                 "Text analysis export is not supported for platform version 5.x, it is only supported from 6.x onwards."
             )
 
-        if (page is not None and page_size is None) or (page is not None and page_size is None):
-            raise ValueError(
-                f"The argument page={page} and page_size={page_size} need either both be present or absent. But one is absent. "
-            )
+        if page is None:
+            # We need to set page_size to None because the Client expects both parameters or neither of them.
+            page_size = None
 
         # noinspection PyProtectedMember
         return self.project.client._export_text_analysis(
