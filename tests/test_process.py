@@ -145,7 +145,7 @@ def test_export_text_analysis_export_v5(client_version_5):
         project=Project(client_version_5, PROJECT_NAME),
         name="my-process",
         pipeline_name="my-pipeline",
-        document_source_name="my-collection",
+        document_source_name=COLLECTION_NAME,
     )
 
     with pytest.raises(OperationNotSupported):
@@ -154,7 +154,7 @@ def test_export_text_analysis_export_v5(client_version_5):
 
 def test_export_text_analysis_export_v6(client_version_6, requests_mock):
     project = Project(client_version_6, PROJECT_NAME)
-    collection = project.get_document_collection("my-collection")
+    collection = project.get_document_collection(COLLECTION_NAME)
     process_name = "my-process"
 
     requests_mock.get(
@@ -213,13 +213,71 @@ def test_export_text_analysis_export_v6(client_version_6, requests_mock):
     assert export["documentSourceName"] == collection.name
 
 
+def test_export_text_analysis_with_page_and_pagsize(client_version_6, requests_mock):
+    project = Project(client_version_6, PROJECT_NAME)
+    collection = project.get_document_collection(COLLECTION_NAME)
+    process_name = "my-process"
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/"
+        f"documentSources/{collection.name}/processes/{process_name}",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": {
+                "processName": process_name,
+                "pipelineName": "my-pipeline",
+                "documentSourceName": collection.name,
+                "state": "IDLE",
+                # Truncated
+            },
+            "errorMessages": [],
+        },
+    )
+    process = collection.get_process(process_name)
+
+    def callback(request, _content):
+        page_size = int(request.qs["pageSize"][0])
+        page = int(request.qs["page"][0])
+        return_payload = [
+            {"documentName": f"Document ({page_size*(page-1)+k}).txt", "annotationDtos": []}
+            for k in range(1, page_size + 1)
+        ]
+        return {
+            "payload": {
+                "textAnalysisResultDtos": return_payload,
+                "projectName": project.name,
+                # Truncated
+            },
+            "errorMessages": [],
+        }
+
+    requests_mock.get(
+        f"{API_BASE}/textanalysis/projects/{project.name}/"
+        f"documentSources/{process.document_source_name}/processes/{process.name}/export",
+        headers={"Content-Type": "application/json"},
+        json=callback,
+    )
+
+    export1 = process.export_text_analysis(page_size=4, page=1)
+    assert len(export1["textAnalysisResultDtos"]) == 4
+    assert export1["textAnalysisResultDtos"][0]["documentName"] == "Document (1).txt"
+
+    export2 = process.export_text_analysis(page_size=4, page=2)
+    assert len(export2["textAnalysisResultDtos"]) == 4
+    assert export2["textAnalysisResultDtos"][-1]["documentName"] == "Document (8).txt"
+
+    export3 = process.export_text_analysis(page=2)
+    assert len(export3["textAnalysisResultDtos"]) == 100
+    assert export3["textAnalysisResultDtos"][-1]["documentName"] == "Document (200).txt"
+
+
 def test_export_text_analysis_to_cas_v5(client_version_5):
     document_id = "document0001"
     process = Process(
         project=Project(client_version_5, PROJECT_NAME),
         name="my-process",
         pipeline_name="my-pipeline",
-        document_source_name="my-collection",
+        document_source_name=COLLECTION_NAME,
     )
 
     with pytest.raises(OperationNotSupported):
@@ -228,7 +286,7 @@ def test_export_text_analysis_to_cas_v5(client_version_5):
 
 def test_export_text_analysis_to_cas_v6(client_version_6, requests_mock):
     project = client_version_6.get_project(PROJECT_NAME)
-    collection = project.get_document_collection("my-collection")
+    collection = project.get_document_collection(COLLECTION_NAME)
     document_id = "document0001"
     expected_xmi = """<?xml version="1.0" encoding="UTF-8"?>
         <xmi:XMI xmlns:tcas="http:///uima/tcas.ecore" xmlns:xmi="http://www.omg.org/XMI" 
