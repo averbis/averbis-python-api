@@ -764,7 +764,10 @@ class Process:
         return self.project.client._get_process_state(self.project, self)
 
     def export_text_analysis(
-        self, annotation_types: str = None, page: int = None, page_size: int = 100
+        self,
+        annotation_types: str = None,
+        page: Union[int, None] = None,
+        page_size: Union[int, None] = 100,
     ) -> dict:
         """
         Exports a given text analysis process as a json.
@@ -2038,8 +2041,8 @@ class Client:
         document_source: str,
         process: str,
         annotation_types: str = None,
-        page: int = None,
-        page_size: int = None,
+        page: Union[int, None] = None,
+        page_size: Union[int, None] = None,
     ):
         """
         Use Process.export_text_analysis() instead.
