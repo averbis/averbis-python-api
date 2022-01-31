@@ -278,6 +278,12 @@ class Pipeline:
     ) -> Iterator[Result]:
         """
         Analyze the given texts or files using the pipeline. If feasible, multiple documents are processed in parallel.
+        Note that this call produces an iterator! It means that you get individual results back as soon as they have
+        been processed. These results may be out-of-order! Also, if you want to hold on to the results while iterating
+        through them, you need to put them into some kind of collection. An easy way to do this is e.g. calling
+        `list(client.analyse_texts(...))`. If you process a large number of documents though, you are better off
+        handling the results one-by-one. This can be done with a simple for loop:
+        `for result in client.analyse_texts(...):`.
 
         :param sources:          The documents to be analyzed.
         :param parallelism:      Number of parallel instances in the platform.
@@ -321,7 +327,8 @@ class Pipeline:
                 return Result(exception=e, source=source)
 
         with ThreadPoolExecutor(max_workers=parallel_request_count) as executor:
-            return executor.map(run_analysis, sources)
+            for r in executor.map(run_analysis, sources):
+                yield r
 
     def analyse_html(
         self,
