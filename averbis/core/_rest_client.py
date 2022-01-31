@@ -317,7 +317,7 @@ class Pipeline:
                 return Result(
                     data=self.analyse_text(
                         source=source,
-                        annotation_types=annaotation_types,
+                        annotation_types=annotation_types,
                         language=language,
                         timeout=timeout,
                     ),
