@@ -321,7 +321,8 @@ class Pipeline:
                 return Result(exception=e, source=source)
 
         with ThreadPoolExecutor(max_workers=parallel_request_count) as executor:
-            return executor.map(run_analysis, sources)
+            for r in executor.map(run_analysis, sources):
+                yield r
 
     def analyse_html(
         self,
