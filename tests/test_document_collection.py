@@ -22,6 +22,7 @@ from pathlib import Path
 from cassis import Cas, TypeSystem
 
 from averbis import DocumentCollection, Process
+from averbis.core import MEDIA_TYPE_APPLICATION_XMI
 from tests.fixtures import *
 from tests.utils import *
 
@@ -259,6 +260,14 @@ def test_add_text_analysis_result_cas_file(client_version_6, requests_mock):
         headers={"Content-Type": "application/json"},
         json={"payload": None, "errorMessages": []}
     )
-    collection.add_text_analysis_result_to_document(cas_file_path, document_name, process_name, typesystem)
+    collection.add_text_analysis_result_to_document(cas_file_path, document_name, process_name,
+                                                    MEDIA_TYPE_APPLICATION_XMI, typesystem)
+
+    # should raise exception because typesystem is not given
     with pytest.raises(Exception):
-        collection.add_text_analysis_result_to_document(cas_file_path, document_name, process_name)
+        collection.add_text_analysis_result_to_document(cas_file_path, document_name, process_name,
+                                                        MEDIA_TYPE_APPLICATION_XMI)
+    # should raise exception because mime type is not given
+    with pytest.raises(Exception):
+        collection.add_text_analysis_result_to_document(cas_file_path, document_name, process_name,
+                                                        typesystem=typesystem)

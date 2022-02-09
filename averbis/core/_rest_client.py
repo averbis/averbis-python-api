@@ -44,7 +44,6 @@ HEADER_ACCEPT = "Accept"
 HEADER_CONTENT_TYPE = "Content-Type"
 
 MEDIA_TYPE_ANY = "*/*"
-MEDIA_TYPE_APPLICATION_XMI = "application/vnd.uima.cas+xmi"
 MEDIA_TYPE_APPLICATION_JSON = "application/json"
 MEDIA_TYPE_APPLICATION_XML = "application/xml"
 MEDIA_TYPE_APPLICATION_ZIP = "application/zip"
@@ -52,6 +51,25 @@ MEDIA_TYPE_APPLICATION_SOLR_XML = "application/vnd.averbis.solr+xml"
 MEDIA_TYPE_TEXT_PLAIN = "text/plain"
 MEDIA_TYPE_TEXT_PLAIN_UTF8 = "text/plain; charset=utf-8"
 MEDIA_TYPE_OCTET_STREAM = "application/octet-stream"
+
+# uima cas formats
+MEDIA_TYPE_APPLICATION_XMI = "application/vnd.uima.cas+xmi"
+MEDIA_TYPE_XCAS = "application/vnd.uima.cas+xcas"
+MEDIA_TYPE_CAS_BINARY = "application/vnd.uima.cas+binary"
+MEDIA_TYPE_BINARY_TSI = "application/vnd.uima.cas+binary.tsi"
+MEDIA_TYPE_CAS_COMPRESSED = "application/vnd.uima.cas+compressed"
+MEDIA_TYPE_CAS_COMPRESSED_FILTERED = "application/vnd.uima.cas+compressed.filtered"
+MEDIA_TYPE_CAS_COMPRESSED_FILTERED_TS = "application/vnd.uima.cas+compressed.filtered.ts"
+MEDIA_TYPE_CAS_COMPRESSED_FILTERED_TSI = "application/vnd.uima.cas+compressed.filtered.tsi"
+MEDIA_TYPE_CAS_COMPRESSED_TSI = "application/vnd.uima.cas+compressed.tsi"
+MEDIA_TYPE_CAS_SERIALIZED = "application/vnd.uima.cas+serialized"
+MEDIA_TYPE_CAS_SERIALIZED_TSI = "application/vnd.uima.cas+serialized.tsi"
+
+MEDIA_TYPES_CAS_NEEDS_TS = [MEDIA_TYPE_APPLICATION_XMI, MEDIA_TYPE_CAS_BINARY, MEDIA_TYPE_CAS_COMPRESSED,
+                            MEDIA_TYPE_CAS_COMPRESSED_FILTERED, MEDIA_TYPE_CAS_SERIALIZED, MEDIA_TYPE_XCAS]
+MEDIA_TYPES_CAS = MEDIA_TYPES_CAS_NEEDS_TS + [MEDIA_TYPE_CAS_SERIALIZED_TSI, MEDIA_TYPE_CAS_COMPRESSED_TSI,
+                                              MEDIA_TYPE_CAS_COMPRESSED_FILTERED_TSI,
+                                              MEDIA_TYPE_CAS_COMPRESSED_FILTERED_TS, MEDIA_TYPE_BINARY_TSI]
 
 DOCUMENT_IMPORTER_CAS = "CAS Importer"
 DOCUMENT_IMPORTER_SOLR = "Solr XML Importer"
@@ -944,25 +962,38 @@ class DocumentCollection:
             source: Union[Cas, Path, IO],
             document_name: str,
             process_name: str,
+            mime_type: str = None,
             typesystem: "TypeSystem" = None
     ):
         """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
         Add a text analysis result (i.e. annotated content) to a specified document in this document
-        collection for a given process. This process must be an intellectual process (i.e. for manual annotation).
+        collection for a given process. This process must be an intellectual or imported process
+        (i.e. for manual annotation).
         If it does not yet exist, it will be created. There must not already exist a text analysis result associated
         with this document, use Process.update_text_analysis_for_document() instead.
 
-        The supported file content type is UIMA CAS XMI (application/vnd.uima.cas+xmi).
+        The supported file content types (mime_types) are UIMA CAS XMI (application/vnd.uima.cas+xmi),
+        XCAS (application/vnd.uima.cas+xcas), binary CAS (application/vnd.uima.cas+binary),
+        binary TSI (application/vnd.uima.cas+binary.tsi), compressed (application/vnd.uima.cas+compressed),
+        compressed TSI (application/vnd.uima.cas+compressed.tsi),
+        compressed filtered (application/vnd.uima.cas+compressed.filtered),
+        compressed filtered TS (application/vnd.uima.cas+compressed.filtered.ts),
+        compressed filtered TSI (application/vnd.uima.cas+compressed.filtered.tsi),
+        serialized CAS (application/vnd.uima.cas+serialized)
+        and serialized TSI (application/vnd.uima.cas+serialized.tsi).
 
         If a document is provided as a CAS object, the type system information can be automatically picked from the CAS
-        object and should not be provided explicitly. If a CAS is provided as XML representation, then a type
-        system must be explicitly provided.
+        object and should not be provided explicitly. The mime_type is also not needed.
+        If a CAS is provided as a path or stream, then a mime_type needs to be given. The typesystem might need to be
+        provided depending on the content type.
 
         """
         # noinspection PyProtectedMember
         self.project.client._add_text_analysis_result_to_document(self.project.name, process_name,
-                                                                  self.name, source,
-                                                                  document_name, typesystem)
+                                                                  self.name, source, document_name,
+                                                                  mime_type, typesystem)
 
     @experimental_api
     def update_text_analysis_result_for_document(
@@ -970,24 +1001,36 @@ class DocumentCollection:
             source: Union[Cas, Path, IO],
             document_name: str,
             process_name: str,
+            mime_type: str = None,
             typesystem: "TypeSystem" = None
     ):
         """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
         Add a text analysis result (i.e. annotated content) to a specified document in this document
         collection for a given process. This process must be an intellectual process (i.e. for manual annotation).
         If it does not yet exist, it will be created.
 
-        The supported file content type is UIMA CAS XMI (application/vnd.uima.cas+xmi).
+        The supported file content types (mime_types) are UIMA CAS XMI (application/vnd.uima.cas+xmi),
+        XCAS (application/vnd.uima.cas+xcas), binary CAS (application/vnd.uima.cas+binary),
+        binary TSI (application/vnd.uima.cas+binary.tsi), compressed (application/vnd.uima.cas+compressed),
+        compressed TSI (application/vnd.uima.cas+compressed.tsi),
+        compressed filtered (application/vnd.uima.cas+compressed.filtered),
+        compressed filtered TS (application/vnd.uima.cas+compressed.filtered.ts),
+        compressed filtered TSI (application/vnd.uima.cas+compressed.filtered.tsi),
+        serialized CAS (application/vnd.uima.cas+serialized)
+        and serialized TSI (application/vnd.uima.cas+serialized.tsi).
 
         If a document is provided as a CAS object, the type system information can be automatically picked from the CAS
-        object and should not be provided explicitly. If a CAS is provided as XML representation, then a type
-        system must be explicitly provided.
+        object and should not be provided explicitly. The mime_type is also not needed.
+        If a CAS is provided as a path or stream, then a mime_type needs to be given. the typesystem might need to be
+        provided depending on the content type.
 
         """
         # noinspection PyProtectedMember
         self.project.client._update_text_analysis_result_for_document(self.project.name, process_name,
-                                                                      self.name, source,
-                                                                      document_name, typesystem)
+                                                                      self.name, source, document_name,
+                                                                      mime_type, typesystem)
 
 
 class Pear:
@@ -2632,9 +2675,9 @@ class Client:
         raise ValueError("Unsupported source type - valid is [Path, IO, CAS]")
 
     def _add_text_analysis_result_to_document(self, project_name, process_name, document_source_name, source,
-                                              document_name, typesystem):
+                                              document_name, mime_type, typesystem):
         filename = self._fetch_text_analysis_result_filename(source)
-        files, params = self._create_text_analysis_request(document_name, filename, source, typesystem)
+        files, params = self._create_text_analysis_request_parts(document_name, filename, source, mime_type, typesystem)
 
         self.__request_with_json_response(
             "post",
@@ -2643,26 +2686,29 @@ class Client:
         )
 
     @staticmethod
-    def _create_text_analysis_request(document_name, filename, source, typesystem):
+    def _create_text_analysis_request_parts(document_name, filename, source, mime_type, typesystem):
         if isinstance(source, Cas):
             if typesystem is None:
                 typesystem = source.typesystem
             source = source.to_xmi()
+            mime_type = MEDIA_TYPE_APPLICATION_XMI
         else:
-            if typesystem is None:
-                raise Exception("Provide a typesystem with your UIMA CAS XMI file or use a CAS object")
+            if mime_type is None or mime_type not in MEDIA_TYPES_CAS:
+                raise Exception("Provide a mime_type, valid types are: " + ','.join(MEDIA_TYPES_CAS))
+            if typesystem is None and mime_type in MEDIA_TYPES_CAS_NEEDS_TS:
+                raise Exception("Provide a typesystem with your file or use a CAS object")
             with source.open("rb") as binary_file:
                 source = BytesIO(binary_file.read())
-        files = {"casFile": (filename, source, MEDIA_TYPE_APPLICATION_XMI),
-                 "typesystemFile": ("typesystem.xml", typesystem.to_xml(), MEDIA_TYPE_APPLICATION_XML)
-                 }
+        files = {"casFile": (filename, source, mime_type)}
+        if typesystem is not None:
+            files["typesystemFile"] = ("typesystem.xml", typesystem.to_xml(), MEDIA_TYPE_APPLICATION_XML)
         params = {"documentName": document_name}
         return files, params
 
     def _update_text_analysis_result_for_document(self, project_name, process_name, document_source_name, source,
-                                                  document_name, typesystem):
+                                                  document_name, mime_type, typesystem):
         filename = self._fetch_text_analysis_result_filename(source)
-        files, params = self._create_text_analysis_request(document_name, filename, source, typesystem)
+        files, params = self._create_text_analysis_request_parts(document_name, filename, source, mime_type, typesystem)
 
         self.__request_with_json_response(
             "put",
