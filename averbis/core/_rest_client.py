@@ -938,6 +938,57 @@ class DocumentCollection:
             if process.document_source_name == self.name
         ]
 
+    @experimental_api
+    def add_text_analysis_result_to_document(
+            self,
+            source: Union[Cas, Path, IO],
+            document_name: str,
+            process_name: str,
+            typesystem: "TypeSystem" = None
+    ):
+        """
+        Add a text analysis result (i.e. annotated content) to a specified document in this document
+        collection for a given process. This process must be an intellectual process (i.e. for manual annotation).
+        If it does not yet exist, it will be created. There must not already exist a text analysis result associated
+        with this document, use Process.update_text_analysis_for_document() instead.
+
+        The supported file content type is UIMA CAS XMI (application/vnd.uima.cas+xmi).
+
+        If a document is provided as a CAS object, the type system information can be automatically picked from the CAS
+        object and should not be provided explicitly. If a CAS is provided as XML representation, then a type
+        system must be explicitly provided.
+
+        """
+        # noinspection PyProtectedMember
+        self.project.client._add_text_analysis_result_to_document(self.project.name, process_name,
+                                                                  self.name, source,
+                                                                  document_name, typesystem)
+
+    @experimental_api
+    def update_text_analysis_result_for_document(
+            self,
+            source: Union[Cas, Path, IO],
+            document_name: str,
+            process_name: str,
+            typesystem: "TypeSystem" = None
+    ):
+        """
+        Add a text analysis result (i.e. annotated content) to a specified document in this document
+        collection for a given process. This process must be an intellectual process (i.e. for manual annotation).
+        If it does not yet exist, it will be created.
+
+        The supported file content type is UIMA CAS XMI (application/vnd.uima.cas+xmi).
+
+        If a document is provided as a CAS object, the type system information can be automatically picked from the CAS
+        object and should not be provided explicitly. If a CAS is provided as XML representation, then a type
+        system must be explicitly provided.
+
+        """
+        # noinspection PyProtectedMember
+        self.project.client._update_text_analysis_result_for_document(self.project.name, process_name,
+                                                                      self.name, source,
+                                                                      document_name, typesystem)
+
 
 class Pear:
     def __init__(self, project: "Project", identifier: str):
@@ -2566,3 +2617,55 @@ class Client:
 
         zip_archive.seek(0)
         return zip_archive
+
+    @staticmethod
+    def _fetch_text_analysis_result_filename(source) -> str:
+        if isinstance(source, Path):
+            return Path(source).name
+
+        if isinstance(source, IOBase) and hasattr(source, "name"):
+            return source.name
+
+        if isinstance(source, Cas):
+            return "annotated_document.xmi"
+
+        raise ValueError("Unsupported source type - valid is [Path, IO, CAS]")
+
+    def _add_text_analysis_result_to_document(self, project_name, process_name, document_source_name, source,
+                                              document_name, typesystem):
+        filename = self._fetch_text_analysis_result_filename(source)
+        files, params = self._create_text_analysis_request(document_name, filename, source, typesystem)
+
+        self.__request_with_json_response(
+            "post",
+            f"/experimental/textanalysis/projects/{project_name}/documentSources/{document_source_name}/processes/{process_name}/addTextAnalysisResult",
+            files=files, params=params
+        )
+
+    @staticmethod
+    def _create_text_analysis_request(document_name, filename, source, typesystem):
+        if isinstance(source, Cas):
+            if typesystem is None:
+                typesystem = source.typesystem
+            source = source.to_xmi()
+        else:
+            if typesystem is None:
+                raise Exception("Provide a typesystem with your UIMA CAS XMI file or use a CAS object")
+            with source.open("rb") as binary_file:
+                source = BytesIO(binary_file.read())
+        files = {"casFile": (filename, source, MEDIA_TYPE_APPLICATION_XMI),
+                 "typesystemFile": ("typesystem.xml", typesystem.to_xml(), MEDIA_TYPE_APPLICATION_XML)
+                 }
+        params = {"documentName": document_name}
+        return files, params
+
+    def _update_text_analysis_result_for_document(self, project_name, process_name, document_source_name, source,
+                                                  document_name, typesystem):
+        filename = self._fetch_text_analysis_result_filename(source)
+        files, params = self._create_text_analysis_request(document_name, filename, source, typesystem)
+
+        self.__request_with_json_response(
+            "put",
+            f"/experimental/textanalysis/projects/{project_name}/documentSources/{document_source_name}/processes/{process_name}/updateTextAnalysisResult",
+            files=files, params=params
+        )

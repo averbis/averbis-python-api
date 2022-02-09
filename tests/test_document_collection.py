@@ -214,3 +214,51 @@ def test_get_process(client_version_6, requests_mock):
     )
     actual = project.get_document_collection(document_source_name).get_process(process_name)
     assert_process_equal(expected_process, actual)
+
+
+def test_add_text_analysis_result_cas(client_version_6, requests_mock):
+    project = client_version_6.get_project(PROJECT_NAME)
+    collection = DocumentCollection(project, "my-collection")
+    process_name = "my-process"
+    cas = Cas(typesystem=TypeSystem())
+    document_name = "my-document.txt"
+
+    requests_mock.post(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/documentSources/{collection.name}/processes/{process_name}/addTextAnalysisResult",
+        headers={"Content-Type": "application/json"},
+        json={"payload": None, "errorMessages": []}
+    )
+    collection.add_text_analysis_result_to_document(cas, document_name, process_name)
+
+
+def test_update_text_analysis_result_cas(client_version_6, requests_mock):
+    project = client_version_6.get_project(PROJECT_NAME)
+    collection = DocumentCollection(project, "my-collection")
+    process_name = "my-process"
+    cas = Cas(typesystem=TypeSystem())
+    document_name = "my-document.txt"
+
+    requests_mock.put(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/documentSources/{collection.name}/processes/{process_name}/updateTextAnalysisResult",
+        headers={"Content-Type": "application/json"},
+        json={"payload": None, "errorMessages": []}
+    )
+    collection.update_text_analysis_result_for_document(cas, document_name, process_name)
+
+
+def test_add_text_analysis_result_cas_file(client_version_6, requests_mock):
+    project = client_version_6.get_project(PROJECT_NAME)
+    collection = DocumentCollection(project, "my-collection")
+    process_name = "my-process"
+    typesystem = TypeSystem()
+    cas_file_path = Path(TEST_DIRECTORY, "resources/xml/my-document.xmi")
+    document_name = "my-document.txt"
+
+    requests_mock.post(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/documentSources/{collection.name}/processes/{process_name}/addTextAnalysisResult",
+        headers={"Content-Type": "application/json"},
+        json={"payload": None, "errorMessages": []}
+    )
+    collection.add_text_analysis_result_to_document(cas_file_path, document_name, process_name, typesystem)
+    with pytest.raises(Exception):
+        collection.add_text_analysis_result_to_document(cas_file_path, document_name, process_name)
