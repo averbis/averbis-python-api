@@ -829,23 +829,27 @@ class Process:
         )
 
     @experimental_api
-    def export_text_analysis_to_cas(self, document_id: str) -> Cas:
+    def export_text_analysis_to_cas(self, document_name: str) -> Cas:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
         Returns an analysis as a UIMA CAS.
         """
 
+        document_collection = self.project.get_document_collection(self.document_source_name)
+        document_identifier = document_collection.get_document_identifier(document_name)
+        # noinspection PyProtectedMember
         type_system = load_typesystem(
             self.project.client._export_analysis_result_typesystem(
-                self.project.name, self.document_source_name, document_id, self
+                self.project.name, self.document_source_name,
+                document_identifier, self
             )
         )
 
         # noinspection PyProtectedMember
         return load_cas_from_xmi(
             self.project.client._export_analysis_result_to_xmi(
-                self.project.name, self.document_source_name, document_id, self
+                self.project.name, self.document_source_name, document_name, self
             ),
             typesystem=type_system,
         )
@@ -1031,6 +1035,15 @@ class DocumentCollection:
         self.project.client._update_text_analysis_result_for_document(self.project.name, process_name,
                                                                       self.name, source, document_name,
                                                                       mime_type, typesystem)
+
+    def get_document_identifier(self, document_name):
+        documents = self.list_documents()
+        documents = [document for document in self.list_documents() if document['documentName'] == document_name]
+        if not documents:
+            raise Exception(f"Document with name {document_name} does not exist in collection {self.name}")
+        if len(documents) != 1:
+            raise Exception(f"Document name{document_name} is not unique in collection {self.name}")
+        return documents[0]['documentIdentifier']
 
 
 class Pear:
@@ -2158,7 +2171,7 @@ class Client:
 
     @experimental_api
     def _export_analysis_result_to_xmi(
-        self, project: str, collection_name: str, document_id: str, process: Union[Process, str]
+        self, project: str, collection_name: str, document_name: str, process: Union[Process, str]
     ) -> str:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -2177,10 +2190,11 @@ class Client:
             self.__request_with_bytes_response(
                 "get",
                 f"/experimental/textanalysis/projects/{project}/documentCollections/{collection_name}"
-                f"/documents/{document_id}/processes/{process_name}/exportTextAnalysisResult",
+                f"/processes/{process_name}/textAnalysisResult",
                 headers={
                     HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_XMI,
                 },
+                params={"documentName": document_name}
             ),
             ENCODING_UTF_8,
         )
@@ -2674,14 +2688,14 @@ class Client:
 
         raise ValueError("Unsupported source type - valid is [Path, IO, CAS]")
 
-    def _add_text_analysis_result_to_document(self, project_name, process_name, document_source_name, source,
+    def _add_text_analysis_result_to_document(self, project_name, process_name, document_collection_name, source,
                                               document_name, mime_type, typesystem):
         filename = self._fetch_text_analysis_result_filename(source)
         files, params = self._create_text_analysis_request_parts(document_name, filename, source, mime_type, typesystem)
 
         self.__request_with_json_response(
             "post",
-            f"/experimental/textanalysis/projects/{project_name}/documentSources/{document_source_name}/processes/{process_name}/addTextAnalysisResult",
+            f"/experimental/textanalysis/projects/{project_name}/documentCollections/{document_collection_name}/processes/{process_name}/textAnalysisResult",
             files=files, params=params
         )
 
@@ -2705,13 +2719,13 @@ class Client:
         params = {"documentName": document_name}
         return files, params
 
-    def _update_text_analysis_result_for_document(self, project_name, process_name, document_source_name, source,
+    def _update_text_analysis_result_for_document(self, project_name, process_name, document_collection_name, source,
                                                   document_name, mime_type, typesystem):
         filename = self._fetch_text_analysis_result_filename(source)
         files, params = self._create_text_analysis_request_parts(document_name, filename, source, mime_type, typesystem)
 
         self.__request_with_json_response(
             "put",
-            f"/experimental/textanalysis/projects/{project_name}/documentSources/{document_source_name}/processes/{process_name}/updateTextAnalysisResult",
+            f"/experimental/textanalysis/projects/{project_name}/documentCollections/{document_collection_name}/processes/{process_name}/textAnalysisResult",
             files=files, params=params
         )

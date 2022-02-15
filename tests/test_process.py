@@ -288,6 +288,7 @@ def test_export_text_analysis_to_cas_v6(client_version_6, requests_mock):
     project = client_version_6.get_project(PROJECT_NAME)
     collection = project.get_document_collection(COLLECTION_NAME)
     document_id = "document0001"
+    document_name = "document.txt"
     expected_xmi = """<?xml version="1.0" encoding="UTF-8"?>
         <xmi:XMI xmlns:tcas="http:///uima/tcas.ecore" xmlns:xmi="http://www.omg.org/XMI" 
         xmlns:cas="http:///uima/cas.ecore"
@@ -311,12 +312,24 @@ def test_export_text_analysis_to_cas_v6(client_version_6, requests_mock):
     )
 
     requests_mock.get(
+        f"{API_EXPERIMENTAL}/projects/{project.name}/documentCollections/{collection.name}/documents",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": [{
+                "documentIdentifier": document_id,
+                "documentName": document_name
+            }],
+            "errorMessages": [],
+        }
+    )
+
+    requests_mock.get(
         f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/documentCollections/{collection.name}"
-        f"/documents/{document_id}/processes/{process.name}/exportTextAnalysisResult",
+        f"/processes/{process.name}/textAnalysisResult",
         headers={"Content-Type": "application/vnd.uima.cas+xmi"},
         text=expected_xmi,
     )
 
-    cas = process.export_text_analysis_to_cas(document_id)
+    cas = process.export_text_analysis_to_cas(document_name)
 
     assert cas.sofa_string == "Test"

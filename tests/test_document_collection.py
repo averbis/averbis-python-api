@@ -240,7 +240,7 @@ def test_update_text_analysis_result_cas(client_version_6, requests_mock):
     document_name = "my-document.txt"
 
     requests_mock.put(
-        f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/documentSources/{collection.name}/processes/{process_name}/updateTextAnalysisResult",
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/documentCollections/{collection.name}/processes/{process_name}/textAnalysisResult",
         headers={"Content-Type": "application/json"},
         json={"payload": None, "errorMessages": []}
     )
@@ -256,7 +256,7 @@ def test_add_text_analysis_result_cas_file(client_version_6, requests_mock):
     document_name = "my-document.txt"
 
     requests_mock.post(
-        f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/documentSources/{collection.name}/processes/{process_name}/addTextAnalysisResult",
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/documentCollections/{collection.name}/processes/{process_name}/textAnalysisResult",
         headers={"Content-Type": "application/json"},
         json={"payload": None, "errorMessages": []}
     )
