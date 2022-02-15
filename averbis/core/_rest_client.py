@@ -18,6 +18,7 @@
 #
 #
 import copy
+from enum import Enum
 from urllib.parse import quote
 
 from cassis import Cas, TypeSystem, load_cas_from_xmi, load_typesystem  # type: ignore
@@ -689,12 +690,13 @@ class Terminology:
 
 
 class Process:
+
     def __init__(
         self,
         project: "Project",
         name: str,
         document_source_name: str,
-        pipeline_name: str,
+        pipeline_name: str = None,
         preceding_process_name=None,
     ):
         self.project = project
@@ -709,6 +711,11 @@ class Process:
             f' pipeline_name="{self.pipeline_name}", document_source_name="{self.document_source_name}",'
             f' preceding_process_name="{self.preceding_process_name}")'
         )
+
+    class ProcessType(Enum):
+        MANUAL = 'MANUAL'
+        IMPORTED = 'IMPORTED'
+        MACHINE = 'MACHINE'
 
     class ProcessState:
         def __init__(
@@ -762,6 +769,7 @@ class Process:
             document_collection=document_collection,
             process_name=process_name,
             pipeline=pipeline,
+            process_type=Process.ProcessType.MACHINE,
             preceding_process_name=self.name,
         )
 
@@ -835,7 +843,10 @@ class Process:
 
         Returns an analysis as a UIMA CAS.
         """
-
+        if self.project.client.get_build_info()["specVersion"].startswith("5."):
+            raise OperationNotSupported(
+                "Text analysis export is not supported for platform version 5.x, it is only supported from 6.x onwards."
+            )
         document_collection = self.project.get_document_collection(self.document_source_name)
         document_identifier = document_collection.get_document_identifier(document_name)
         # noinspection PyProtectedMember
@@ -853,6 +864,78 @@ class Process:
             ),
             typesystem=type_system,
         )
+
+    @experimental_api
+    def add_text_analysis_result_to_document(
+            self,
+            source: Union[Cas, Path, IO],
+            document_name: str,
+            mime_type: str = None,
+            typesystem: "TypeSystem" = None
+    ):
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Add a text analysis result (i.e. annotated content) to a specified document in this process.
+        This process must be a manual or imported process (i.e. without automatic processing via pipeline).
+        There must not already exist a text analysis result associated
+        with this document, use Process.update_text_analysis_for_document() instead.
+
+        The supported file content types (mime_types) are UIMA CAS XMI (application/vnd.uima.cas+xmi),
+        XCAS (application/vnd.uima.cas+xcas), binary CAS (application/vnd.uima.cas+binary),
+        binary TSI (application/vnd.uima.cas+binary.tsi), compressed (application/vnd.uima.cas+compressed),
+        compressed TSI (application/vnd.uima.cas+compressed.tsi),
+        compressed filtered (application/vnd.uima.cas+compressed.filtered),
+        compressed filtered TS (application/vnd.uima.cas+compressed.filtered.ts),
+        compressed filtered TSI (application/vnd.uima.cas+compressed.filtered.tsi),
+        serialized CAS (application/vnd.uima.cas+serialized)
+        and serialized TSI (application/vnd.uima.cas+serialized.tsi).
+
+        If a document is provided as a CAS object, the type system information can be automatically picked from the CAS
+        object and should not be provided explicitly. The mime_type is also not needed.
+        If a CAS is provided as a path or stream, then a mime_type needs to be given. The typesystem might need to be
+        provided depending on the content type.
+
+        """
+        # noinspection PyProtectedMember
+        self.project.client._add_text_analysis_result_to_document(self.project.name, self.name,
+                                                                  self.document_source_name, source, document_name,
+                                                                  mime_type, typesystem)
+
+    @experimental_api
+    def update_text_analysis_result_for_document(
+            self,
+            source: Union[Cas, Path, IO],
+            document_name: str,
+            mime_type: str = None,
+            typesystem: "TypeSystem" = None
+    ):
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Add a text analysis result (i.e. annotated content) to a specified document for this
+        process. This process must be a manual or imported process (i.e. without automatic processing via pipeline).
+
+        The supported file content types (mime_types) are UIMA CAS XMI (application/vnd.uima.cas+xmi),
+        XCAS (application/vnd.uima.cas+xcas), binary CAS (application/vnd.uima.cas+binary),
+        binary TSI (application/vnd.uima.cas+binary.tsi), compressed (application/vnd.uima.cas+compressed),
+        compressed TSI (application/vnd.uima.cas+compressed.tsi),
+        compressed filtered (application/vnd.uima.cas+compressed.filtered),
+        compressed filtered TS (application/vnd.uima.cas+compressed.filtered.ts),
+        compressed filtered TSI (application/vnd.uima.cas+compressed.filtered.tsi),
+        serialized CAS (application/vnd.uima.cas+serialized)
+        and serialized TSI (application/vnd.uima.cas+serialized.tsi).
+
+        If a document is provided as a CAS object, the type system information can be automatically picked from the CAS
+        object and should not be provided explicitly. The mime_type is also not needed.
+        If a CAS is provided as a path or stream, then a mime_type needs to be given. the typesystem might need to be
+        provided depending on the content type.
+
+        """
+        # noinspection PyProtectedMember
+        self.project.client._update_text_analysis_result_for_document(self.project.name, self.name,
+                                                                      self.document_source_name, source, document_name,
+                                                                      mime_type, typesystem)
 
 
 class DocumentCollection:
@@ -896,7 +979,28 @@ class DocumentCollection:
         :return: The created process
         """
         # noinspection PyProtectedMember
-        self.project.client._create_and_run_process(self, process_name, pipeline)
+        self.project.client._create_and_run_process(self, process_name, pipeline, Process.ProcessType.MACHINE)
+
+        return self.get_process(process_name)
+
+    @experimental_api
+    def create_process(
+            self,
+            process_name: str,
+            is_manual_annotation: bool = False) -> Process:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Creates a process without a pipeline (e.g. for later manual annotation or text analysis result import)
+        :param: is_manual_annotation the created process will be used for manual annotation
+        i.e. the underlying data structure will be initialized immediately and not on later text analysis result import
+        :return: The created process
+        """
+        process_type = Process.ProcessType.IMPORTED
+        if is_manual_annotation:
+            process_type = Process.ProcessType.MANUAL
+        # noinspection PyProtectedMember
+        self.project.client._create_and_run_process(self, process_name, None, process_type)
 
         return self.get_process(process_name)
 
@@ -960,84 +1064,7 @@ class DocumentCollection:
             if process.document_source_name == self.name
         ]
 
-    @experimental_api
-    def add_text_analysis_result_to_document(
-            self,
-            source: Union[Cas, Path, IO],
-            document_name: str,
-            process_name: str,
-            mime_type: str = None,
-            typesystem: "TypeSystem" = None
-    ):
-        """
-        HIGHLY EXPERIMENTAL API - may soon change or disappear.
-
-        Add a text analysis result (i.e. annotated content) to a specified document in this document
-        collection for a given process. This process must be an intellectual or imported process
-        (i.e. for manual annotation).
-        If it does not yet exist, it will be created. There must not already exist a text analysis result associated
-        with this document, use Process.update_text_analysis_for_document() instead.
-
-        The supported file content types (mime_types) are UIMA CAS XMI (application/vnd.uima.cas+xmi),
-        XCAS (application/vnd.uima.cas+xcas), binary CAS (application/vnd.uima.cas+binary),
-        binary TSI (application/vnd.uima.cas+binary.tsi), compressed (application/vnd.uima.cas+compressed),
-        compressed TSI (application/vnd.uima.cas+compressed.tsi),
-        compressed filtered (application/vnd.uima.cas+compressed.filtered),
-        compressed filtered TS (application/vnd.uima.cas+compressed.filtered.ts),
-        compressed filtered TSI (application/vnd.uima.cas+compressed.filtered.tsi),
-        serialized CAS (application/vnd.uima.cas+serialized)
-        and serialized TSI (application/vnd.uima.cas+serialized.tsi).
-
-        If a document is provided as a CAS object, the type system information can be automatically picked from the CAS
-        object and should not be provided explicitly. The mime_type is also not needed.
-        If a CAS is provided as a path or stream, then a mime_type needs to be given. The typesystem might need to be
-        provided depending on the content type.
-
-        """
-        # noinspection PyProtectedMember
-        self.project.client._add_text_analysis_result_to_document(self.project.name, process_name,
-                                                                  self.name, source, document_name,
-                                                                  mime_type, typesystem)
-
-    @experimental_api
-    def update_text_analysis_result_for_document(
-            self,
-            source: Union[Cas, Path, IO],
-            document_name: str,
-            process_name: str,
-            mime_type: str = None,
-            typesystem: "TypeSystem" = None
-    ):
-        """
-        HIGHLY EXPERIMENTAL API - may soon change or disappear.
-
-        Add a text analysis result (i.e. annotated content) to a specified document in this document
-        collection for a given process. This process must be an intellectual process (i.e. for manual annotation).
-        If it does not yet exist, it will be created.
-
-        The supported file content types (mime_types) are UIMA CAS XMI (application/vnd.uima.cas+xmi),
-        XCAS (application/vnd.uima.cas+xcas), binary CAS (application/vnd.uima.cas+binary),
-        binary TSI (application/vnd.uima.cas+binary.tsi), compressed (application/vnd.uima.cas+compressed),
-        compressed TSI (application/vnd.uima.cas+compressed.tsi),
-        compressed filtered (application/vnd.uima.cas+compressed.filtered),
-        compressed filtered TS (application/vnd.uima.cas+compressed.filtered.ts),
-        compressed filtered TSI (application/vnd.uima.cas+compressed.filtered.tsi),
-        serialized CAS (application/vnd.uima.cas+serialized)
-        and serialized TSI (application/vnd.uima.cas+serialized.tsi).
-
-        If a document is provided as a CAS object, the type system information can be automatically picked from the CAS
-        object and should not be provided explicitly. The mime_type is also not needed.
-        If a CAS is provided as a path or stream, then a mime_type needs to be given. the typesystem might need to be
-        provided depending on the content type.
-
-        """
-        # noinspection PyProtectedMember
-        self.project.client._update_text_analysis_result_for_document(self.project.name, process_name,
-                                                                      self.name, source, document_name,
-                                                                      mime_type, typesystem)
-
-    def get_document_identifier(self, document_name):
-        documents = self.list_documents()
+    def get_document_identifier(self, document_name: str) -> str:
         documents = [document for document in self.list_documents() if document['documentName'] == document_name]
         if not documents:
             raise Exception(f"Document with name {document_name} does not exist in collection {self.name}")
@@ -2375,6 +2402,7 @@ class Client:
         document_collection: DocumentCollection,
         process_name: str,
         pipeline: Union[str, Pipeline],
+        process_type: Process.ProcessType,
         preceding_process_name=None,
     ) -> dict:
         """
@@ -2388,9 +2416,12 @@ class Client:
 
         request_json = {
             "processName": process_name,
-            "documentSourceName": document_collection.name,
-            "pipelineName": pipeline_name,
+            "documentCollectionName": document_collection.name,
+            "processType": process_type.value
         }
+
+        if pipeline_name:
+            request_json['pipelineName'] = pipeline_name
 
         if preceding_process_name:
             request_json["precedingProcessName"] = preceding_process_name
@@ -2428,10 +2459,14 @@ class Client:
         if "precedingProcessName" in process_details:
             preceding_process_name = process_details["precedingProcessName"]
 
+        pipeline_name = None
+        if "pipelineName" in process_details:
+            pipeline_name = process_details["pipelineName"]
+
         return Process(
             project=project,
             name=process_details["processName"],
-            pipeline_name=process_details["pipelineName"],
+            pipeline_name=pipeline_name,
             document_source_name=process_details["documentSourceName"],
             preceding_process_name=preceding_process_name,
         )

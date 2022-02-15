@@ -135,6 +135,42 @@ def test_create_and_run_process(document_collection, requests_mock):
     assert_process_equal(expected_process, actual_process)
 
 
+def test_create_process(document_collection, requests_mock):
+    process_name = "test-process"
+    state = "IDLE"
+    number_of_documents = 12
+
+    requests_mock.post(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{PROJECT_NAME}/processes",
+        headers={"Content-Type": "application/json"},
+        json={"payload": None, "errorMessages": []},
+    )
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{PROJECT_NAME}/"
+        f"documentSources/{document_collection.name}/processes/{process_name}",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": {
+                "processName": process_name,
+                "documentSourceName": document_collection.name,
+                "state": state,
+                "processedDocuments": number_of_documents,
+            },
+            "errorMessages": [],
+        },
+    )
+
+    actual_process = document_collection.create_process(
+        process_name=process_name, is_manual_annotation=True
+    )
+
+    expected_process = Process(
+        document_collection.project, process_name, document_collection.name
+    )
+    assert_process_equal(expected_process, actual_process)
+
+
 def test_list_processes(client_version_6, requests_mock):
     project = client_version_6.get_project(PROJECT_NAME)
     document_collection = DocumentCollection(project, "my_collection")
@@ -215,59 +251,3 @@ def test_get_process(client_version_6, requests_mock):
     )
     actual = project.get_document_collection(document_source_name).get_process(process_name)
     assert_process_equal(expected_process, actual)
-
-
-def test_add_text_analysis_result_cas(client_version_6, requests_mock):
-    project = client_version_6.get_project(PROJECT_NAME)
-    collection = DocumentCollection(project, "my-collection")
-    process_name = "my-process"
-    cas = Cas(typesystem=TypeSystem())
-    document_name = "my-document.txt"
-
-    requests_mock.post(
-        f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/documentSources/{collection.name}/processes/{process_name}/addTextAnalysisResult",
-        headers={"Content-Type": "application/json"},
-        json={"payload": None, "errorMessages": []}
-    )
-    collection.add_text_analysis_result_to_document(cas, document_name, process_name)
-
-
-def test_update_text_analysis_result_cas(client_version_6, requests_mock):
-    project = client_version_6.get_project(PROJECT_NAME)
-    collection = DocumentCollection(project, "my-collection")
-    process_name = "my-process"
-    cas = Cas(typesystem=TypeSystem())
-    document_name = "my-document.txt"
-
-    requests_mock.put(
-        f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/documentCollections/{collection.name}/processes/{process_name}/textAnalysisResult",
-        headers={"Content-Type": "application/json"},
-        json={"payload": None, "errorMessages": []}
-    )
-    collection.update_text_analysis_result_for_document(cas, document_name, process_name)
-
-
-def test_add_text_analysis_result_cas_file(client_version_6, requests_mock):
-    project = client_version_6.get_project(PROJECT_NAME)
-    collection = DocumentCollection(project, "my-collection")
-    process_name = "my-process"
-    typesystem = TypeSystem()
-    cas_file_path = Path(TEST_DIRECTORY, "resources/xml/my-document.xmi")
-    document_name = "my-document.txt"
-
-    requests_mock.post(
-        f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/documentCollections/{collection.name}/processes/{process_name}/textAnalysisResult",
-        headers={"Content-Type": "application/json"},
-        json={"payload": None, "errorMessages": []}
-    )
-    collection.add_text_analysis_result_to_document(cas_file_path, document_name, process_name,
-                                                    MEDIA_TYPE_APPLICATION_XMI, typesystem)
-
-    # should raise exception because typesystem is not given
-    with pytest.raises(Exception):
-        collection.add_text_analysis_result_to_document(cas_file_path, document_name, process_name,
-                                                        MEDIA_TYPE_APPLICATION_XMI)
-    # should raise exception because mime type is not given
-    with pytest.raises(Exception):
-        collection.add_text_analysis_result_to_document(cas_file_path, document_name, process_name,
-                                                        typesystem=typesystem)

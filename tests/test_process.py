@@ -17,9 +17,12 @@
 # limitations under the License.
 #
 #
+from pathlib import Path
+
+from cassis import Cas, TypeSystem
 
 from averbis import Project, Pipeline
-from averbis.core import OperationNotSupported
+from averbis.core import OperationNotSupported, MEDIA_TYPE_APPLICATION_XMI
 from tests.fixtures import *
 from tests.utils import *
 
@@ -272,7 +275,7 @@ def test_export_text_analysis_with_page_and_pagsize(client_version_6, requests_m
 
 
 def test_export_text_analysis_to_cas_v5(client_version_5):
-    document_id = "document0001"
+    document_name = "document0001.txt"
     process = Process(
         project=Project(client_version_5, PROJECT_NAME),
         name="my-process",
@@ -281,7 +284,7 @@ def test_export_text_analysis_to_cas_v5(client_version_5):
     )
 
     with pytest.raises(OperationNotSupported):
-        process.export_text_analysis_to_cas(document_id)
+        process.export_text_analysis_to_cas(document_name)
 
 
 def test_export_text_analysis_to_cas_v6(client_version_6, requests_mock):
@@ -333,3 +336,56 @@ def test_export_text_analysis_to_cas_v6(client_version_6, requests_mock):
     cas = process.export_text_analysis_to_cas(document_name)
 
     assert cas.sofa_string == "Test"
+
+
+def test_add_text_analysis_result_cas(client_version_6, requests_mock):
+    project = client_version_6.get_project(PROJECT_NAME)
+    collection = project.get_document_collection(COLLECTION_NAME)
+    process = Process(project, "my-process", collection.name)
+    cas = Cas(typesystem=TypeSystem())
+    document_name = "my-document.txt"
+
+    requests_mock.post(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/documentCollections/{collection.name}/processes/{process.name}/textAnalysisResult",
+        headers={"Content-Type": "application/json"},
+        json={"payload": None, "errorMessages": []}
+    )
+    process.add_text_analysis_result_to_document(cas, document_name)
+
+
+def test_update_text_analysis_result_cas(client_version_6, requests_mock):
+    project = client_version_6.get_project(PROJECT_NAME)
+    collection = project.get_document_collection(COLLECTION_NAME)
+    process = Process(project, "my-process", collection.name)
+    cas = Cas(typesystem=TypeSystem())
+    document_name = "my-document.txt"
+
+    requests_mock.put(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/documentCollections/{collection.name}/processes/{process.name}/textAnalysisResult",
+        headers={"Content-Type": "application/json"},
+        json={"payload": None, "errorMessages": []}
+    )
+    process.update_text_analysis_result_for_document(cas, document_name, process.name)
+
+
+def test_add_text_analysis_result_cas_file(client_version_6, requests_mock):
+    project = client_version_6.get_project(PROJECT_NAME)
+    collection = project.get_document_collection(COLLECTION_NAME)
+    process = Process(project, "my-process", collection.name)
+    typesystem = TypeSystem()
+    cas_file_path = Path(TEST_DIRECTORY, "resources/xml/my-document.xmi")
+    document_name = "my-document.txt"
+
+    requests_mock.post(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/documentCollections/{collection.name}/processes/{process.name}/textAnalysisResult",
+        headers={"Content-Type": "application/json"},
+        json={"payload": None, "errorMessages": []}
+    )
+    process.add_text_analysis_result_to_document(cas_file_path, document_name, MEDIA_TYPE_APPLICATION_XMI, typesystem)
+
+    # should raise exception because typesystem is not given
+    with pytest.raises(Exception):
+        process.add_text_analysis_result_to_document(cas_file_path, document_name, MEDIA_TYPE_APPLICATION_XMI)
+    # should raise exception because mime type is not given
+    with pytest.raises(Exception):
+        process.add_text_analysis_result_to_document(cas_file_path, document_name, typesystem=typesystem)
