@@ -769,7 +769,6 @@ class Process:
             document_collection=document_collection,
             process_name=process_name,
             pipeline=pipeline,
-            process_type=Process._ProcessType.MACHINE,
             preceding_process_name=self.name,
         )
 
@@ -955,7 +954,8 @@ class DocumentCollection:
     def create_process(
         self,
         process_name: str,
-        is_manual_annotation: bool = False) -> Process:
+        is_manual_annotation: bool = False
+    ) -> Process:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
