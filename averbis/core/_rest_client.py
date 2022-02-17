@@ -108,7 +108,7 @@ class OperationTimeoutError(Exception):
 
 class Result:
     def __init__(
-            self, data: Dict = None, exception: Exception = None, source: Union[Path, IO, str] = None
+        self, data: Dict = None, exception: Exception = None, source: Union[Path, IO, str] = None
     ):
         self.data = data
         self.exception = exception
@@ -259,11 +259,11 @@ class Pipeline:
         return self.get_info()["pipelineState"] == "STARTED"
 
     def analyse_text(
-            self,
-            source: Union[Path, IO, str],
-            annotation_types: str = None,
-            language: str = None,
-            timeout: float = None,
+        self,
+        source: Union[Path, IO, str],
+        annotation_types: str = None,
+        language: str = None,
+        timeout: float = None,
     ) -> dict:
         """
         Analyze the given text or text file using the pipeline.
@@ -288,12 +288,12 @@ class Pipeline:
         )
 
     def analyse_texts(
-            self,
-            sources: Iterable[Union[Path, IO, str]],
-            parallelism: int = 0,
-            annotation_types: str = None,
-            language: str = None,
-            timeout: float = None,
+        self,
+        sources: Iterable[Union[Path, IO, str]],
+        parallelism: int = 0,
+        annotation_types: str = None,
+        language: str = None,
+        timeout: float = None,
     ) -> Iterator[Result]:
         """
         Analyze the given texts or files using the pipeline. If feasible, multiple documents are processed in parallel.
@@ -350,11 +350,11 @@ class Pipeline:
                 yield r
 
     def analyse_html(
-            self,
-            source: Union[Path, IO, str],
-            annotation_types: str = None,
-            language: str = None,
-            timeout: float = None,
+        self,
+        source: Union[Path, IO, str],
+        annotation_types: str = None,
+        language: str = None,
+        timeout: float = None,
     ) -> dict:
         """
         Analyze the given HTML string or HTML file using the pipeline.
@@ -411,11 +411,11 @@ class Pipeline:
     # (with type:ignore for mypy) and (noinspection PyProtectedMember for pycharm)
     @experimental_api
     def analyse_text_to_cas(
-            self,
-            source: Union[Path, IO, str],
-            annotation_types: str = None,
-            language: str = None,
-            timeout: float = None,
+        self,
+        source: Union[Path, IO, str],
+        annotation_types: str = None,
+        language: str = None,
+        timeout: float = None,
     ) -> Cas:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear. Processes text using a pipeline and returns the result
@@ -443,11 +443,11 @@ class Pipeline:
 
     @experimental_api
     def analyse_texts_to_cas(
-            self,
-            sources: Iterable[Union[Path, IO, str]],
-            parallelism: int = 0,
-            language: str = None,
-            timeout: float = None,
+        self,
+        sources: Iterable[Union[Path, IO, str]],
+        parallelism: int = 0,
+        language: str = None,
+        timeout: float = None,
     ) -> Iterator[Result]:
         """
         Analyze the given texts or files using the pipeline. If feasible, multiple documents are processed in parallel.
@@ -533,7 +533,7 @@ class Pipeline:
 
     @experimental_api
     def upload_resources(
-            self, source: Union[IO, Path, str], path_in_zip: Union[Path, str] = ""
+        self, source: Union[IO, Path, str], path_in_zip: Union[Path, str] = ""
     ) -> List[str]:
         """
         Upload file to the pipeline resources. Existing files with same path/name will be overwritten.
@@ -616,7 +616,7 @@ class Terminology:
         return self.project.client._get_terminology_export_info(self.project.name, self.name)
 
     def start_import(
-            self, source: Union[IO, str], importer: str = TERMINOLOGY_IMPORTER_OBO
+        self, source: Union[IO, str], importer: str = TERMINOLOGY_IMPORTER_OBO
     ) -> None:
         """
         Upload the given terminology and trigger its import.
@@ -640,7 +640,7 @@ class Terminology:
         return self.project.client._get_terminology_import_info(self.project.name, self.name)
 
     def import_data(
-            self, source: Union[IO, str], importer: str = TERMINOLOGY_IMPORTER_OBO, timeout: int = 120
+        self, source: Union[IO, str], importer: str = TERMINOLOGY_IMPORTER_OBO, timeout: int = 120
     ) -> dict:
         """
         Imports the given terminology into the platform and waits for the import process to complete. If the import
@@ -692,12 +692,12 @@ class Terminology:
 class Process:
 
     def __init__(
-            self,
-            project: "Project",
-            name: str,
-            document_source_name: str,
-            pipeline_name: str = None,
-            preceding_process_name=None,
+        self,
+        project: "Project",
+        name: str,
+        document_source_name: str,
+        pipeline_name: str = None,
+        preceding_process_name=None,
     ):
         self.project = project
         self.name = name
@@ -719,9 +719,9 @@ class Process:
 
     class ProcessState:
         def __init__(
-                self,
-                *args,
-                **kwargs,
+            self,
+            *args,
+            **kwargs,
         ):
             # TODO: We have a different set of parameters per platform version. Right now, all parameters are supported.
             #       When v6 is released, only the following subset should be kept.
@@ -754,7 +754,7 @@ class Process:
 
     @experimental_api
     def create_and_run_process(
-            self, process_name: str, pipeline: Union[str, Pipeline]
+        self, process_name: str, pipeline: Union[str, Pipeline]
     ) -> "Process":
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -797,10 +797,10 @@ class Process:
         return self.project.client._get_process_state(self.project, self)
 
     def export_text_analysis(
-            self,
-            annotation_types: str = None,
-            page: Union[int, None] = None,
-            page_size: Union[int, None] = 100,
+        self,
+        annotation_types: str = None,
+        page: Union[int, None] = None,
+        page_size: Union[int, None] = 100,
     ) -> dict:
         """
         Exports a given text analysis process as a json.
@@ -867,12 +867,12 @@ class Process:
 
     @experimental_api
     def import_text_analysis_result(
-            self,
-            source: Union[Cas, Path, IO],
-            document_name: str,
-            mime_type: str = None,
-            typesystem: "TypeSystem" = None,
-            overwrite: bool = False
+        self,
+        source: Union[Cas, Path, IO],
+        document_name: str,
+        mime_type: str = None,
+        typesystem: "TypeSystem" = None,
+        overwrite: bool = False
     ):
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -936,9 +936,9 @@ class DocumentCollection:
 
     @experimental_api
     def create_and_run_process(
-            self,
-            process_name: str,
-            pipeline: Union[str, Pipeline],
+        self,
+        process_name: str,
+        pipeline: Union[str, Pipeline],
     ) -> Process:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -953,9 +953,9 @@ class DocumentCollection:
 
     @experimental_api
     def create_process(
-            self,
-            process_name: str,
-            is_manual_annotation: bool = False) -> Process:
+        self,
+        process_name: str,
+        is_manual_annotation: bool = False) -> Process:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
@@ -980,11 +980,11 @@ class DocumentCollection:
         return self.project.client._delete_document_collection(self.project.name, self.name)
 
     def import_documents(
-            self,
-            source: Union[Cas, Path, IO, str],
-            mime_type: str = None,
-            filename: str = None,
-            typesystem: "TypeSystem" = None,
+        self,
+        source: Union[Cas, Path, IO, str],
+        mime_type: str = None,
+        filename: str = None,
+        typesystem: "TypeSystem" = None,
     ) -> List[dict]:
         """
         Imports documents from a given file. Supported file content types are plain text (text/plain),
@@ -1143,13 +1143,13 @@ class Project:
         return any(p.name == name for p in pipelines)
 
     def create_terminology(
-            self,
-            terminology_name: str,
-            label: str,
-            languages: List[str],
-            concept_type: str = "de.averbis.extraction.types.Concept",
-            version: str = "",
-            hierarchical: bool = True,
+        self,
+        terminology_name: str,
+        label: str,
+        languages: List[str],
+        concept_type: str = "de.averbis.extraction.types.Concept",
+        version: str = "",
+        hierarchical: bool = True,
     ) -> Terminology:
         """
         Create a new terminology.
@@ -1318,7 +1318,7 @@ class Project:
 
     @experimental_api
     def upload_resources(
-            self, source: Union[IO, Path, str], path_in_zip: Union[Path, str] = ""
+        self, source: Union[IO, Path, str], path_in_zip: Union[Path, str] = ""
     ) -> List[str]:
         """
         Upload file to the project resources. Existing files with same path/name will be overwritten.
@@ -1333,14 +1333,14 @@ class Project:
 
 class Client:
     def __init__(
-            self,
-            url_or_id: str,
-            api_token: str = None,
-            verify_ssl: Union[str, bool] = True,
-            settings: Union[str, Path, dict] = None,
-            username: str = None,
-            password: str = None,
-            timeout: float = None,
+        self,
+        url_or_id: str,
+        api_token: str = None,
+        verify_ssl: Union[str, bool] = True,
+        settings: Union[str, Path, dict] = None,
+        username: str = None,
+        password: str = None,
+        timeout: float = None,
     ):
         """
         A Client is the base object for all calls within the Averbis Python API.
@@ -1394,9 +1394,9 @@ class Client:
 
     def _exists_profile(self, profile: str):
         return (
-                self._settings
-                and "profiles" in self._settings
-                and profile in self._settings["profiles"]
+            self._settings
+            and "profiles" in self._settings
+            and profile in self._settings["profiles"]
         )
 
     def _apply_profile(self, profile: str):
@@ -1696,7 +1696,7 @@ class Client:
 
     @experimental_api
     def upload_resources(
-            self, source: Union[IO, Path, str], path_in_zip: Union[Path, str] = ""
+        self, source: Union[IO, Path, str], path_in_zip: Union[Path, str] = ""
     ) -> List[str]:
         """
         Upload file to the global resources. Existing files with same path/name will be overwritten.
@@ -1798,13 +1798,13 @@ class Client:
         return response["payload"]
 
     def _import_documents(
-            self,
-            project: str,
-            collection_name: str,
-            source: Union[Cas, Path, IO, str],
-            mime_type: str = None,
-            filename: str = None,
-            typesystem: "TypeSystem" = None,
+        self,
+        project: str,
+        collection_name: str,
+        source: Union[Cas, Path, IO, str],
+        mime_type: str = None,
+        filename: str = None,
+        typesystem: "TypeSystem" = None,
     ) -> List[dict]:
         """
         Use DocumentCollection.import_document() instead.
@@ -1905,14 +1905,14 @@ class Client:
         return response["payload"]
 
     def _create_terminology(
-            self,
-            project: str,
-            terminology: str,
-            label: str,
-            languages: List[str],
-            concept_type: str = "de.averbis.extraction.types.Concept",
-            version: str = "",
-            hierarchical: bool = True,
+        self,
+        project: str,
+        terminology: str,
+        label: str,
+        languages: List[str],
+        concept_type: str = "de.averbis.extraction.types.Concept",
+        version: str = "",
+        hierarchical: bool = True,
     ) -> dict:
         """
         Use Project.create_terminology() instead.
@@ -1960,7 +1960,7 @@ class Client:
         return response["payload"]
 
     def _start_terminology_import(
-            self, project: str, terminology: str, importer: str, source: Union[IO, str]
+        self, project: str, terminology: str, importer: str, source: Union[IO, str]
     ) -> None:
         """
         Use Terminology.start_import() instead.
@@ -2062,12 +2062,12 @@ class Client:
         )
 
     def _classify_document(
-            self,
-            project: str,
-            data,
-            classification_set: str = "Default",
-            data_format=DOCUMENT_IMPORTER_TEXT,
-            timeout: float = None,
+        self,
+        project: str,
+        data,
+        classification_set: str = "Default",
+        data_format=DOCUMENT_IMPORTER_TEXT,
+        timeout: float = None,
     ) -> dict:
         def get_media_type_for_format() -> str:
             if data_format == DOCUMENT_IMPORTER_TEXT:
@@ -2086,13 +2086,13 @@ class Client:
         return response["payload"]
 
     def _analyse_text(
-            self,
-            project: str,
-            pipeline: str,
-            source: Union[Path, IO, str],
-            annotation_types: str = None,
-            language: str = None,
-            timeout: float = None,
+        self,
+        project: str,
+        pipeline: str,
+        source: Union[Path, IO, str],
+        annotation_types: str = None,
+        language: str = None,
+        timeout: float = None,
     ) -> dict:
         if isinstance(source, Path):
             with source.open("r", encoding=ENCODING_UTF_8) as file:
@@ -2111,13 +2111,13 @@ class Client:
         return response["payload"]
 
     def _analyse_html(
-            self,
-            project: str,
-            pipeline: str,
-            source: Union[Path, IO, str],
-            annotation_types: str = None,
-            language: str = None,
-            timeout: float = None,
+        self,
+        project: str,
+        pipeline: str,
+        source: Union[Path, IO, str],
+        annotation_types: str = None,
+        language: str = None,
+        timeout: float = None,
     ) -> dict:
         if isinstance(source, Path):
             with source.open("r", encoding=ENCODING_UTF_8) as file:
@@ -2145,13 +2145,13 @@ class Client:
         return response["payload"]
 
     def _export_text_analysis(
-            self,
-            project: str,
-            document_source: str,
-            process: str,
-            annotation_types: str = None,
-            page: Union[int, None] = None,
-            page_size: Union[int, None] = None,
+        self,
+        project: str,
+        document_source: str,
+        process: str,
+        annotation_types: str = None,
+        page: Union[int, None] = None,
+        page_size: Union[int, None] = None,
     ):
         """
         Use Process.export_text_analysis() instead.
@@ -2166,7 +2166,7 @@ class Client:
 
     @experimental_api
     def _export_analysis_result_to_xmi(
-            self, project: str, collection_name: str, document_name: str, process: Union[Process, str]
+        self, project: str, collection_name: str, document_name: str, process: Union[Process, str]
     ) -> str:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -2196,7 +2196,7 @@ class Client:
 
     @experimental_api
     def _export_analysis_result_typesystem(
-            self, project: str, collection_name: str, document_id: str, process: Union[Process, str]
+        self, project: str, collection_name: str, document_id: str, process: Union[Process, str]
     ) -> str:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -2221,13 +2221,13 @@ class Client:
 
     @experimental_api
     def _analyse_text_xmi(
-            self,
-            project: str,
-            pipeline: str,
-            source: Union[IO, str],
-            annotation_types: str = None,
-            language: str = None,
-            timeout: float = None,
+        self,
+        project: str,
+        pipeline: str,
+        source: Union[IO, str],
+        annotation_types: str = None,
+        language: str = None,
+        timeout: float = None,
     ) -> str:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -2366,12 +2366,12 @@ class Client:
 
     @experimental_api
     def _create_and_run_process(
-            self,
-            document_collection: DocumentCollection,
-            process_name: str,
-            pipeline: Union[str, Pipeline],
-            process_type: Process.ProcessType,
-            preceding_process_name=None,
+        self,
+        document_collection: DocumentCollection,
+        process_name: str,
+        pipeline: Union[str, Pipeline],
+        process_type: Process.ProcessType,
+        preceding_process_name=None,
     ) -> dict:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -2404,9 +2404,9 @@ class Client:
 
     @experimental_api
     def _get_process(
-            self,
-            document_collection: DocumentCollection,
-            process_name: str,
+        self,
+        document_collection: DocumentCollection,
+        process_name: str,
     ) -> Process:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -2475,7 +2475,7 @@ class Client:
 
     @experimental_api
     def _delete_process(
-            self, project_name: str, process_name: str, document_source_name: str
+        self, project_name: str, process_name: str, document_source_name: str
     ) -> None:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -2541,7 +2541,7 @@ class Client:
 
     @experimental_api
     def _download_resources(
-            self, target_zip_path: Union[Path, str], project_name=None, pipeline_name=None
+        self, target_zip_path: Union[Path, str], project_name=None, pipeline_name=None
     ) -> None:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
