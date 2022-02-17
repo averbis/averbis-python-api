@@ -712,7 +712,7 @@ class Process:
             f' preceding_process_name="{self.preceding_process_name}")'
         )
 
-    class ProcessType(Enum):
+    class _ProcessType(Enum):
         MANUAL = 'MANUAL'
         IMPORTED = 'IMPORTED'
         MACHINE = 'MACHINE'
@@ -769,7 +769,7 @@ class Process:
             document_collection=document_collection,
             process_name=process_name,
             pipeline=pipeline,
-            process_type=Process.ProcessType.MACHINE,
+            process_type=Process._ProcessType.MACHINE,
             preceding_process_name=self.name,
         )
 
@@ -860,7 +860,7 @@ class Process:
         # noinspection PyProtectedMember
         return load_cas_from_xmi(
             self.project.client._export_analysis_result_to_xmi(
-                self.project.name, self.document_source_name, document_name, self
+                self.project.name, self.document_source_name, document_name, document_identifier, self
             ),
             typesystem=type_system,
         )
@@ -947,7 +947,7 @@ class DocumentCollection:
         :return: The created process
         """
         # noinspection PyProtectedMember
-        self.project.client._create_and_run_process(self, process_name, pipeline, Process.ProcessType.MACHINE)
+        self.project.client._create_and_run_process(self, process_name, pipeline)
 
         return self.get_process(process_name)
 
@@ -964,11 +964,11 @@ class DocumentCollection:
         i.e. the underlying data structure will be initialized immediately and not on later text analysis result import
         :return: The created process
         """
-        process_type = Process.ProcessType.IMPORTED
+        process_type = Process._ProcessType.IMPORTED
         if is_manual_annotation:
-            process_type = Process.ProcessType.MANUAL
+            process_type = Process._ProcessType.MANUAL
         # noinspection PyProtectedMember
-        self.project.client._create_and_run_process(self, process_name, None, process_type)
+        self.project.client._create_and_run_process(self, process_name, process_type=process_type)
 
         return self.get_process(process_name)
 
@@ -2166,7 +2166,7 @@ class Client:
 
     @experimental_api
     def _export_analysis_result_to_xmi(
-        self, project: str, collection_name: str, document_name: str, process: Union[Process, str]
+        self, project: str, collection_name: str, document_name: str, document_id: str, process: Union[Process, str]
     ) -> str:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -2174,25 +2174,45 @@ class Client:
         Use Process.export_text_analysis_to_cas() instead.
         """
 
-        if self.get_build_info()["specVersion"].startswith("5."):
+        build_version = self.get_build_info()["specVersion"]
+        if build_version.startswith("5."):
             raise OperationNotSupported(
                 "Text analysis export is not supported for platform version 5.x, it is only supported from 6.x onwards."
             )
 
         process_name = self.__process_name(process)
 
+        if self._is_higher_equal_version(build_version, 6, 7):
+            return str(
+                self.__request_with_bytes_response(
+                    "get",
+                    f"/experimental/textanalysis/projects/{project}/documentCollections/{collection_name}"
+                    f"/processes/{process_name}/textAnalysisResult",
+                    headers={
+                        HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_XMI,
+                    },
+                    params={"documentName": document_name}
+                ),
+                ENCODING_UTF_8,
+            )
+
         return str(
             self.__request_with_bytes_response(
                 "get",
                 f"/experimental/textanalysis/projects/{project}/documentCollections/{collection_name}"
-                f"/processes/{process_name}/textAnalysisResult",
+                f"/documents/{document_id}/processes/{process_name}/exportTextAnalysisResult",
                 headers={
                     HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_XMI,
-                },
-                params={"documentName": document_name}
+                }
             ),
             ENCODING_UTF_8,
         )
+
+    @staticmethod
+    def _is_higher_equal_version(version: str, compare_major: int, compare_minor: int) -> bool:
+        version_parts = version.split('.')
+        major = int(version_parts[0])
+        return major > compare_major or (major == compare_major and int(version_parts[1]) >= compare_minor)
 
     @experimental_api
     def _export_analysis_result_typesystem(
@@ -2370,7 +2390,7 @@ class Client:
         document_collection: DocumentCollection,
         process_name: str,
         pipeline: Union[str, Pipeline],
-        process_type: Process.ProcessType,
+        process_type: Process._ProcessType=None,
         preceding_process_name=None,
     ) -> dict:
         """
@@ -2384,9 +2404,11 @@ class Client:
 
         request_json = {
             "processName": process_name,
-            "documentCollectionName": document_collection.name,
-            "processType": process_type.value
+            "documentCollectionName": document_collection.name
         }
+
+        if process_type:
+            request_json['processType'] = process_type.value
 
         if pipeline_name:
             request_json['pipelineName'] = pipeline_name
