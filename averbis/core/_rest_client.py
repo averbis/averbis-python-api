@@ -968,7 +968,7 @@ class DocumentCollection:
         if is_manual_annotation:
             process_type = Process._ProcessType.MANUAL
         # noinspection PyProtectedMember
-        self.project.client._create_and_run_process(self, process_name, process_type=process_type)
+        self.project.client._create_and_run_process(self, process_name, pipeline=None, process_type=process_type)
 
         return self.get_process(process_name)
 
