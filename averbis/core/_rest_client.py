@@ -2711,7 +2711,7 @@ class Client:
         return zip_archive
 
     @staticmethod
-    def _fetch_text_analysis_result_filename(source) -> str:
+    def _fetch_text_analysis_result_filename(source: Union[Path, IO, str]) -> str:
         if isinstance(source, Path):
             return Path(source).name
 
