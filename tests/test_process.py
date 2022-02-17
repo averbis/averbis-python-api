@@ -17,6 +17,7 @@
 # limitations under the License.
 #
 #
+import tempfile
 from pathlib import Path
 
 from cassis import Cas, TypeSystem
@@ -350,7 +351,7 @@ def test_add_text_analysis_result_cas(client_version_6, requests_mock):
         headers={"Content-Type": "application/json"},
         json={"payload": None, "errorMessages": []}
     )
-    process.add_text_analysis_result_to_document(cas, document_name)
+    process.import_text_analysis_result(cas, document_name)
 
 
 def test_update_text_analysis_result_cas(client_version_6, requests_mock):
@@ -365,7 +366,7 @@ def test_update_text_analysis_result_cas(client_version_6, requests_mock):
         headers={"Content-Type": "application/json"},
         json={"payload": None, "errorMessages": []}
     )
-    process.update_text_analysis_result_for_document(cas, document_name, process.name)
+    process.import_text_analysis_result(cas, document_name, process.name, overwrite=True)
 
 
 def test_add_text_analysis_result_cas_file(client_version_6, requests_mock):
@@ -373,7 +374,17 @@ def test_add_text_analysis_result_cas_file(client_version_6, requests_mock):
     collection = project.get_document_collection(COLLECTION_NAME)
     process = Process(project, "my-process", collection.name)
     typesystem = TypeSystem()
-    cas_file_path = Path(TEST_DIRECTORY, "resources/xml/my-document.xmi")
+    test_xmi = b"""<?xml version="1.0" encoding="UTF-8"?>
+        <xmi:XMI xmlns:tcas="http:///uima/tcas.ecore" xmlns:xmi="http://www.omg.org/XMI" 
+        xmlns:cas="http:///uima/cas.ecore"
+                 xmi:version="2.0">
+            <cas:NULL xmi:id="0"/>
+            <tcas:DocumentAnnotation xmi:id="2" sofa="1" begin="0" end="4" language="x-unspecified"/>
+            <cas:Sofa xmi:id="1" sofaNum="1" sofaID="_InitialView" mimeType="text/plain"
+                      sofaString="Test"/>
+            <cas:View sofa="1" members="2"/>
+        </xmi:XMI>
+        """
     document_name = "my-document.txt"
 
     requests_mock.post(
@@ -381,11 +392,14 @@ def test_add_text_analysis_result_cas_file(client_version_6, requests_mock):
         headers={"Content-Type": "application/json"},
         json={"payload": None, "errorMessages": []}
     )
-    process.add_text_analysis_result_to_document(cas_file_path, document_name, MEDIA_TYPE_APPLICATION_XMI, typesystem)
 
-    # should raise exception because typesystem is not given
-    with pytest.raises(Exception):
-        process.add_text_analysis_result_to_document(cas_file_path, document_name, MEDIA_TYPE_APPLICATION_XMI)
-    # should raise exception because mime type is not given
-    with pytest.raises(Exception):
-        process.add_text_analysis_result_to_document(cas_file_path, document_name, typesystem=typesystem)
+    with tempfile.NamedTemporaryFile() as tmp_file:
+        tmp_file.write(test_xmi)
+        process.import_text_analysis_result(Path(tmp_file.name), document_name, mime_type=MEDIA_TYPE_APPLICATION_XMI, typesystem=typesystem)
+
+        # should raise exception because typesystem is not given
+        with pytest.raises(Exception):
+            process.import_text_analysis_result(Path(tmp_file.name), document_name, mime_type=MEDIA_TYPE_APPLICATION_XMI)
+        # should raise exception because mime type is not given
+        with pytest.raises(Exception):
+            process.import_text_analysis_result(Path(tmp_file.name), document_name, typesystem=typesystem)
