@@ -423,7 +423,6 @@ class Pipeline:
     def analyse_text_to_cas(
         self,
         source: Union[Path, IO, str],
-        annotation_types: str = None,
         language: str = None,
         timeout: float = None,
     ) -> Cas:
@@ -432,7 +431,6 @@ class Pipeline:
         as a UIMA CAS.
 
         :param source:           The document to be analyzed.
-        :param annotation_types: Optional parameter indicating which types should be returned. Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types with prefix "de.averbis.types"
         :param language:         Optional parameter setting the language of the document, e.g. "en" or "de".
         :param timeout:          Optional timeout (in seconds) specifiying how long the request is waiting for a server response.
 
@@ -444,7 +442,6 @@ class Pipeline:
                 project=self.project.name,
                 pipeline=self.name,
                 source=source,
-                annotation_types=annotation_types,
                 language=language,
                 timeout=timeout,
             ),
@@ -2275,7 +2272,6 @@ class Client:
         project: str,
         pipeline: str,
         source: Union[IO, str],
-        annotation_types: str = None,
         language: str = None,
         timeout: float = None,
     ) -> str:
@@ -2292,7 +2288,7 @@ class Client:
                 "post",
                 f"/experimental/textanalysis/projects/{project}/pipelines/{pipeline}/analyzeTextToCas",
                 data=data,
-                params={"annotationTypes": annotation_types, "language": language},
+                params={"language": language},
                 headers={
                     HEADER_CONTENT_TYPE: MEDIA_TYPE_TEXT_PLAIN_UTF8,
                     HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_XMI,
