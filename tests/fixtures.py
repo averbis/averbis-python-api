@@ -30,6 +30,7 @@ API_EXPERIMENTAL = URL_BASE_ID + "/rest/experimental"
 TEST_DIRECTORY = os.path.dirname(__file__)
 TEST_API_TOKEN = "I-am-a-dummy-API-token"
 PROJECT_NAME = "test-project"
+COLLECTION_NAME = "my-collection"
 
 ## Mock different platforms. The difference between the platforms is in the URL and in the specVersion number.
 
@@ -70,6 +71,15 @@ def requests_mock_id6(requests_mock):
     )
 
 
+@pytest.fixture()
+def requests_mock_id6_7(requests_mock):
+    requests_mock.get(
+        f"{URL_BASE_ID + '/rest/v1'}/buildInfo",
+        headers={"Content-Type": "application/json"},
+        json={"payload": {"specVersion": "6.7.0", "buildNumber": ""}, "errorMessages": []},
+    )
+
+
 ## Different clients based on the above platforms
 
 # Tests that should work for all platform versions
@@ -92,4 +102,10 @@ def client_version_5(requests_mock_id5):
 # Tests that should work in platform version 6
 @pytest.fixture()
 def client_version_6(requests_mock_id6):
+    return Client(URL_BASE_ID, api_token=TEST_API_TOKEN)
+
+
+# Tests that should work in platform version 6.7
+@pytest.fixture()
+def client_version_6_7(requests_mock_id6_7):
     return Client(URL_BASE_ID, api_token=TEST_API_TOKEN)

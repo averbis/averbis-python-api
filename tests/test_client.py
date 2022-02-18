@@ -53,6 +53,14 @@ def test_build_url(client):
     )
 
 
+def test_build_url_encode_url(client):
+    client._url = "http://some-machine/health-discovery/"
+    assert (
+        client._build_url("v1/some-endpoint/Special URL ä ö # ! ? ³")
+        == "http://some-machine/health-discovery/rest/v1/some-endpoint/Special%20URL%20%C3%A4%20%C3%B6%20%23%20%21%20%3F%20%C2%B3"
+    )
+
+
 def test_default_headers_with_override(client):
     headers = client._default_headers({"Content-Type": "text/plain"})
 

@@ -22,6 +22,7 @@ from pathlib import Path
 from cassis import Cas, TypeSystem
 
 from averbis import DocumentCollection, Process
+from averbis.core import MEDIA_TYPE_APPLICATION_XMI
 from tests.fixtures import *
 from tests.utils import *
 
@@ -131,6 +132,40 @@ def test_create_and_run_process(document_collection, requests_mock):
     expected_process = Process(
         document_collection.project, process_name, document_collection.name, pipeline_name
     )
+    assert_process_equal(expected_process, actual_process)
+
+
+def test_create_process(document_collection, requests_mock):
+    process_name = "test-process"
+    state = "IDLE"
+    number_of_documents = 12
+
+    requests_mock.post(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{PROJECT_NAME}/processes",
+        headers={"Content-Type": "application/json"},
+        json={"payload": None, "errorMessages": []},
+    )
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{PROJECT_NAME}/"
+        f"documentSources/{document_collection.name}/processes/{process_name}",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": {
+                "processName": process_name,
+                "documentSourceName": document_collection.name,
+                "state": state,
+                "processedDocuments": number_of_documents,
+            },
+            "errorMessages": [],
+        },
+    )
+
+    actual_process = document_collection.create_process(
+        process_name=process_name, is_manual_annotation=True
+    )
+
+    expected_process = Process(document_collection.project, process_name, document_collection.name)
     assert_process_equal(expected_process, actual_process)
 
 
