@@ -10,10 +10,9 @@ about: Release checklist
 - [ ] Create milestone for the next release
 
 **Code**
+- [ ] On the `dev` branch, bump version in `averbis/__version__.py` to the release version, commit and wait until the build completed
 - [ ] Merge the `dev` branch into the `main` branch
-- [ ] On the `main` branch, bump version in `averbis/__version__.py` to the release version, commit and wait until the build completed
 - [ ] Create the release tag on the `main` branch
-- [ ] Merge the `main` branch into the `dev` branch
 
 **GitHub**
 - [ ] Draft a [release](https://github.com/averbis/averbis-python-api/releases) from the tag you just made
