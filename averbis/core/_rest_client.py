@@ -18,6 +18,7 @@
 #
 #
 import copy
+from enum import Enum
 from urllib.parse import quote
 
 from cassis import Cas, TypeSystem, load_cas_from_xmi, load_typesystem  # type: ignore
@@ -44,7 +45,6 @@ HEADER_ACCEPT = "Accept"
 HEADER_CONTENT_TYPE = "Content-Type"
 
 MEDIA_TYPE_ANY = "*/*"
-MEDIA_TYPE_APPLICATION_XMI = "application/vnd.uima.cas+xmi"
 MEDIA_TYPE_APPLICATION_JSON = "application/json"
 MEDIA_TYPE_APPLICATION_XML = "application/xml"
 MEDIA_TYPE_APPLICATION_ZIP = "application/zip"
@@ -52,6 +52,25 @@ MEDIA_TYPE_APPLICATION_SOLR_XML = "application/vnd.averbis.solr+xml"
 MEDIA_TYPE_TEXT_PLAIN = "text/plain"
 MEDIA_TYPE_TEXT_PLAIN_UTF8 = "text/plain; charset=utf-8"
 MEDIA_TYPE_OCTET_STREAM = "application/octet-stream"
+
+# uima cas formats
+MEDIA_TYPE_APPLICATION_XMI = "application/vnd.uima.cas+xmi"
+MEDIA_TYPE_XCAS = "application/vnd.uima.cas+xcas"
+MEDIA_TYPE_CAS_BINARY = "application/vnd.uima.cas+binary"
+MEDIA_TYPE_BINARY_TSI = "application/vnd.uima.cas+binary.tsi"
+MEDIA_TYPE_CAS_COMPRESSED = "application/vnd.uima.cas+compressed"
+MEDIA_TYPE_CAS_COMPRESSED_FILTERED = "application/vnd.uima.cas+compressed.filtered"
+MEDIA_TYPE_CAS_COMPRESSED_FILTERED_TS = "application/vnd.uima.cas+compressed.filtered.ts"
+MEDIA_TYPE_CAS_COMPRESSED_FILTERED_TSI = "application/vnd.uima.cas+compressed.filtered.tsi"
+MEDIA_TYPE_CAS_COMPRESSED_TSI = "application/vnd.uima.cas+compressed.tsi"
+MEDIA_TYPE_CAS_SERIALIZED = "application/vnd.uima.cas+serialized"
+MEDIA_TYPE_CAS_SERIALIZED_TSI = "application/vnd.uima.cas+serialized.tsi"
+
+MEDIA_TYPES_CAS_NEEDS_TS = [MEDIA_TYPE_APPLICATION_XMI, MEDIA_TYPE_CAS_BINARY, MEDIA_TYPE_CAS_COMPRESSED,
+                            MEDIA_TYPE_CAS_COMPRESSED_FILTERED, MEDIA_TYPE_CAS_SERIALIZED, MEDIA_TYPE_XCAS]
+MEDIA_TYPES_CAS = MEDIA_TYPES_CAS_NEEDS_TS + [MEDIA_TYPE_CAS_SERIALIZED_TSI, MEDIA_TYPE_CAS_COMPRESSED_TSI,
+                                              MEDIA_TYPE_CAS_COMPRESSED_FILTERED_TSI,
+                                              MEDIA_TYPE_CAS_COMPRESSED_FILTERED_TS, MEDIA_TYPE_BINARY_TSI]
 
 DOCUMENT_IMPORTER_CAS = "CAS Importer"
 DOCUMENT_IMPORTER_SOLR = "Solr XML Importer"
@@ -671,12 +690,13 @@ class Terminology:
 
 
 class Process:
+
     def __init__(
         self,
         project: "Project",
         name: str,
         document_source_name: str,
-        pipeline_name: str,
+        pipeline_name: str = None,
         preceding_process_name=None,
     ):
         self.project = project
@@ -691,6 +711,11 @@ class Process:
             f' pipeline_name="{self.pipeline_name}", document_source_name="{self.document_source_name}",'
             f' preceding_process_name="{self.preceding_process_name}")'
         )
+
+    class _ProcessType(Enum):
+        MANUAL = 'MANUAL'
+        IMPORTED = 'IMPORTED'
+        MACHINE = 'MACHINE'
 
     class ProcessState:
         def __init__(
@@ -811,26 +836,73 @@ class Process:
         )
 
     @experimental_api
-    def export_text_analysis_to_cas(self, document_id: str) -> Cas:
+    def export_text_analysis_to_cas(self, document_name: str) -> Cas:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
         Returns an analysis as a UIMA CAS.
         """
-
+        if self.project.client.get_build_info()["specVersion"].startswith("5."):
+            raise OperationNotSupported(
+                "Text analysis export is not supported for platform version 5.x, it is only supported from 6.x onwards."
+            )
+        document_collection = self.project.get_document_collection(self.document_source_name)
+        document_identifier = document_collection._get_document_identifier(document_name)
+        # noinspection PyProtectedMember
         type_system = load_typesystem(
             self.project.client._export_analysis_result_typesystem(
-                self.project.name, self.document_source_name, document_id, self
+                self.project.name, self.document_source_name,
+                document_identifier, self
             )
         )
 
         # noinspection PyProtectedMember
         return load_cas_from_xmi(
             self.project.client._export_analysis_result_to_xmi(
-                self.project.name, self.document_source_name, document_id, self
+                self.project.name, self.document_source_name, document_name, document_identifier, self
             ),
             typesystem=type_system,
         )
+
+    @experimental_api
+    def import_text_analysis_result(
+        self,
+        source: Union[Cas, Path, IO],
+        document_name: str,
+        mime_type: str = None,
+        typesystem: "TypeSystem" = None,
+        overwrite: bool = False
+    ):
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Add or update a text analysis result (i.e. annotated content) to a specified document in this process.
+        This process must be a manual or imported process (i.e. without automatic processing via pipeline).
+
+        :param: overwrite: Overwrite the found text analysis result if it already exists.
+        :param: document_name: name of the document that the text analysis result should be associated with
+        :param: source: the text analysis result as a CAS object, stream or path to it
+
+        The supported file content types (mime_types) are UIMA CAS XMI (application/vnd.uima.cas+xmi),
+        XCAS (application/vnd.uima.cas+xcas), binary CAS (application/vnd.uima.cas+binary),
+        binary TSI (application/vnd.uima.cas+binary.tsi), compressed (application/vnd.uima.cas+compressed),
+        compressed TSI (application/vnd.uima.cas+compressed.tsi),
+        compressed filtered (application/vnd.uima.cas+compressed.filtered),
+        compressed filtered TS (application/vnd.uima.cas+compressed.filtered.ts),
+        compressed filtered TSI (application/vnd.uima.cas+compressed.filtered.tsi),
+        serialized CAS (application/vnd.uima.cas+serialized)
+        and serialized TSI (application/vnd.uima.cas+serialized.tsi).
+
+        If a document is provided as a CAS object, the type system information can be automatically picked from the CAS
+        object and should not be provided explicitly. The mime_type is also not needed.
+        If a CAS is provided as a path or stream, then a mime_type needs to be given. The typesystem might need to be
+        provided depending on the content type.
+
+        """
+        # noinspection PyProtectedMember
+        self.project.client._upsert_analysis_result_for_document(self.project.name, self.name,
+                                                                 self.document_source_name, source, document_name,
+                                                                 mime_type, typesystem, overwrite)
 
 
 class DocumentCollection:
@@ -875,6 +947,28 @@ class DocumentCollection:
         """
         # noinspection PyProtectedMember
         self.project.client._create_and_run_process(self, process_name, pipeline)
+
+        return self.get_process(process_name)
+
+    @experimental_api
+    def create_process(
+        self,
+        process_name: str,
+        is_manual_annotation: bool = False
+    ) -> Process:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Creates a process without a pipeline (e.g. for later manual annotation or text analysis result import)
+        :param: is_manual_annotation the created process will be used for manual annotation
+        i.e. the underlying data structure will be initialized immediately and not on later text analysis result import
+        :return: The created process
+        """
+        process_type = Process._ProcessType.IMPORTED
+        if is_manual_annotation:
+            process_type = Process._ProcessType.MANUAL
+        # noinspection PyProtectedMember
+        self.project.client._create_and_run_process(self, process_name, pipeline=None, process_type=process_type)
 
         return self.get_process(process_name)
 
@@ -937,6 +1031,14 @@ class DocumentCollection:
             for process in self.project.list_processes()
             if process.document_source_name == self.name
         ]
+
+    def _get_document_identifier(self, document_name: str) -> str:
+        documents = [document for document in self.list_documents() if document['documentName'] == document_name]
+        if not documents:
+            raise Exception(f"Document with name {document_name} does not exist in collection {self.name}")
+        if len(documents) != 1:
+            raise Exception(f"Document name{document_name} is not unique in collection {self.name}")
+        return documents[0]['documentIdentifier']
 
 
 class Pear:
@@ -2064,7 +2166,7 @@ class Client:
 
     @experimental_api
     def _export_analysis_result_to_xmi(
-        self, project: str, collection_name: str, document_id: str, process: Union[Process, str]
+        self, project: str, collection_name: str, document_name: str, document_id: str, process: Union[Process, str]
     ) -> str:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -2072,12 +2174,27 @@ class Client:
         Use Process.export_text_analysis_to_cas() instead.
         """
 
-        if self.get_build_info()["specVersion"].startswith("5."):
+        build_version = self.get_build_info()["specVersion"]
+        if build_version.startswith("5."):
             raise OperationNotSupported(
                 "Text analysis export is not supported for platform version 5.x, it is only supported from 6.x onwards."
             )
 
         process_name = self.__process_name(process)
+
+        if self._is_higher_equal_version(build_version, 6, 7):
+            return str(
+                self.__request_with_bytes_response(
+                    "get",
+                    f"/experimental/textanalysis/projects/{project}/documentCollections/{collection_name}"
+                    f"/processes/{process_name}/textAnalysisResult",
+                    headers={
+                        HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_XMI,
+                    },
+                    params={"documentName": document_name}
+                ),
+                ENCODING_UTF_8,
+            )
 
         return str(
             self.__request_with_bytes_response(
@@ -2086,10 +2203,16 @@ class Client:
                 f"/documents/{document_id}/processes/{process_name}/exportTextAnalysisResult",
                 headers={
                     HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_XMI,
-                },
+                }
             ),
             ENCODING_UTF_8,
         )
+
+    @staticmethod
+    def _is_higher_equal_version(version: str, compare_major: int, compare_minor: int) -> bool:
+        version_parts = version.split('.')
+        major = int(version_parts[0])
+        return major > compare_major or (major == compare_major and int(version_parts[1]) >= compare_minor)
 
     @experimental_api
     def _export_analysis_result_typesystem(
@@ -2267,6 +2390,7 @@ class Client:
         document_collection: DocumentCollection,
         process_name: str,
         pipeline: Union[str, Pipeline],
+        process_type: Process._ProcessType=None,
         preceding_process_name=None,
     ) -> dict:
         """
@@ -2280,9 +2404,14 @@ class Client:
 
         request_json = {
             "processName": process_name,
-            "documentSourceName": document_collection.name,
-            "pipelineName": pipeline_name,
+            "documentCollectionName": document_collection.name
         }
+
+        if process_type:
+            request_json['processType'] = process_type.value
+
+        if pipeline_name:
+            request_json['pipelineName'] = pipeline_name
 
         if preceding_process_name:
             request_json["precedingProcessName"] = preceding_process_name
@@ -2320,10 +2449,14 @@ class Client:
         if "precedingProcessName" in process_details:
             preceding_process_name = process_details["precedingProcessName"]
 
+        pipeline_name = None
+        if "pipelineName" in process_details:
+            pipeline_name = process_details["pipelineName"]
+
         return Process(
             project=project,
             name=process_details["processName"],
-            pipeline_name=process_details["pipelineName"],
+            pipeline_name=pipeline_name,
             document_source_name=process_details["documentSourceName"],
             preceding_process_name=preceding_process_name,
         )
@@ -2566,3 +2699,45 @@ class Client:
 
         zip_archive.seek(0)
         return zip_archive
+
+    @experimental_api
+    def _upsert_analysis_result_for_document(self, project_name, process_name, document_collection_name, source,
+                                             document_name, mime_type, typesystem, overwrite):
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Use {process}.import_text_analysis_result() instead.
+        """
+        # use default name because requests library requires one
+        filename = "text_analysis_result"
+        files, params = self._create_text_analysis_request_parts(document_name, filename, source, mime_type, typesystem)
+
+        method = "post"
+        if overwrite:
+            method = "put"
+
+        self.__request_with_json_response(
+            method,
+            f"/experimental/textanalysis/projects/{project_name}/documentCollections/{document_collection_name}/processes/{process_name}/textAnalysisResult",
+            files=files, params=params
+        )
+
+    @staticmethod
+    def _create_text_analysis_request_parts(document_name, filename, source, mime_type, typesystem):
+        if isinstance(source, Cas):
+            if typesystem is None:
+                typesystem = source.typesystem
+            source = source.to_xmi()
+            mime_type = MEDIA_TYPE_APPLICATION_XMI
+        else:
+            if mime_type is None or mime_type not in MEDIA_TYPES_CAS:
+                raise Exception("Provide a mime_type, valid types are: " + ','.join(MEDIA_TYPES_CAS))
+            if typesystem is None and mime_type in MEDIA_TYPES_CAS_NEEDS_TS:
+                raise Exception("Provide a typesystem with your file or use a CAS object")
+            with source.open("rb") as binary_file:
+                source = BytesIO(binary_file.read())
+        files = {"casFile": (filename, source, mime_type)}
+        if typesystem is not None:
+            files["typesystemFile"] = ("typesystem.xml", typesystem.to_xml(), MEDIA_TYPE_APPLICATION_XML)
+        params = {"documentName": document_name}
+        return files, params
