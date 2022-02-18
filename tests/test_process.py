@@ -319,12 +319,9 @@ def test_export_text_analysis_to_cas_v6_7(client_version_6_7, requests_mock):
         f"{API_EXPERIMENTAL}/projects/{project.name}/documentCollections/{collection.name}/documents",
         headers={"Content-Type": "application/json"},
         json={
-            "payload": [{
-                "documentIdentifier": document_id,
-                "documentName": document_name
-            }],
+            "payload": [{"documentIdentifier": document_id, "documentName": document_name}],
             "errorMessages": [],
-        }
+        },
     )
 
     requests_mock.get(
@@ -370,12 +367,9 @@ def test_export_text_analysis_to_cas_v6(client_version_6, requests_mock):
         f"{API_EXPERIMENTAL}/projects/{project.name}/documentCollections/{collection.name}/documents",
         headers={"Content-Type": "application/json"},
         json={
-            "payload": [{
-                "documentIdentifier": document_id,
-                "documentName": document_name
-            }],
+            "payload": [{"documentIdentifier": document_id, "documentName": document_name}],
             "errorMessages": [],
-        }
+        },
     )
 
     requests_mock.get(
@@ -400,7 +394,7 @@ def test_add_text_analysis_result_cas(client_version_6, requests_mock):
     requests_mock.post(
         f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/documentCollections/{collection.name}/processes/{process.name}/textAnalysisResult",
         headers={"Content-Type": "application/json"},
-        json={"payload": None, "errorMessages": []}
+        json={"payload": None, "errorMessages": []},
     )
     process.import_text_analysis_result(cas, document_name)
 
@@ -415,7 +409,7 @@ def test_update_text_analysis_result_cas(client_version_6, requests_mock):
     requests_mock.put(
         f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/documentCollections/{collection.name}/processes/{process.name}/textAnalysisResult",
         headers={"Content-Type": "application/json"},
-        json={"payload": None, "errorMessages": []}
+        json={"payload": None, "errorMessages": []},
     )
     process.import_text_analysis_result(cas, document_name, process.name, overwrite=True)
 
@@ -441,16 +435,25 @@ def test_add_text_analysis_result_cas_file(client_version_6, requests_mock):
     requests_mock.post(
         f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/documentCollections/{collection.name}/processes/{process.name}/textAnalysisResult",
         headers={"Content-Type": "application/json"},
-        json={"payload": None, "errorMessages": []}
+        json={"payload": None, "errorMessages": []},
     )
 
     with tempfile.NamedTemporaryFile() as tmp_file:
         tmp_file.write(test_xmi)
-        process.import_text_analysis_result(Path(tmp_file.name), document_name, mime_type=MEDIA_TYPE_APPLICATION_XMI, typesystem=typesystem)
+        process.import_text_analysis_result(
+            Path(tmp_file.name),
+            document_name,
+            mime_type=MEDIA_TYPE_APPLICATION_XMI,
+            typesystem=typesystem,
+        )
 
         # should raise exception because typesystem is not given
         with pytest.raises(Exception):
-            process.import_text_analysis_result(Path(tmp_file.name), document_name, mime_type=MEDIA_TYPE_APPLICATION_XMI)
+            process.import_text_analysis_result(
+                Path(tmp_file.name), document_name, mime_type=MEDIA_TYPE_APPLICATION_XMI
+            )
         # should raise exception because mime type is not given
         with pytest.raises(Exception):
-            process.import_text_analysis_result(Path(tmp_file.name), document_name, typesystem=typesystem)
+            process.import_text_analysis_result(
+                Path(tmp_file.name), document_name, typesystem=typesystem
+            )

@@ -165,9 +165,7 @@ def test_create_process(document_collection, requests_mock):
         process_name=process_name, is_manual_annotation=True
     )
 
-    expected_process = Process(
-        document_collection.project, process_name, document_collection.name
-    )
+    expected_process = Process(document_collection.project, process_name, document_collection.name)
     assert_process_equal(expected_process, actual_process)
 
 
