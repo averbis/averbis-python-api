@@ -892,15 +892,7 @@ class Process:
         :param: document_name: name of the document that the text analysis result should be associated with
         :param: source: the text analysis result as a CAS object, stream or path to it
 
-        The supported file content types (mime_types) are UIMA CAS XMI (application/vnd.uima.cas+xmi),
-        XCAS (application/vnd.uima.cas+xcas), binary CAS (application/vnd.uima.cas+binary),
-        binary TSI (application/vnd.uima.cas+binary.tsi), compressed (application/vnd.uima.cas+compressed),
-        compressed TSI (application/vnd.uima.cas+compressed.tsi),
-        compressed filtered (application/vnd.uima.cas+compressed.filtered),
-        compressed filtered TS (application/vnd.uima.cas+compressed.filtered.ts),
-        compressed filtered TSI (application/vnd.uima.cas+compressed.filtered.tsi),
-        serialized CAS (application/vnd.uima.cas+serialized)
-        and serialized TSI (application/vnd.uima.cas+serialized.tsi).
+        The supported file content types are the :ref:`UIMA types`
 
         If a document is provided as a CAS object, the type system information can be automatically picked from the CAS
         object and should not be provided explicitly. The mime_type is also not needed.
@@ -1002,7 +994,7 @@ class DocumentCollection:
     ) -> List[dict]:
         """
         Imports documents from a given file. Supported file content types are plain text (text/plain),
-        Averbis Solr XML (application/vnd.averbis.solr+xml) and UIMA CAS XMI (application/vnd.uima.cas+xmi).
+        Averbis Solr XML (application/vnd.averbis.solr+xml) and the :ref:`UIMA types`.
 
         If a document is provided as a CAS object, the type system information can be automatically picked from the CAS
         object and should not be provided explicitly. If a CAS is provided as a string XML representation, then a type
