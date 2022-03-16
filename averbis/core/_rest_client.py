@@ -18,7 +18,7 @@
 #
 #
 import copy
-from enum import Enum
+from enum import Enum, auto
 from urllib.parse import quote
 
 from cassis import Cas, TypeSystem, load_cas_from_xmi, load_typesystem  # type: ignore
@@ -719,9 +719,9 @@ class Process:
         )
 
     class _ProcessType(Enum):
-        MANUAL = "MANUAL"
-        IMPORTED = "IMPORTED"
-        MACHINE = "MACHINE"
+        INIT = auto()
+        NO_INIT = auto()
+        WITH_PIPELINE = auto()
 
     class ProcessState:
         def __init__(
@@ -968,15 +968,22 @@ class DocumentCollection:
         i.e. the underlying data structure will be initialized immediately and not on later text analysis result import
         :return: The created process
         """
-        process_type = Process._ProcessType.IMPORTED
+        process_type = self._map_process_type(Process._ProcessType.NO_INIT)
         if is_manual_annotation:
-            process_type = Process._ProcessType.MANUAL
+            process_type = self._map_process_type(Process._ProcessType.INIT)
         # noinspection PyProtectedMember
         self.project.client._create_and_run_process(
             self, process_name, pipeline=None, process_type=process_type
         )
 
         return self.get_process(process_name)
+
+    def _map_process_type(self, process_type: Process._ProcessType) -> str:
+        # noinspection PyProtectedMember
+        mapping = {Process._ProcessType.NO_INIT: "IMPORTED",
+                   Process._ProcessType.INIT: "MANUAL",
+                   Process._ProcessType.WITH_PIPELINE: "MACHINE"}
+        return mapping[process_type]
 
     def delete(self) -> dict:
         """
@@ -1832,18 +1839,23 @@ class Client:
             if isinstance(src, str):
                 return default_filename
 
-            raise ValueError("Unsupported source type - valid is [Path, IO, str]")
+            raise ValueError("Unsupported source type - Use [Path, IO, str] or provide a filename")
 
-        if isinstance(source, str) and mime_type is None:
-            mime_type = MEDIA_TYPE_TEXT_PLAIN
-
-        if isinstance(source, Cas):
-            if (mime_type is not None) and (mime_type != MEDIA_TYPE_APPLICATION_XMI):
-                raise Exception(
-                    f"The format {mime_type} is not supported for CAS objects. It must be set to "
-                    f"{MEDIA_TYPE_APPLICATION_XMI} or be omitted."
+        def guess_mime_type(src: Union[Path, IO, str], file_name) -> str:
+            if isinstance(src, str):
+                return MEDIA_TYPE_TEXT_PLAIN
+            if isinstance(src, Cas):
+                return MEDIA_TYPE_APPLICATION_XMI
+            guessed_mime_type = mimetypes.guess_type(url=file_name)[0]
+            if guessed_mime_type not in [MEDIA_TYPE_TEXT_PLAIN, MEDIA_TYPE_APPLICATION_SOLR_XML]:
+                raise ValueError(
+                    f"Unable to guess a valid mime_type. Supported file content types are plain text (mime_type = "
+                    f"'{MEDIA_TYPE_TEXT_PLAIN}'), Averbis Solr XML (mime_type = "
+                    f"'{MEDIA_TYPE_APPLICATION_SOLR_XML}') and UIMA CAS file types ({','.join(MEDIA_TYPES_CAS)}).\n"
+                    f"Please provide the correct mime_type with: `document_collection.import_documents(file, "
+                    f"mime_type = ...)`."
                 )
-            mime_type = MEDIA_TYPE_APPLICATION_XMI
+            return guessed_mime_type
 
         # If the format is not a multi-document format, we need to have a filename. If it is a multi-document
         # format, then the server is using the filenames stored within the multi-document
@@ -1859,40 +1871,22 @@ class Client:
         else:
             filename = filename or fetch_filename(source, "document.txt")
 
-            if mime_type is None:
-                # Inferring MimeType if not set
-                mime_type = mimetypes.guess_type(url=filename)[0]
-                if mime_type not in [MEDIA_TYPE_TEXT_PLAIN, MEDIA_TYPE_APPLICATION_SOLR_XML]:
-                    raise ValueError(
-                        f"Unable to guess a valid mime_type. Supported file content types are plain text (mime_type = "
-                        f"'{MEDIA_TYPE_TEXT_PLAIN}') and Averbis Solr XML (mime_type = "
-                        f"'{MEDIA_TYPE_APPLICATION_SOLR_XML}').\n"
-                        f"Please provide the correct mime_type with: `document_collection.import_documents(file, "
-                        f"mime_type = ...)`."
-                    )
+        if mime_type is None:
+            mime_type = guess_mime_type(source, filename)
 
-        if isinstance(source, Path):
-            if mime_type == MEDIA_TYPE_TEXT_PLAIN:
-                with source.open("r", encoding=ENCODING_UTF_8) as text_file:
-                    source = text_file.read()
-            else:
-                with source.open("rb") as binary_file:
-                    source = BytesIO(binary_file.read())
+        if mime_type in MEDIA_TYPES_CAS:
+            files = self._create_cas_file_request_parts("documentFile", filename, source, mime_type, typesystem)
+        else:
+            if isinstance(source, Path):
+                if mime_type == MEDIA_TYPE_TEXT_PLAIN:
+                    with source.open("r", encoding=ENCODING_UTF_8) as text_file:
+                        source = text_file.read()
+                else:
+                    with source.open("rb") as binary_file:
+                        source = BytesIO(binary_file.read())
+            data: IO = BytesIO(source.encode(ENCODING_UTF_8)) if isinstance(source, str) else source
 
-        if isinstance(source, Cas):
-            if typesystem is None:
-                typesystem = source.typesystem
-            source = source.to_xmi()
-
-        data: IO = BytesIO(source.encode(ENCODING_UTF_8)) if isinstance(source, str) else source
-
-        files = {"documentFile": (filename, data, mime_type)}
-        if typesystem:
-            files["typesystemFile"] = (
-                "typesystem.xml",
-                typesystem.to_xml(),
-                MEDIA_TYPE_APPLICATION_XML,
-            )
+            files = {"documentFile": (filename, data, mime_type)}
 
         response = self.__request_with_json_response(
             "post",
@@ -2408,7 +2402,7 @@ class Client:
         document_collection: DocumentCollection,
         process_name: str,
         pipeline: Union[str, Pipeline],
-        process_type: Process._ProcessType = None,
+        process_type: str= None,
         preceding_process_name=None,
     ) -> dict:
         """
@@ -2426,7 +2420,7 @@ class Client:
         }
 
         if process_type:
-            request_json["processType"] = process_type.value
+            request_json["processType"] = process_type
 
         if pipeline_name:
             request_json["pipelineName"] = pipeline_name
@@ -2737,8 +2731,9 @@ class Client:
         """
         # use default name because requests library requires one
         filename = "text_analysis_result"
-        files, params = self._create_text_analysis_request_parts(
-            document_name, filename, source, mime_type, typesystem
+
+        files = self._create_cas_file_request_parts(
+            "casFile", filename, source, mime_type, typesystem
         )
 
         method = "post"
@@ -2749,11 +2744,11 @@ class Client:
             method,
             f"/experimental/textanalysis/projects/{project_name}/documentCollections/{document_collection_name}/processes/{process_name}/textAnalysisResult",
             files=files,
-            params=params,
+            params={"documentName": document_name},
         )
 
     @staticmethod
-    def _create_text_analysis_request_parts(document_name, filename, source, mime_type, typesystem):
+    def _create_cas_file_request_parts(file_param_name, filename, source, mime_type, typesystem):
         if isinstance(source, Cas):
             if typesystem is None:
                 typesystem = source.typesystem
@@ -2762,18 +2757,19 @@ class Client:
         else:
             if mime_type is None or mime_type not in MEDIA_TYPES_CAS:
                 raise Exception(
-                    "Provide a mime_type, valid types are: " + ",".join(MEDIA_TYPES_CAS)
+                    "Provide a mime_type for your CAS file, valid types are: " + ",".join(MEDIA_TYPES_CAS)
                 )
             if typesystem is None and mime_type in MEDIA_TYPES_CAS_NEEDS_TS:
                 raise Exception("Provide a typesystem with your file or use a CAS object")
-            with source.open("rb") as binary_file:
-                source = BytesIO(binary_file.read())
-        files = {"casFile": (filename, source, mime_type)}
+            if isinstance(source, Path):
+                with source.open("rb") as binary_file:
+                    source = BytesIO(binary_file.read())
+        files = {file_param_name: (filename, source, mime_type)}
         if typesystem is not None:
             files["typesystemFile"] = (
                 "typesystem.xml",
                 typesystem.to_xml(),
                 MEDIA_TYPE_APPLICATION_XML,
             )
-        params = {"documentName": document_name}
-        return files, params
+
+        return files
