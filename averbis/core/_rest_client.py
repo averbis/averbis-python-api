@@ -21,7 +21,7 @@ import copy
 from enum import Enum
 from urllib.parse import quote
 
-from cassis import Cas, TypeSystem, load_cas_from_xmi, load_typesystem  # type: ignore
+from cassis import Cas, TypeSystem, load_cas_from_xmi, load_typesystem, merge_typesystems  # type: ignore
 import json
 import logging
 import zipfile
@@ -501,6 +501,37 @@ class Pipeline:
         with ThreadPoolExecutor(max_workers=parallel_request_count) as executor:
             return executor.map(run_analysis, sources)
 
+    # Ignoring errors as linter (compiler) cannot resolve dynamically loaded lib
+    # (with type:ignore for mypy) and (noinspection PyProtectedMember for pycharm)
+    @experimental_api
+    def analyse_cas_to_cas(
+        self,
+        source: Cas,
+        language: str = None,
+        timeout: float = None,
+    ) -> Cas:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear. Processes text using a pipeline and returns the result
+        as a UIMA CAS.
+
+        :param source:           The CAS to be analyzed.
+        :param language:         Optional parameter setting the language of the document, e.g. "en" or "de".
+        :param timeout:          Optional timeout (in seconds) specifiying how long the request is waiting for a server response.
+
+        :return: A cassis.Cas object
+        """
+        # noinspection PyProtectedMember
+        typesystem = merge_typesystems(source.typesystem, self.get_type_system())
+        return load_cas_from_xmi(
+            self.project.client._analyse_cas_to_cas(
+                project=self.project.name,
+                pipeline=self.name,
+                source=source,
+                language=language,
+                timeout=timeout,
+            ),
+            typesystem=typesystem,
+        )
     # Ignoring errors as linter (compiler) cannot resolve dynamically loaded lib
     # (with type:ignore for mypy) and (noinspection PyProtectedMember for pycharm)
     @experimental_api
@@ -2291,6 +2322,42 @@ class Client:
                 params={"language": language},
                 headers={
                     HEADER_CONTENT_TYPE: MEDIA_TYPE_TEXT_PLAIN_UTF8,
+                    HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_XMI,
+                },
+                timeout=timeout,
+            ),
+            ENCODING_UTF_8,
+        )
+
+    @experimental_api
+    def _analyse_cas_to_cas(
+        self,
+        project: str,
+        pipeline: str,
+        source: Cas,
+        language: str = None,
+        timeout: float = None,
+    ) -> str:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Use Pipeline.analyse_cas_to_cas() instead.
+        """
+
+        return str(
+            self.__request_with_bytes_response(
+                "post",
+                f"/experimental/textanalysis/projects/{project}/pipelines/{pipeline}/analyzeCasToCas",
+                files={
+                    "casFile": ("casFile", source.to_xmi(), MEDIA_TYPE_APPLICATION_XMI),
+                    "typesystemFile": (
+                        "typesystemFile",
+                        source.typesystem.to_xml(),
+                        MEDIA_TYPE_APPLICATION_XML,
+                    ),
+                },
+                params={"language": language},
+                headers={
                     HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_XMI,
                 },
                 timeout=timeout,

@@ -742,6 +742,42 @@ def test_analyse_html(client, requests_mock):
     assert response[0]["coveredText"] == "Appendizitis"
 
 
+def test_analyse_html(client, requests_mock):
+    requests_mock.post(
+        f"{API_BASE}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/analyseHtml",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": [
+                {
+                    "begin": 28,
+                    "end": 40,
+                    "type": "de.averbis.types.health.Diagnosis",
+                    "coveredText": "Appendizitis",
+                    # ... truncated ...
+                },
+                {
+                    "begin": 0,
+                    "end": 41,
+                    "type": "de.averbis.types.health.PatientInformation",
+                    "coveredText": "Der Patient leidet an einer Appendizitis.",
+                    # ... truncated ...
+                },
+                # ... truncated ...
+            ],
+            "errorMessages": [],
+        },
+    )
+
+    response = client._analyse_html(
+        PROJECT_NAME,
+        "discharge",
+        "<html><body>Der Patient leidet an einer Appendizitis.</body></html>",
+        language="de",
+    )
+
+    assert response[0]["coveredText"] == "Appendizitis"
+
+
 def test_classify_document(client, requests_mock):
     requests_mock.post(
         f"{API_BASE}/classification/projects/{PROJECT_NAME}/classificationSets/Default/classifyDocument",
