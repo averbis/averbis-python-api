@@ -37,7 +37,8 @@ REQUIRES_PYTHON = ">=3.6.0"
 install_requires = [
     "requests",
     "types-requests",
-    "dkpro-cassis>=0.7.0"
+    "dkpro-cassis>=0.7.0",
+    "click>=8.0.4"
 ]
 
 test_dependencies = [
@@ -106,6 +107,8 @@ setup(
         "Source Code": "https://github.com/averbis/averbis-python-api",
     },
 
+    py_modules=['cli', 'averbis'],
+
     packages=find_packages(exclude="tests"),
 
     install_requires=install_requires,
@@ -126,4 +129,8 @@ setup(
         "Programming Language :: Python :: 3.8",
         "License :: OSI Approved :: Apache Software License"
     ],
+    entry_points = '''
+        [console_scripts]
+        averbis-cli=cli:cli
+    ''',
 )
