@@ -21,7 +21,7 @@ import copy
 from enum import Enum, auto
 from urllib.parse import quote
 
-from cassis import Cas, TypeSystem, load_cas_from_xmi, load_typesystem
+from cassis import Cas, TypeSystem, load_cas_from_xmi, load_typesystem  # type: ignore
 import json
 import logging
 import zipfile
@@ -424,6 +424,8 @@ class Pipeline:
         if was_running_before_configuration_change:
             self.ensure_started()
 
+    # Ignoring errors as linter (compiler) cannot resolve dynamically loaded lib
+    # (with type:ignore for mypy) and (noinspection PyProtectedMember for pycharm)
     @experimental_api
     def analyse_text_to_cas(
         self,
@@ -520,6 +522,8 @@ class Pipeline:
             for r in executor.map(run_analysis, sources):
                 yield r
 
+    # Ignoring errors as linter (compiler) cannot resolve dynamically loaded lib
+    # (with type:ignore for mypy) and (noinspection PyProtectedMember for pycharm)
     @experimental_api
     def get_type_system(self) -> TypeSystem:
         """
