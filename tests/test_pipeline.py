@@ -21,6 +21,9 @@ import logging
 import time
 from pathlib import Path
 
+from cassis import Cas
+from requests_toolbelt import MultipartDecoder
+
 from averbis import Project, Pipeline, Process
 from averbis.core import (
     OperationTimeoutError,
@@ -143,6 +146,42 @@ def pipeline_analyse_text_to_cas_mock(client, requests_mock):
 
     requests_mock.post(
         f"{API_EXPERIMENTAL}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/analyzeTextToCas",
+        headers={"Content-Type": MEDIA_TYPE_APPLICATION_XMI},
+        text=callback,
+    )
+
+
+@pytest.fixture
+def pipeline_analyse_cas_to_cas_mock(client, requests_mock):
+    # In the pipeline configuration, the name for the number of instances differs between platform version 5 and 6.
+    if client.get_spec_version().startswith("5."):
+        payload = {"analysisEnginePoolSize": 4}
+    else:
+        payload = {"numberOfInstances": 4}
+
+    requests_mock.get(
+        f"{API_BASE}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/configuration",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": payload,
+            "errorMessages": [],
+        },
+    )
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/exportTypesystem",
+        headers={"Content-Type": MEDIA_TYPE_APPLICATION_XML},
+        text=EMPTY_TYPESYSTEM,
+    )
+
+    def callback(request, _content):
+        content_type = request._request.headers['content-type']
+        multipart_string = request.text.encode('utf-8')
+        decoder = MultipartDecoder(multipart_string, content_type)
+        return decoder.parts[0].text
+
+    requests_mock.post(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/analyzeCasToCas",
         headers={"Content-Type": MEDIA_TYPE_APPLICATION_XMI},
         text=callback,
     )
@@ -327,6 +366,15 @@ def test_analyse_texts_to_cas(client, pipeline_analyse_text_to_cas_mock):
     assert cases[0].sofa_string == "This is a test."
     assert sources[1].endswith("tests/resources/texts/text2.txt")
     assert cases[1].sofa_string == "I am another test."
+
+
+def test_analyse_cas_to_cas(client, pipeline_analyse_cas_to_cas_mock):
+    pipeline = Pipeline(Project(client, PROJECT_NAME), "discharge")
+    in_cas = Cas()
+    in_cas.sofa_string = "This is a test"
+    out_cas = pipeline.analyse_cas_to_cas(in_cas)
+
+    assert out_cas.sofa_string == in_cas.sofa_string
 
 
 def test_delete_pipeline_v5(client_version_5):
