@@ -21,7 +21,7 @@ import copy
 from enum import Enum, auto
 from urllib.parse import quote
 
-from cassis import Cas, TypeSystem, load_cas_from_xmi, load_typesystem  # type: ignore
+from cassis import Cas, TypeSystem, load_cas_from_xmi, load_typesystem
 import json
 import logging
 import zipfile
@@ -424,8 +424,6 @@ class Pipeline:
         if was_running_before_configuration_change:
             self.ensure_started()
 
-    # Ignoring errors as linter (compiler) cannot resolve dynamically loaded lib
-    # (with type:ignore for mypy) and (noinspection PyProtectedMember for pycharm)
     @experimental_api
     def analyse_text_to_cas(
         self,
@@ -522,8 +520,6 @@ class Pipeline:
             for r in executor.map(run_analysis, sources):
                 yield r
 
-    # Ignoring errors as linter (compiler) cannot resolve dynamically loaded lib
-    # (with type:ignore for mypy) and (noinspection PyProtectedMember for pycharm)
     @experimental_api
     def get_type_system(self) -> TypeSystem:
         """
@@ -1001,9 +997,11 @@ class DocumentCollection:
 
     def _map_process_type(self, process_type: Process._ProcessType) -> str:
         # noinspection PyProtectedMember
-        mapping = {Process._ProcessType.NO_INIT: "IMPORTED",
-                   Process._ProcessType.INIT: "MANUAL",
-                   Process._ProcessType.WITH_PIPELINE: "MACHINE"}
+        mapping = {
+            Process._ProcessType.NO_INIT: "IMPORTED",
+            Process._ProcessType.INIT: "MANUAL",
+            Process._ProcessType.WITH_PIPELINE: "MACHINE",
+        }
         return mapping[process_type]
 
     def delete(self) -> dict:
@@ -1896,7 +1894,9 @@ class Client:
             mime_type = guess_mime_type(source, filename)
 
         if mime_type in MEDIA_TYPES_CAS:
-            files = self._create_cas_file_request_parts("documentFile", filename, source, mime_type, typesystem)
+            files = self._create_cas_file_request_parts(
+                "documentFile", filename, source, mime_type, typesystem
+            )
         else:
             if isinstance(source, Path):
                 if mime_type == MEDIA_TYPE_TEXT_PLAIN:
@@ -2278,7 +2278,7 @@ class Client:
         self,
         project: str,
         pipeline: str,
-        source: Union[IO, str],
+        source: Union[IO, str, Path],
         language: str = None,
         timeout: float = None,
     ) -> str:
@@ -2782,7 +2782,8 @@ class Client:
         else:
             if mime_type is None or mime_type not in MEDIA_TYPES_CAS:
                 raise Exception(
-                    "Provide a mime_type for your CAS file, valid types are: " + ",".join(MEDIA_TYPES_CAS)
+                    "Provide a mime_type for your CAS file, valid types are: "
+                    + ",".join(MEDIA_TYPES_CAS)
                 )
             if typesystem is None and mime_type in MEDIA_TYPES_CAS_NEEDS_TS:
                 raise Exception("Provide a typesystem with your file or use a CAS object")
