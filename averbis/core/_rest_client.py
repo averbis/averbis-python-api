@@ -310,9 +310,16 @@ class Pipeline:
         Note that this call produces an iterator! It means that you get individual results back as soon as they have
         been processed. These results may be out-of-order! Also, if you want to hold on to the results while iterating
         through them, you need to put them into some kind of collection. An easy way to do this is e.g. calling
-        `list(client.analyse_texts(...))`. If you process a large number of documents though, you are better off
+        `list(pipeline.analyse_texts(...))`. If you process a large number of documents though, you are better off
         handling the results one-by-one. This can be done with a simple for loop:
-        `for result in client.analyse_texts(...):`.
+        ```
+        for result in pipeline.analyse_texts(...):
+            if result.successful():
+                response = result.data
+                # do something with the json response
+            else:
+                print(f"Exception for document with source {result.source}: {result.exception}")
+        ```
 
         :param sources:          The documents to be analyzed.
         :param parallelism:      Number of parallel instances in the platform.
@@ -458,6 +465,19 @@ class Pipeline:
     ) -> Iterator[Result]:
         """
         Analyze the given texts or files using the pipeline. If feasible, multiple documents are processed in parallel.
+        Note that this call produces an iterator! It means that you get individual results back as soon as they have
+        been processed. These results may be out-of-order! Also, if you want to hold on to the results while iterating
+        through them, you need to put them into some kind of collection. An easy way to do this is e.g. calling
+        `list(pipeline.analyse_texts_to_cas(...))`. If you process a large number of documents though, you are better off
+        handling the results one-by-one. This can be done with a simple for loop:
+        ```
+        for result in pipeline.analyse_texts_to_cas(...):
+            if result.successful():
+                cas = result.data
+                # do something with the CAS
+            else:
+                print(f"Exception for document with source {result.source}: {result.exception}")
+        ```
 
         :param sources:          The documents to be analyzed.
         :param parallelism:      Number of parallel instances in the platform.
@@ -499,7 +519,8 @@ class Pipeline:
                 return Result(exception=e, source=source)
 
         with ThreadPoolExecutor(max_workers=parallel_request_count) as executor:
-            return executor.map(run_analysis, sources)
+            for r in executor.map(run_analysis, sources):
+                yield r
 
     # Ignoring errors as linter (compiler) cannot resolve dynamically loaded lib
     # (with type:ignore for mypy) and (noinspection PyProtectedMember for pycharm)
@@ -2267,6 +2288,10 @@ class Client:
         Use Pipeline.analyse_text_to_cas() instead.
         """
 
+        if isinstance(source, Path):
+            with source.open("r", encoding=ENCODING_UTF_8) as file:
+                source = file.read()
+
         data: IO = BytesIO(source.encode(ENCODING_UTF_8)) if isinstance(source, str) else source
 
         return str(
@@ -2402,7 +2427,7 @@ class Client:
         document_collection: DocumentCollection,
         process_name: str,
         pipeline: Union[str, Pipeline],
-        process_type: str= None,
+        process_type: str = None,
         preceding_process_name=None,
     ) -> dict:
         """
