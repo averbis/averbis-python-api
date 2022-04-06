@@ -310,9 +310,16 @@ class Pipeline:
         Note that this call produces an iterator! It means that you get individual results back as soon as they have
         been processed. These results may be out-of-order! Also, if you want to hold on to the results while iterating
         through them, you need to put them into some kind of collection. An easy way to do this is e.g. calling
-        `list(client.analyse_texts(...))`. If you process a large number of documents though, you are better off
+        `list(pipeline.analyse_texts(...))`. If you process a large number of documents though, you are better off
         handling the results one-by-one. This can be done with a simple for loop:
-        `for result in client.analyse_texts(...):`.
+        ```
+        for result in pipeline.analyse_texts(...):
+            if result.successful():
+                response = result.data
+                # do something with the json response
+            else:
+                print(f"Exception for document with source {result.source}: {result.exception}")
+        ```
 
         :param sources:          The documents to be analyzed.
         :param parallelism:      Number of parallel instances in the platform.
@@ -458,6 +465,19 @@ class Pipeline:
     ) -> Iterator[Result]:
         """
         Analyze the given texts or files using the pipeline. If feasible, multiple documents are processed in parallel.
+        Note that this call produces an iterator! It means that you get individual results back as soon as they have
+        been processed. These results may be out-of-order! Also, if you want to hold on to the results while iterating
+        through them, you need to put them into some kind of collection. An easy way to do this is e.g. calling
+        `list(pipeline.analyse_texts_to_cas(...))`. If you process a large number of documents though, you are better off
+        handling the results one-by-one. This can be done with a simple for loop:
+        ```
+        for result in pipeline.analyse_texts_to_cas(...):
+            if result.successful():
+                cas = result.data
+                # do something with the CAS
+            else:
+                print(f"Exception for document with source {result.source}: {result.exception}")
+        ```
 
         :param sources:          The documents to be analyzed.
         :param parallelism:      Number of parallel instances in the platform.
@@ -499,7 +519,8 @@ class Pipeline:
                 return Result(exception=e, source=source)
 
         with ThreadPoolExecutor(max_workers=parallel_request_count) as executor:
-            return executor.map(run_analysis, sources)
+            for r in executor.map(run_analysis, sources):
+                yield r
 
     # Ignoring errors as linter (compiler) cannot resolve dynamically loaded lib
     # (with type:ignore for mypy) and (noinspection PyProtectedMember for pycharm)
@@ -1011,9 +1032,11 @@ class DocumentCollection:
 
     def _map_process_type(self, process_type: Process._ProcessType) -> str:
         # noinspection PyProtectedMember
-        mapping = {Process._ProcessType.NO_INIT: "IMPORTED",
-                   Process._ProcessType.INIT: "MANUAL",
-                   Process._ProcessType.WITH_PIPELINE: "MACHINE"}
+        mapping = {
+            Process._ProcessType.NO_INIT: "IMPORTED",
+            Process._ProcessType.INIT: "MANUAL",
+            Process._ProcessType.WITH_PIPELINE: "MACHINE",
+        }
         return mapping[process_type]
 
     def delete(self) -> dict:
@@ -1906,7 +1929,9 @@ class Client:
             mime_type = guess_mime_type(source, filename)
 
         if mime_type in MEDIA_TYPES_CAS:
-            files = self._create_cas_file_request_parts("documentFile", filename, source, mime_type, typesystem)
+            files = self._create_cas_file_request_parts(
+                "documentFile", filename, source, mime_type, typesystem
+            )
         else:
             if isinstance(source, Path):
                 if mime_type == MEDIA_TYPE_TEXT_PLAIN:
@@ -2288,7 +2313,7 @@ class Client:
         self,
         project: str,
         pipeline: str,
-        source: Union[IO, str],
+        source: Union[IO, str, Path],
         language: str = None,
         timeout: float = None,
     ) -> str:
@@ -2297,6 +2322,10 @@ class Client:
 
         Use Pipeline.analyse_text_to_cas() instead.
         """
+
+        if isinstance(source, Path):
+            with source.open("r", encoding=ENCODING_UTF_8) as file:
+                source = file.read()
 
         data: IO = BytesIO(source.encode(ENCODING_UTF_8)) if isinstance(source, str) else source
 
@@ -2469,7 +2498,7 @@ class Client:
         document_collection: DocumentCollection,
         process_name: str,
         pipeline: Union[str, Pipeline],
-        process_type: str= None,
+        process_type: str = None,
         preceding_process_name=None,
     ) -> dict:
         """
@@ -2824,7 +2853,8 @@ class Client:
         else:
             if mime_type is None or mime_type not in MEDIA_TYPES_CAS:
                 raise Exception(
-                    "Provide a mime_type for your CAS file, valid types are: " + ",".join(MEDIA_TYPES_CAS)
+                    "Provide a mime_type for your CAS file, valid types are: "
+                    + ",".join(MEDIA_TYPES_CAS)
                 )
             if typesystem is None and mime_type in MEDIA_TYPES_CAS_NEEDS_TS:
                 raise Exception("Provide a typesystem with your file or use a CAS object")
