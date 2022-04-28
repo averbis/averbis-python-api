@@ -18,7 +18,7 @@
 #
 #
 import copy
-from enum import Enum
+from enum import Enum, auto
 from urllib.parse import quote
 
 from cassis import Cas, TypeSystem, load_cas_from_xmi, load_typesystem, merge_typesystems  # type: ignore
@@ -310,9 +310,16 @@ class Pipeline:
         Note that this call produces an iterator! It means that you get individual results back as soon as they have
         been processed. These results may be out-of-order! Also, if you want to hold on to the results while iterating
         through them, you need to put them into some kind of collection. An easy way to do this is e.g. calling
-        `list(client.analyse_texts(...))`. If you process a large number of documents though, you are better off
+        `list(pipeline.analyse_texts(...))`. If you process a large number of documents though, you are better off
         handling the results one-by-one. This can be done with a simple for loop:
-        `for result in client.analyse_texts(...):`.
+        ```
+        for result in pipeline.analyse_texts(...):
+            if result.successful():
+                response = result.data
+                # do something with the json response
+            else:
+                print(f"Exception for document with source {result.source}: {result.exception}")
+        ```
 
         :param sources:          The documents to be analyzed.
         :param parallelism:      Number of parallel instances in the platform.
@@ -458,6 +465,19 @@ class Pipeline:
     ) -> Iterator[Result]:
         """
         Analyze the given texts or files using the pipeline. If feasible, multiple documents are processed in parallel.
+        Note that this call produces an iterator! It means that you get individual results back as soon as they have
+        been processed. These results may be out-of-order! Also, if you want to hold on to the results while iterating
+        through them, you need to put them into some kind of collection. An easy way to do this is e.g. calling
+        `list(pipeline.analyse_texts_to_cas(...))`. If you process a large number of documents though, you are better off
+        handling the results one-by-one. This can be done with a simple for loop:
+        ```
+        for result in pipeline.analyse_texts_to_cas(...):
+            if result.successful():
+                cas = result.data
+                # do something with the CAS
+            else:
+                print(f"Exception for document with source {result.source}: {result.exception}")
+        ```
 
         :param sources:          The documents to be analyzed.
         :param parallelism:      Number of parallel instances in the platform.
@@ -499,7 +519,8 @@ class Pipeline:
                 return Result(exception=e, source=source)
 
         with ThreadPoolExecutor(max_workers=parallel_request_count) as executor:
-            return executor.map(run_analysis, sources)
+            for r in executor.map(run_analysis, sources):
+                yield r
 
     # Ignoring errors as linter (compiler) cannot resolve dynamically loaded lib
     # (with type:ignore for mypy) and (noinspection PyProtectedMember for pycharm)
@@ -532,6 +553,7 @@ class Pipeline:
             ),
             typesystem=typesystem,
         )
+
     # Ignoring errors as linter (compiler) cannot resolve dynamically loaded lib
     # (with type:ignore for mypy) and (noinspection PyProtectedMember for pycharm)
     @experimental_api
@@ -750,9 +772,9 @@ class Process:
         )
 
     class _ProcessType(Enum):
-        MANUAL = "MANUAL"
-        IMPORTED = "IMPORTED"
-        MACHINE = "MACHINE"
+        INIT = auto()
+        NO_INIT = auto()
+        WITH_PIPELINE = auto()
 
     class ProcessState:
         def __init__(
@@ -923,15 +945,7 @@ class Process:
         :param: document_name: name of the document that the text analysis result should be associated with
         :param: source: the text analysis result as a CAS object, stream or path to it
 
-        The supported file content types (mime_types) are UIMA CAS XMI (application/vnd.uima.cas+xmi),
-        XCAS (application/vnd.uima.cas+xcas), binary CAS (application/vnd.uima.cas+binary),
-        binary TSI (application/vnd.uima.cas+binary.tsi), compressed (application/vnd.uima.cas+compressed),
-        compressed TSI (application/vnd.uima.cas+compressed.tsi),
-        compressed filtered (application/vnd.uima.cas+compressed.filtered),
-        compressed filtered TS (application/vnd.uima.cas+compressed.filtered.ts),
-        compressed filtered TSI (application/vnd.uima.cas+compressed.filtered.tsi),
-        serialized CAS (application/vnd.uima.cas+serialized)
-        and serialized TSI (application/vnd.uima.cas+serialized.tsi).
+        The supported file content types are the :ref:`UIMA types`
 
         If a document is provided as a CAS object, the type system information can be automatically picked from the CAS
         object and should not be provided explicitly. The mime_type is also not needed.
@@ -1007,15 +1021,24 @@ class DocumentCollection:
         i.e. the underlying data structure will be initialized immediately and not on later text analysis result import
         :return: The created process
         """
-        process_type = Process._ProcessType.IMPORTED
+        process_type = self._map_process_type(Process._ProcessType.NO_INIT)
         if is_manual_annotation:
-            process_type = Process._ProcessType.MANUAL
+            process_type = self._map_process_type(Process._ProcessType.INIT)
         # noinspection PyProtectedMember
         self.project.client._create_and_run_process(
             self, process_name, pipeline=None, process_type=process_type
         )
 
         return self.get_process(process_name)
+
+    def _map_process_type(self, process_type: Process._ProcessType) -> str:
+        # noinspection PyProtectedMember
+        mapping = {
+            Process._ProcessType.NO_INIT: "IMPORTED",
+            Process._ProcessType.INIT: "MANUAL",
+            Process._ProcessType.WITH_PIPELINE: "MACHINE",
+        }
+        return mapping[process_type]
 
     def delete(self) -> dict:
         """
@@ -1032,8 +1055,8 @@ class DocumentCollection:
         typesystem: "TypeSystem" = None,
     ) -> List[dict]:
         """
-        Imports documents from a given file. Supported file content types are plain text (text/plain),
-        Averbis Solr XML (application/vnd.averbis.solr+xml) and UIMA CAS XMI (application/vnd.uima.cas+xmi).
+        Imports documents from a given file or from a given string. Supported file content types are plain text (text/plain),
+        Averbis Solr XML (application/vnd.averbis.solr+xml) and the :ref:`UIMA types`.
 
         If a document is provided as a CAS object, the type system information can be automatically picked from the CAS
         object and should not be provided explicitly. If a CAS is provided as a string XML representation, then a type
@@ -1042,11 +1065,10 @@ class DocumentCollection:
         The method tries to automatically determine the format (mime type) of the provided document, so setting the
         mime type parameter should usually not be necessary.
 
-        If possible, the method obtains the file name from the provided source. If this is not possible (e.g. if the
-        source is a string or a CAS object), the file name should explicitly be provided. If no filename is provided,
-        a default filename is used. Note that a file in the Averbis Solr XML format can contain multiple documents
-        and each of these has its name encoded within the XML. In this case, the setting filename parameter is not
-        permitted at all.
+        If possible, the method obtains the filename from the provided source. If this is not possible (e.g. if the
+        source is a string or a CAS object), the filename should explicitly be provided. Note that a file in the
+        Averbis Solr XML format can contain multiple documents and each of these has its name encoded within the XML.
+        In this case, the setting filename parameter is not permitted at all.
         """
 
         # noinspection PyProtectedMember
@@ -1868,21 +1890,26 @@ class Client:
             if isinstance(src, IOBase) and hasattr(src, "name"):
                 return src.name
 
+            raise ValueError(
+                f"The `filename` parameter can only be automatically inferred for [Path, IO], but received a "
+                f"'{type(src)}' object. The filename is required as it serves as an unique identifier for the document."
+            )
+
+        def guess_mime_type(src: Union[Path, IO, str], file_name) -> str:
             if isinstance(src, str):
-                return default_filename
-
-            raise ValueError("Unsupported source type - valid is [Path, IO, str]")
-
-        if isinstance(source, str) and mime_type is None:
-            mime_type = MEDIA_TYPE_TEXT_PLAIN
-
-        if isinstance(source, Cas):
-            if (mime_type is not None) and (mime_type != MEDIA_TYPE_APPLICATION_XMI):
-                raise Exception(
-                    f"The format {mime_type} is not supported for CAS objects. It must be set to "
-                    f"{MEDIA_TYPE_APPLICATION_XMI} or be omitted."
+                return MEDIA_TYPE_TEXT_PLAIN
+            if isinstance(src, Cas):
+                return MEDIA_TYPE_APPLICATION_XMI
+            guessed_mime_type = mimetypes.guess_type(url=file_name)[0]
+            if guessed_mime_type not in [MEDIA_TYPE_TEXT_PLAIN, MEDIA_TYPE_APPLICATION_SOLR_XML]:
+                raise ValueError(
+                    f"Unable to guess a valid mime_type. Supported file content types are plain text (mime_type = "
+                    f"'{MEDIA_TYPE_TEXT_PLAIN}'), Averbis Solr XML (mime_type = "
+                    f"'{MEDIA_TYPE_APPLICATION_SOLR_XML}') and UIMA CAS file types ({','.join(MEDIA_TYPES_CAS)}).\n"
+                    f"Please provide the correct mime_type with: `document_collection.import_documents(file, "
+                    f"mime_type = ...)`."
                 )
-            mime_type = MEDIA_TYPE_APPLICATION_XMI
+            return guessed_mime_type
 
         # If the format is not a multi-document format, we need to have a filename. If it is a multi-document
         # format, then the server is using the filenames stored within the multi-document
@@ -1898,40 +1925,24 @@ class Client:
         else:
             filename = filename or fetch_filename(source, "document.txt")
 
-            if mime_type is None:
-                # Inferring MimeType if not set
-                mime_type = mimetypes.guess_type(url=filename)[0]
-                if mime_type not in [MEDIA_TYPE_TEXT_PLAIN, MEDIA_TYPE_APPLICATION_SOLR_XML]:
-                    raise ValueError(
-                        f"Unable to guess a valid mime_type. Supported file content types are plain text (mime_type = "
-                        f"'{MEDIA_TYPE_TEXT_PLAIN}') and Averbis Solr XML (mime_type = "
-                        f"'{MEDIA_TYPE_APPLICATION_SOLR_XML}').\n"
-                        f"Please provide the correct mime_type with: `document_collection.import_documents(file, "
-                        f"mime_type = ...)`."
-                    )
+        if mime_type is None:
+            mime_type = guess_mime_type(source, filename)
 
-        if isinstance(source, Path):
-            if mime_type == MEDIA_TYPE_TEXT_PLAIN:
-                with source.open("r", encoding=ENCODING_UTF_8) as text_file:
-                    source = text_file.read()
-            else:
-                with source.open("rb") as binary_file:
-                    source = BytesIO(binary_file.read())
-
-        if isinstance(source, Cas):
-            if typesystem is None:
-                typesystem = source.typesystem
-            source = source.to_xmi()
-
-        data: IO = BytesIO(source.encode(ENCODING_UTF_8)) if isinstance(source, str) else source
-
-        files = {"documentFile": (filename, data, mime_type)}
-        if typesystem:
-            files["typesystemFile"] = (
-                "typesystem.xml",
-                typesystem.to_xml(),
-                MEDIA_TYPE_APPLICATION_XML,
+        if mime_type in MEDIA_TYPES_CAS:
+            files = self._create_cas_file_request_parts(
+                "documentFile", filename, source, mime_type, typesystem
             )
+        else:
+            if isinstance(source, Path):
+                if mime_type == MEDIA_TYPE_TEXT_PLAIN:
+                    with source.open("r", encoding=ENCODING_UTF_8) as text_file:
+                        source = text_file.read()
+                else:
+                    with source.open("rb") as binary_file:
+                        source = BytesIO(binary_file.read())
+            data: IO = BytesIO(source.encode(ENCODING_UTF_8)) if isinstance(source, str) else source
+
+            files = {"documentFile": (filename, data, mime_type)}
 
         response = self.__request_with_json_response(
             "post",
@@ -2302,7 +2313,7 @@ class Client:
         self,
         project: str,
         pipeline: str,
-        source: Union[IO, str],
+        source: Union[IO, str, Path],
         language: str = None,
         timeout: float = None,
     ) -> str:
@@ -2311,6 +2322,10 @@ class Client:
 
         Use Pipeline.analyse_text_to_cas() instead.
         """
+
+        if isinstance(source, Path):
+            with source.open("r", encoding=ENCODING_UTF_8) as file:
+                source = file.read()
 
         data: IO = BytesIO(source.encode(ENCODING_UTF_8)) if isinstance(source, str) else source
 
@@ -2483,7 +2498,7 @@ class Client:
         document_collection: DocumentCollection,
         process_name: str,
         pipeline: Union[str, Pipeline],
-        process_type: Process._ProcessType = None,
+        process_type: str = None,
         preceding_process_name=None,
     ) -> dict:
         """
@@ -2501,7 +2516,7 @@ class Client:
         }
 
         if process_type:
-            request_json["processType"] = process_type.value
+            request_json["processType"] = process_type
 
         if pipeline_name:
             request_json["pipelineName"] = pipeline_name
@@ -2812,8 +2827,9 @@ class Client:
         """
         # use default name because requests library requires one
         filename = "text_analysis_result"
-        files, params = self._create_text_analysis_request_parts(
-            document_name, filename, source, mime_type, typesystem
+
+        files = self._create_cas_file_request_parts(
+            "casFile", filename, source, mime_type, typesystem
         )
 
         method = "post"
@@ -2824,11 +2840,11 @@ class Client:
             method,
             f"/experimental/textanalysis/projects/{project_name}/documentCollections/{document_collection_name}/processes/{process_name}/textAnalysisResult",
             files=files,
-            params=params,
+            params={"documentName": document_name},
         )
 
     @staticmethod
-    def _create_text_analysis_request_parts(document_name, filename, source, mime_type, typesystem):
+    def _create_cas_file_request_parts(file_param_name, filename, source, mime_type, typesystem):
         if isinstance(source, Cas):
             if typesystem is None:
                 typesystem = source.typesystem
@@ -2837,18 +2853,20 @@ class Client:
         else:
             if mime_type is None or mime_type not in MEDIA_TYPES_CAS:
                 raise Exception(
-                    "Provide a mime_type, valid types are: " + ",".join(MEDIA_TYPES_CAS)
+                    "Provide a mime_type for your CAS file, valid types are: "
+                    + ",".join(MEDIA_TYPES_CAS)
                 )
             if typesystem is None and mime_type in MEDIA_TYPES_CAS_NEEDS_TS:
                 raise Exception("Provide a typesystem with your file or use a CAS object")
-            with source.open("rb") as binary_file:
-                source = BytesIO(binary_file.read())
-        files = {"casFile": (filename, source, mime_type)}
+            if isinstance(source, Path):
+                with source.open("rb") as binary_file:
+                    source = BytesIO(binary_file.read())
+        files = {file_param_name: (filename, source, mime_type)}
         if typesystem is not None:
             files["typesystemFile"] = (
                 "typesystem.xml",
                 typesystem.to_xml(),
                 MEDIA_TYPE_APPLICATION_XML,
             )
-        params = {"documentName": document_name}
-        return files, params
+
+        return files
