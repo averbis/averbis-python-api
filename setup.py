@@ -37,7 +37,7 @@ REQUIRES_PYTHON = ">=3.6.0"
 install_requires = [
     "requests",
     "types-requests",
-    "dkpro-cassis>=0.7.0"
+    "dkpro-cassis>=0.7.1"
 ]
 
 test_dependencies = [
