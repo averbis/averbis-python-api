@@ -553,6 +553,7 @@ class Pipeline:
             ),
             typesystem=typesystem,
         )
+
     # Ignoring errors as linter (compiler) cannot resolve dynamically loaded lib
     # (with type:ignore for mypy) and (noinspection PyProtectedMember for pycharm)
     @experimental_api
@@ -1054,7 +1055,7 @@ class DocumentCollection:
         typesystem: "TypeSystem" = None,
     ) -> List[dict]:
         """
-        Imports documents from a given file. Supported file content types are plain text (text/plain),
+        Imports documents from a given file or from a given string. Supported file content types are plain text (text/plain),
         Averbis Solr XML (application/vnd.averbis.solr+xml) and the :ref:`UIMA types`.
 
         If a document is provided as a CAS object, the type system information can be automatically picked from the CAS
@@ -1064,11 +1065,10 @@ class DocumentCollection:
         The method tries to automatically determine the format (mime type) of the provided document, so setting the
         mime type parameter should usually not be necessary.
 
-        If possible, the method obtains the file name from the provided source. If this is not possible (e.g. if the
-        source is a string or a CAS object), the file name should explicitly be provided. If no filename is provided,
-        a default filename is used. Note that a file in the Averbis Solr XML format can contain multiple documents
-        and each of these has its name encoded within the XML. In this case, the setting filename parameter is not
-        permitted at all.
+        If possible, the method obtains the filename from the provided source. If this is not possible (e.g. if the
+        source is a string or a CAS object), the filename should explicitly be provided. Note that a file in the
+        Averbis Solr XML format can contain multiple documents and each of these has its name encoded within the XML.
+        In this case, the setting filename parameter is not permitted at all.
         """
 
         # noinspection PyProtectedMember
@@ -1890,10 +1890,10 @@ class Client:
             if isinstance(src, IOBase) and hasattr(src, "name"):
                 return src.name
 
-            if isinstance(src, str):
-                return default_filename
-
-            raise ValueError("Unsupported source type - Use [Path, IO, str] or provide a filename")
+            raise ValueError(
+                f"The `filename` parameter can only be automatically inferred for [Path, IO], but received a "
+                f"'{type(src)}' object. The filename is required as it serves as an unique identifier for the document."
+            )
 
         def guess_mime_type(src: Union[Path, IO, str], file_name) -> str:
             if isinstance(src, str):
