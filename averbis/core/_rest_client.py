@@ -834,6 +834,30 @@ class Process:
         return document_collection.get_process(process_name=process_name)
 
     @experimental_api
+    def evaluate_against(
+        self,
+        reference_process: "Process",
+        process_name: str,
+        evaluation_configurations: List[Dict],
+        number_of_pipeline_instances: int = 1,
+    ) -> "Process":
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Starts the evaluation of this process in comparison to the given one as a new process.
+        Returns the new evaluation process.
+        """
+        # noinspection PyProtectedMember
+        return self.project.client._evaluate(
+            self.project,
+            self,
+            reference_process,
+            process_name,
+            evaluation_configurations,
+            number_of_pipeline_instances,
+        )
+
+    @experimental_api
     def rerun(self):
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -1404,6 +1428,127 @@ class Project:
         return self.client._upload_resources(zip_file, project_name=self.name)["files"]
 
 
+class EvaluationConfigurationBuilder:
+    def __init__(
+        self,
+        comparison_annotation_type_name: str,
+        features_to_compare: List[str],
+        reference_annotation_type_name: str = None,
+    ):
+        """
+        Convenience builder to create a configuration for the evaluation of one annotation type
+
+        :param comparison_annotation_type_name:   fully qualified name of the annotation that will be compared;
+            can also be a rule of format fully_qualified_name[feature1=value1&amp;&amp;feature2=value2...]
+            can be extended by another rule of the same type, meaning that an annotation must be contained, e.g:
+            fully_qualified_name[feature1=value1&amp;&amp;feature2=value2...] &lt;
+            fully_qualified_name[feature1=value1&amp;&amp;feature2=value2...]
+        :param reference_annotation_type_name:   fully qualified name of the annotation in the reference text analysis
+            result that other annotations should be compared to; can also be a rule (see annotation_type_name above).
+            If not given, the same annotation as the comparison annotation is used
+        :param features_to_compare:   The list of features that should be used in the comparison, e.g., begin, end,
+            uniqueID.
+        """
+        self.evaluationConfiguration = dict()
+        self.evaluationConfiguration["compareAnnotationRule"] = comparison_annotation_type_name
+        self.evaluationConfiguration["goldAnnotationRule"] = reference_annotation_type_name
+        if reference_annotation_type_name is None:
+            self.evaluationConfiguration["goldAnnotationRule"] = comparison_annotation_type_name
+        self.evaluationConfiguration["featuresToBeCompared"] = features_to_compare
+        self.evaluationConfiguration["allowMultipleMatches"] = False
+
+    def add_feature(self, feature_name: str) -> "EvaluationConfigurationBuilder":
+        if "featuresToBeCompared" not in self.evaluationConfiguration:
+            self.evaluationConfiguration["featuresToBeCompared"] = [feature_name]
+            return self
+        self.evaluationConfiguration["featuresToBeCompared"].append(feature_name)
+        return self
+
+    def set_overlap_partial_match(self) -> "EvaluationConfigurationBuilder":
+        """
+        Overlapping annotations are used to calculate partial positives.  Normally, these will replace a FalsePositive
+        or FalseNegative if a partial match is identified.
+        """
+        self.evaluationConfiguration["partialMatchCriteria"] = "OVERLAP_MATCH"
+        return self
+
+    def set_range_variance_partial_match(
+        self, range_variance: int
+    ) -> "EvaluationConfigurationBuilder":
+        """
+        Annotations that are offset by the given variance are used to calculate partial positives.
+        Normally, these will replace a FalsePositive or FalseNegative if a partial match is identified.
+        """
+        self.evaluationConfiguration["partialMatchCriteria"] = "RANGE_VARIANCE_MATCH"
+        self.evaluationConfiguration["partialMatchArguments"] = [str(range_variance)]
+        return self
+
+    def set_enclosing_annotation_partial_match(
+        self, enclosing_annotation_type_name: str
+    ) -> "EvaluationConfigurationBuilder":
+        """
+        Annotations that are covered by the given annotation type are used to calculate partial positives.
+        Normally, these will replace a FalsePositive or FalseNegative if a partial match is identified.
+        """
+        self.evaluationConfiguration["partialMatchCriteria"] = "ENCLOSING_ANNOTATION_MATCH"
+        self.evaluationConfiguration["partialMatchArguments"] = [enclosing_annotation_type_name]
+        return self
+
+    def allow_multiple_matches(self) -> "EvaluationConfigurationBuilder":
+        """
+        The annotations may match more than one annotation
+        """
+        self.evaluationConfiguration["allowMultipleMatches"] = True
+        return self
+
+    def add_exclude_feature_pattern(
+        self, exclude_pattern: str
+    ) -> "EvaluationConfigurationBuilder":
+        """
+        Add regular expression regarding the fully qualified feature name of features that should be excluded
+        from deep feature structure comparison.
+        """
+        if "excludeFeaturePatterns" not in self.evaluationConfiguration:
+            self.evaluationConfiguration["excludeFeaturePatterns"] = [exclude_pattern]
+            return self
+        if exclude_pattern not in self.evaluationConfiguration["excludeFeaturePatterns"]:
+            self.evaluationConfiguration["excludeFeaturePatterns"].append(exclude_pattern)
+        return self
+
+    def set_ignore_feature_characters_pattern(
+        self, ignore_pattern: str
+    ) -> "EvaluationConfigurationBuilder":
+        """
+        Regular expression specifying character sequences that should be ignored when
+        values of string features are compared
+        """
+        self.evaluationConfiguration["stringFeatureComparisonIgnorePattern"] = ignore_pattern
+        return self
+
+    def ignore_feature_case(self) -> "EvaluationConfigurationBuilder":
+        """
+        Ignore the case when values of string features are compared
+        """
+        self.evaluationConfiguration["stringFeatureComparisonIgnoreCase"] = True
+        return self
+
+    def compare_when_reference_missing(self) -> "EvaluationConfigurationBuilder":
+        """
+        The comparison will also be performed when no gold information is available
+        """
+        self.evaluationConfiguration["forceComparisonWhenGoldstandardMissing"] = True
+        return self
+
+    def set_parameter(self, name: str, value: str) -> "EvaluationConfigurationBuilder":
+        """
+        Set an arbitrary parameter specified by name to the given value
+        """
+        self.evaluationConfiguration[name] = value
+
+    def build(self) -> Dict:
+        return {"annotationEvaluationConfiguration": self.evaluationConfiguration}
+
+
 class Client:
     def __init__(
         self,
@@ -1414,6 +1559,8 @@ class Client:
         username: str = None,
         password: str = None,
         timeout: float = None,
+        polling_timeout: int = 30,
+        poll_delay: int = 5,
     ):
         """
         A Client is the base object for all calls within the Averbis Python API.
@@ -1431,8 +1578,13 @@ class Client:
         :param username:   If no API token is provided, then a username can be provided together with a password to generate a new API token
         :param password:   If no API token is provided, then a username can be provided together with a password to generate a new API token
         :param timeout:    An optional global timeout (in seconds) specifiying how long the Client is waiting for a server response (default=None).
+
+        :param polling_timeout: Timeout (in seconds) after which polling for specific status requests is no longer tried.
+        :param poll_delay: Time (in seconds) between requests to server for specific status.
         """
 
+        self._polling_timeout = polling_timeout
+        self._poll_delay = poll_delay
         self.__logger = logging.getLogger(self.__class__.__module__ + "." + self.__class__.__name__)
         self._api_token = api_token
         self._verify_ssl = verify_ssl
@@ -2870,3 +3022,58 @@ class Client:
             )
 
         return files
+
+    @experimental_api
+    def _evaluate(
+        self,
+        project: Project,
+        comparison_process: Process,
+        reference_process: Process,
+        process_name: str,
+        evaluation_configurations: List[Dict],
+        number_of_pipeline_instances: int,
+    ) -> Process:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Use {process}.evaluate_against() instead.
+        """
+        creation_response = self.__request_with_json_response(
+            "post",
+            f"/experimental/textanalysis/projects/{project.name}/documentCollections/{comparison_process.document_source_name}/evaluationProcesses",
+            params={
+                "comparisonProcessName": comparison_process.name,
+                "referenceProcessName": reference_process.name,
+                "processName": process_name,
+                "numberOfPipelineInstances": number_of_pipeline_instances,
+                "referenceDocumentCollectionName": reference_process.document_source_name,
+            },
+            json=evaluation_configurations,
+            headers={
+                HEADER_CONTENT_TYPE: MEDIA_TYPE_APPLICATION_JSON,
+                HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_JSON,
+            },
+        )
+        if creation_response["errorMessages"]:
+            raise Exception(
+                f"Error during evaluation process creation {creation_response['errorMessages']}"
+            )
+        self._ensure_process_created(project, process_name)
+
+        return Process(
+            project=project,
+            name=process_name,
+            document_source_name=comparison_process.document_source_name,
+        )
+
+    def _ensure_process_created(self, project: Project, process_name: str):
+        processes = self._list_processes(project)
+        total_time_slept = 0
+        while all(p.name != process_name for p in processes):
+            if total_time_slept > self._polling_timeout:
+                raise OperationTimeoutError(
+                    f"Process not found for ${total_time_slept}"
+                )
+            sleep(self._poll_delay)
+            total_time_slept += self._poll_delay
+            processes = self._list_processes(project)

@@ -24,6 +24,7 @@ from cassis import Cas, TypeSystem
 
 from averbis import Project, Pipeline
 from averbis.core import OperationNotSupported, MEDIA_TYPE_APPLICATION_XMI
+from averbis.core import EvaluationConfigurationBuilder
 from tests.fixtures import *
 from tests.utils import *
 
@@ -35,7 +36,6 @@ def process(client) -> Process:
 
 
 def test_delete(process, requests_mock):
-
     requests_mock.delete(
         f"{API_EXPERIMENTAL}/textanalysis/projects/{PROJECT_NAME}/"
         f"documentSources/{process.document_source_name}/processes/{process.name}",
@@ -47,7 +47,6 @@ def test_delete(process, requests_mock):
 
 
 def test_rerun(process, requests_mock):
-
     requests_mock.post(
         f"{API_EXPERIMENTAL}/textanalysis/projects/{PROJECT_NAME}/"
         f"documentSources/{process.document_source_name}/processes/{process.name}/reprocess",
@@ -243,7 +242,7 @@ def test_export_text_analysis_with_page_and_pagsize(client_version_6, requests_m
         page_size = int(request.qs["pageSize"][0])
         page = int(request.qs["page"][0])
         return_payload = [
-            {"documentName": f"Document ({page_size*(page-1)+k}).txt", "annotationDtos": []}
+            {"documentName": f"Document ({page_size * (page - 1) + k}).txt", "annotationDtos": []}
             for k in range(1, page_size + 1)
         ]
         return {
@@ -457,3 +456,54 @@ def test_add_text_analysis_result_cas_file(client_version_6, requests_mock):
             process.import_text_analysis_result(
                 Path(tmp_file.name), document_name, typesystem=typesystem
             )
+
+
+def test_evaluate(client_version_6, requests_mock):
+    project = client_version_6.get_project(PROJECT_NAME)
+    collection = project.get_document_collection(COLLECTION_NAME)
+    comparison_process = Process(project, "comparison-process", collection.name)
+    reference_process = Process(project, "reference-process", collection.name)
+    evaluation_process_name = "evaluation process"
+    requests_mock.post(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/documentCollections/{collection.name}/evaluationProcesses",
+        headers={"Content-Type": "application/json"},
+        json={"payload": None, "errorMessages": []}
+    )
+    list_processes_payload = [{
+        "processName": evaluation_process_name,
+        "documentSourceName": collection.name
+    }]
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/processes",
+        json={"payload": list_processes_payload, "errorMessages": []},
+    )
+    get_process_payload = {
+        "processName": evaluation_process_name,
+        "documentSourceName": collection.name,
+        "state": "IDLE",
+        "numberOfTotalDocuments": 3,
+        "numberOfSuccessfulDocuments": 3,
+        "numberOfUnsuccessfulDocuments": 0,
+        "errorMessages": [],
+        "comparisonProcessName": comparison_process.name,
+        "referenceProcessName": reference_process.name
+    }
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/documentSources/{collection.name}/processes/{evaluation_process_name}",
+        json={"payload": get_process_payload, "errorMessages": []},
+    )
+
+    clinical_section_keyword_config = EvaluationConfigurationBuilder("de.averbis.types.health.ClinicalSectionKeyword",
+                                                                     ["begin", "end"]).build()
+    medication_keyword_config = EvaluationConfigurationBuilder("de.averbis.types.health.Medication",
+                                                               ["begin", "end"]) \
+        .add_feature("drugs") \
+        .set_range_variance_partial_match(3) \
+        .build()
+    evaluation_process = comparison_process.evaluate_against(
+        reference_process,
+        evaluation_process_name,
+        [clinical_section_keyword_config, medication_keyword_config])
+
+    assert evaluation_process.name == evaluation_process_name
+    assert evaluation_process.document_source_name == collection.name
