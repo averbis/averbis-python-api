@@ -229,7 +229,7 @@ def test_delete_project(client_version_5):
         client._delete_project(PROJECT_NAME)
 
 
-def test_delete_project(client_version_6, requests_mock):
+def test_delete_project_v6(client_version_6, requests_mock):
     project = client_version_6.get_project(PROJECT_NAME)
     requests_mock.delete(
         f"{API_EXPERIMENTAL}/projects/{project.name}",
@@ -704,42 +704,6 @@ def test_analyse_texts_with_some_working_and_some_failing(client_version_5, requ
 
     assert results[0].successful() is True
     assert results[1].successful() is False
-
-
-def test_analyse_html(client, requests_mock):
-    requests_mock.post(
-        f"{API_BASE}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/analyseHtml",
-        headers={"Content-Type": "application/json"},
-        json={
-            "payload": [
-                {
-                    "begin": 28,
-                    "end": 40,
-                    "type": "de.averbis.types.health.Diagnosis",
-                    "coveredText": "Appendizitis",
-                    # ... truncated ...
-                },
-                {
-                    "begin": 0,
-                    "end": 41,
-                    "type": "de.averbis.types.health.PatientInformation",
-                    "coveredText": "Der Patient leidet an einer Appendizitis.",
-                    # ... truncated ...
-                },
-                # ... truncated ...
-            ],
-            "errorMessages": [],
-        },
-    )
-
-    response = client._analyse_html(
-        PROJECT_NAME,
-        "discharge",
-        "<html><body>Der Patient leidet an einer Appendizitis.</body></html>",
-        language="de",
-    )
-
-    assert response[0]["coveredText"] == "Appendizitis"
 
 
 def test_analyse_html(client, requests_mock):

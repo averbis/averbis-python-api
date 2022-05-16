@@ -32,7 +32,7 @@ from io import BytesIO, IOBase, BufferedReader
 from json import JSONDecodeError
 
 from time import sleep, time
-from typing import List, Union, IO, Iterable, Dict, Iterator, Optional
+from typing import List, Union, IO, Iterable, Dict, Iterator, Optional, Any
 from pathlib import Path
 import requests
 import mimetypes
@@ -1449,9 +1449,10 @@ class EvaluationConfigurationBuilder:
         :param features_to_compare:   The list of features that should be used in the comparison, e.g., begin, end,
             uniqueID.
         """
-        self.evaluationConfiguration = dict()
+        self.evaluationConfiguration: Dict[str, Any] = dict()
         self.evaluationConfiguration["compareAnnotationRule"] = comparison_annotation_type_name
-        self.evaluationConfiguration["goldAnnotationRule"] = reference_annotation_type_name
+        if reference_annotation_type_name:
+            self.evaluationConfiguration["goldAnnotationRule"] = reference_annotation_type_name
         if reference_annotation_type_name is None:
             self.evaluationConfiguration["goldAnnotationRule"] = comparison_annotation_type_name
         self.evaluationConfiguration["featuresToBeCompared"] = features_to_compare
@@ -1544,6 +1545,7 @@ class EvaluationConfigurationBuilder:
         Set an arbitrary parameter specified by name to the given value
         """
         self.evaluationConfiguration[name] = value
+        return self
 
     def build(self) -> Dict:
         return {"annotationEvaluationConfiguration": self.evaluationConfiguration}
