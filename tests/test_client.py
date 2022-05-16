@@ -226,7 +226,7 @@ def test_exists_project(client, requests_mock):
 
 def test_delete_project(client_version_5):
     with pytest.raises(OperationNotSupported):
-        client._delete_project(PROJECT_NAME)
+        client_version_5._delete_project(PROJECT_NAME)
 
 
 def test_delete_project_v6(client_version_6, requests_mock):
