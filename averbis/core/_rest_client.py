@@ -32,7 +32,7 @@ from io import BytesIO, IOBase, BufferedReader
 from json import JSONDecodeError
 
 from time import sleep, time
-from typing import List, Union, IO, Iterable, Dict, Iterator, Optional, Any
+from typing import List, Union, IO, Iterable, Dict, Iterator, Optional
 from pathlib import Path
 import requests
 import mimetypes
@@ -838,7 +838,7 @@ class Process:
         self,
         reference_process: "Process",
         process_name: str,
-        evaluation_configurations: List[Dict],
+        evaluation_configurations: List["EvaluationConfiguration"],
         number_of_pipeline_instances: int = 1,
     ) -> "Process":
         """
@@ -1428,7 +1428,7 @@ class Project:
         return self.client._upload_resources(zip_file, project_name=self.name)["files"]
 
 
-class EvaluationConfigurationBuilder:
+class EvaluationConfiguration:
     def __init__(
         self,
         comparison_annotation_type_name: str,
@@ -1436,12 +1436,12 @@ class EvaluationConfigurationBuilder:
         reference_annotation_type_name: str = None,
     ):
         """
-        Convenience builder to create a configuration for the evaluation of one annotation type
+        Configuration for the evaluation of one annotation type
 
         :param comparison_annotation_type_name:   fully qualified name of the annotation that will be compared;
             can also be a rule of format fully_qualified_name[feature1=value1&amp;&amp;feature2=value2...]
             can be extended by another rule of the same type, meaning that an annotation must be contained, e.g:
-            fully_qualified_name[feature1=value1&amp;&amp;feature2=value2...] &lt;
+            fully_qualified_name[feature1=value1&amp;&amp;feature2=value2...] >
             fully_qualified_name[feature1=value1&amp;&amp;feature2=value2...]
         :param reference_annotation_type_name:   fully qualified name of the annotation in the reference text analysis
             result that other annotations should be compared to; can also be a rule (see annotation_type_name above).
@@ -1449,106 +1449,53 @@ class EvaluationConfigurationBuilder:
         :param features_to_compare:   The list of features that should be used in the comparison, e.g., begin, end,
             uniqueID.
         """
-        self.evaluationConfiguration: Dict[str, Any] = dict()
-        self.evaluationConfiguration["compareAnnotationRule"] = comparison_annotation_type_name
+        self.partialMatchCriteria: Union[str, None] = None
+        self.partialMatchArguments: List[str] = []
+        # Features to be excluded from deep feature structure comparisons. These are regular
+        # expressions which match against the fully qualified feature name (type:feature).
+        self.excludeFeaturePatterns: List[str] = []
+        # Regular expression specifying character sequences that should be ignored when
+        # values of string features are compared
+        self.stringFeatureComparisonIgnorePattern = None
+        self.compareAnnotationRule = comparison_annotation_type_name
         if reference_annotation_type_name:
-            self.evaluationConfiguration["goldAnnotationRule"] = reference_annotation_type_name
+            self.goldAnnotationRule = reference_annotation_type_name
         if reference_annotation_type_name is None:
-            self.evaluationConfiguration["goldAnnotationRule"] = comparison_annotation_type_name
-        self.evaluationConfiguration["featuresToBeCompared"] = features_to_compare
-        self.evaluationConfiguration["allowMultipleMatches"] = False
+            self.goldAnnotationRule = comparison_annotation_type_name
+        self.featuresToBeCompared = features_to_compare
+        self.allowMultipleMatches = False
+        self.stringFeatureComparisonIgnoreCase = False
+        self.forceComparisonWhenGoldstandardMissing = False
 
-    def add_feature(self, feature_name: str) -> "EvaluationConfigurationBuilder":
-        if "featuresToBeCompared" not in self.evaluationConfiguration:
-            self.evaluationConfiguration["featuresToBeCompared"] = [feature_name]
-            return self
-        self.evaluationConfiguration["featuresToBeCompared"].append(feature_name)
-        return self
+    def add_feature(self, feature_name: str) -> None:
+        self.featuresToBeCompared.append(feature_name)
 
-    def set_overlap_partial_match(self) -> "EvaluationConfigurationBuilder":
+    def set_overlap_partial_match(self) -> None:
         """
         Overlapping annotations are used to calculate partial positives.  Normally, these will replace a FalsePositive
         or FalseNegative if a partial match is identified.
         """
-        self.evaluationConfiguration["partialMatchCriteria"] = "OVERLAP_MATCH"
-        return self
+        self.partialMatchCriteria = "OVERLAP_MATCH"
 
     def set_range_variance_partial_match(
         self, range_variance: int
-    ) -> "EvaluationConfigurationBuilder":
+    ) -> None:
         """
         Annotations that are offset by the given variance are used to calculate partial positives.
         Normally, these will replace a FalsePositive or FalseNegative if a partial match is identified.
         """
-        self.evaluationConfiguration["partialMatchCriteria"] = "RANGE_VARIANCE_MATCH"
-        self.evaluationConfiguration["partialMatchArguments"] = [str(range_variance)]
-        return self
+        self.partialMatchCriteria = "RANGE_VARIANCE_MATCH"
+        self.partialMatchArguments = [str(range_variance)]
 
     def set_enclosing_annotation_partial_match(
         self, enclosing_annotation_type_name: str
-    ) -> "EvaluationConfigurationBuilder":
+    ) -> None:
         """
         Annotations that are covered by the given annotation type are used to calculate partial positives.
         Normally, these will replace a FalsePositive or FalseNegative if a partial match is identified.
         """
-        self.evaluationConfiguration["partialMatchCriteria"] = "ENCLOSING_ANNOTATION_MATCH"
-        self.evaluationConfiguration["partialMatchArguments"] = [enclosing_annotation_type_name]
-        return self
-
-    def allow_multiple_matches(self) -> "EvaluationConfigurationBuilder":
-        """
-        The annotations may match more than one annotation
-        """
-        self.evaluationConfiguration["allowMultipleMatches"] = True
-        return self
-
-    def add_exclude_feature_pattern(
-        self, exclude_pattern: str
-    ) -> "EvaluationConfigurationBuilder":
-        """
-        Add regular expression regarding the fully qualified feature name of features that should be excluded
-        from deep feature structure comparison.
-        """
-        if "excludeFeaturePatterns" not in self.evaluationConfiguration:
-            self.evaluationConfiguration["excludeFeaturePatterns"] = [exclude_pattern]
-            return self
-        if exclude_pattern not in self.evaluationConfiguration["excludeFeaturePatterns"]:
-            self.evaluationConfiguration["excludeFeaturePatterns"].append(exclude_pattern)
-        return self
-
-    def set_ignore_feature_characters_pattern(
-        self, ignore_pattern: str
-    ) -> "EvaluationConfigurationBuilder":
-        """
-        Regular expression specifying character sequences that should be ignored when
-        values of string features are compared
-        """
-        self.evaluationConfiguration["stringFeatureComparisonIgnorePattern"] = ignore_pattern
-        return self
-
-    def ignore_feature_case(self) -> "EvaluationConfigurationBuilder":
-        """
-        Ignore the case when values of string features are compared
-        """
-        self.evaluationConfiguration["stringFeatureComparisonIgnoreCase"] = True
-        return self
-
-    def compare_when_reference_missing(self) -> "EvaluationConfigurationBuilder":
-        """
-        The comparison will also be performed when no gold information is available
-        """
-        self.evaluationConfiguration["forceComparisonWhenGoldstandardMissing"] = True
-        return self
-
-    def set_parameter(self, name: str, value: str) -> "EvaluationConfigurationBuilder":
-        """
-        Set an arbitrary parameter specified by name to the given value
-        """
-        self.evaluationConfiguration[name] = value
-        return self
-
-    def build(self) -> Dict:
-        return {"annotationEvaluationConfiguration": self.evaluationConfiguration}
+        self.partialMatchCriteria = "ENCLOSING_ANNOTATION_MATCH"
+        self.partialMatchArguments = [enclosing_annotation_type_name]
 
 
 class Client:
@@ -3032,7 +2979,7 @@ class Client:
         comparison_process: Process,
         reference_process: Process,
         process_name: str,
-        evaluation_configurations: List[Dict],
+        evaluation_configurations: List["EvaluationConfiguration"],
         number_of_pipeline_instances: int,
     ) -> Process:
         """
@@ -3050,7 +2997,7 @@ class Client:
                 "numberOfPipelineInstances": number_of_pipeline_instances,
                 "referenceDocumentCollectionName": reference_process.document_source_name,
             },
-            json=evaluation_configurations,
+            json=[vars(evaluation_configuration) for evaluation_configuration in evaluation_configurations],
             headers={
                 HEADER_CONTENT_TYPE: MEDIA_TYPE_APPLICATION_JSON,
                 HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_JSON,

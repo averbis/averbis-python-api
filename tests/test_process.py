@@ -23,8 +23,7 @@ from pathlib import Path
 from cassis import Cas, TypeSystem
 
 from averbis import Project, Pipeline
-from averbis.core import OperationNotSupported, MEDIA_TYPE_APPLICATION_XMI
-from averbis.core import EvaluationConfigurationBuilder
+from averbis.core import OperationNotSupported, MEDIA_TYPE_APPLICATION_XMI, EvaluationConfiguration
 from tests.fixtures import *
 from tests.utils import *
 
@@ -493,13 +492,11 @@ def test_evaluate(client_version_6, requests_mock):
         json={"payload": get_process_payload, "errorMessages": []},
     )
 
-    clinical_section_keyword_config = EvaluationConfigurationBuilder("de.averbis.types.health.ClinicalSectionKeyword",
-                                                                     ["begin", "end"]).build()
-    medication_keyword_config = EvaluationConfigurationBuilder("de.averbis.types.health.Medication",
-                                                               ["begin", "end"]) \
-        .add_feature("drugs") \
-        .set_range_variance_partial_match(3) \
-        .build()
+    clinical_section_keyword_config = EvaluationConfiguration("de.averbis.types.health.ClinicalSectionKeyword",
+                                                                     ["begin", "end"])
+    medication_keyword_config = EvaluationConfiguration("de.averbis.types.health.Medication", ["begin", "end"])
+    medication_keyword_config.add_feature("drugs")
+    medication_keyword_config.set_range_variance_partial_match(3)
     evaluation_process = comparison_process.evaluate_against(
         reference_process,
         evaluation_process_name,
