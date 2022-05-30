@@ -1787,7 +1787,11 @@ class Client:
         Returns a list of the projects.
         """
 
-        response = self.__request_with_json_response("get", f"/experimental/projects")
+        build_version = self.get_build_info()["specVersion"]
+        if self._is_higher_equal_version(build_version, 6, 11):
+            response = self.__request_with_json_response("get", f"/v1/projects")
+        else:
+            response = self.__request_with_json_response("get", f"/experimental/projects")
         return response["payload"]
 
     @experimental_api
