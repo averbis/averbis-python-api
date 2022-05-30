@@ -374,6 +374,13 @@ def test_export_text_analysis_to_cas_v6(client_version_6, requests_mock):
 
     requests_mock.get(
         f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/documentCollections/{collection.name}"
+        f"/processes/{process.name}/textAnalysisResult",
+        headers={"Content-Type": "application/vnd.uima.cas+xmi"},
+        status_code=405
+    )
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/documentCollections/{collection.name}"
         f"/documents/{document_id}/processes/{process.name}/exportTextAnalysisResult",
         headers={"Content-Type": "application/vnd.uima.cas+xmi"},
         text=expected_xmi,
