@@ -184,6 +184,7 @@ def test_get_project(client):
 
 
 def test_list_projects(client, requests_mock):
+
     def callback(request, _):
         return {
             "payload": [
@@ -194,10 +195,34 @@ def test_list_projects(client, requests_mock):
         }
 
     requests_mock.get(
+        f"{API_BASE}/projects", headers={"Content-Type": "application/json"}, status_code=405
+    )
+
+    requests_mock.get(
         f"{API_EXPERIMENTAL}/projects", headers={"Content-Type": "application/json"}, json=callback
     )
 
     project_list = client.list_projects()
+
+    assert project_list[0]["name"] == "Jumble"
+    assert project_list[1]["name"] == "Bumble"
+
+
+def test_list_projects_v6_11(client_version_6_11, requests_mock):
+    def callback(request, _):
+        return {
+            "payload": [
+                {"name": "Jumble", "description": ""},
+                {"name": "Bumble", "description": ""},
+            ],
+            "errorMessages": [],
+        }
+
+    requests_mock.get(
+        f"{API_BASE}/projects", headers={"Content-Type": "application/json"}, json=callback
+    )
+
+    project_list = client_version_6_11.list_projects()
 
     assert project_list[0]["name"] == "Jumble"
     assert project_list[1]["name"] == "Bumble"
@@ -214,10 +239,12 @@ def test_exists_project(client, requests_mock):
         }
 
     requests_mock.get(
-        f"{API_EXPERIMENTAL}/projects", headers={"Content-Type": "application/json"}, json=callback
+        f"{API_BASE}/projects", headers={"Content-Type": "application/json"}, status_code=405
     )
 
-    project_list = client.list_projects()
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/projects", headers={"Content-Type": "application/json"}, json=callback
+    )
 
     assert client.exists_project("Jumble") is True
     assert client.exists_project("Bumble") is True
@@ -226,10 +253,10 @@ def test_exists_project(client, requests_mock):
 
 def test_delete_project(client_version_5):
     with pytest.raises(OperationNotSupported):
-        client._delete_project(PROJECT_NAME)
+        client_version_5._delete_project(PROJECT_NAME)
 
 
-def test_delete_project(client_version_6, requests_mock):
+def test_delete_project_v6(client_version_6, requests_mock):
     project = client_version_6.get_project(PROJECT_NAME)
     requests_mock.delete(
         f"{API_EXPERIMENTAL}/projects/{project.name}",
