@@ -494,9 +494,9 @@ def test_evaluate(client_version_6, requests_mock):
 
     clinical_section_keyword_config = EvaluationConfiguration("de.averbis.types.health.ClinicalSectionKeyword",
                                                                      ["begin", "end"])
-    medication_keyword_config = EvaluationConfiguration("de.averbis.types.health.Medication", ["begin", "end"])
-    medication_keyword_config.add_feature("drugs")
-    medication_keyword_config.set_range_variance_partial_match(3)
+    medication_keyword_config = EvaluationConfiguration("de.averbis.types.health.Medication", ["begin", "end"])\
+        .add_feature("drugs")\
+        .use_range_variance_partial_match(3)
     evaluation_process = comparison_process.evaluate_against(
         reference_process,
         evaluation_process_name,

@@ -1467,35 +1467,39 @@ class EvaluationConfiguration:
         self.stringFeatureComparisonIgnoreCase = False
         self.forceComparisonWhenGoldstandardMissing = False
 
-    def add_feature(self, feature_name: str) -> None:
+    def add_feature(self, feature_name: str) -> "EvaluationConfiguration":
         self.featuresToBeCompared.append(feature_name)
+        return self
 
-    def set_overlap_partial_match(self) -> None:
+    def use_overlap_partial_match(self) -> "EvaluationConfiguration":
         """
         Overlapping annotations are used to calculate partial positives.  Normally, these will replace a FalsePositive
         or FalseNegative if a partial match is identified.
         """
         self.partialMatchCriteria = "OVERLAP_MATCH"
+        return self
 
-    def set_range_variance_partial_match(
+    def use_range_variance_partial_match(
         self, range_variance: int
-    ) -> None:
+    ) -> "EvaluationConfiguration":
         """
         Annotations that are offset by the given variance are used to calculate partial positives.
         Normally, these will replace a FalsePositive or FalseNegative if a partial match is identified.
         """
         self.partialMatchCriteria = "RANGE_VARIANCE_MATCH"
         self.partialMatchArguments = [str(range_variance)]
+        return self
 
-    def set_enclosing_annotation_partial_match(
+    def use_enclosing_annotation_partial_match(
         self, enclosing_annotation_type_name: str
-    ) -> None:
+    ) -> "EvaluationConfiguration":
         """
         Annotations that are covered by the given annotation type are used to calculate partial positives.
         Normally, these will replace a FalsePositive or FalseNegative if a partial match is identified.
         """
         self.partialMatchCriteria = "ENCLOSING_ANNOTATION_MATCH"
         self.partialMatchArguments = [enclosing_annotation_type_name]
+        return self
 
 
 class Client:
