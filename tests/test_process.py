@@ -469,7 +469,7 @@ def test_evaluate(client_version_6, requests_mock):
     collection = project.get_document_collection(COLLECTION_NAME)
     comparison_process = Process(project, "comparison-process", collection.name)
     reference_process = Process(project, "reference-process", collection.name)
-    evaluation_process_name = "evaluation process"
+    evaluation_process_name = "evaluation_process"
     requests_mock.post(
         f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/documentCollections/{collection.name}/evaluationProcesses",
         headers={"Content-Type": "application/json"},
