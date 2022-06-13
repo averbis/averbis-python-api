@@ -1829,16 +1829,32 @@ class Client:
             self._build_info = response["payload"]
         return self._build_info
 
-    def create_project(self, name: str, description: str = "") -> Project:
+    def create_project(self, name: str, description: str = "", exist_ok=False) -> Project:
         """
         Creates a new project.
 
+        :param name: The name of the new project
+        :param description: The description of the new project
+        :param exist_ok: If exist_ok is False (the default), a ValueError is raised if the project already exists. If
+        exist_ok is True and the project exists, then the existing project is returned.
         :return: The project.
         """
-        response = self.__request_with_json_response(
-            "post", f"/v1/projects", params={"name": name, "description": description}
-        )
-        return Project(self, response["payload"]["name"])
+
+        if self.exists_project(name):
+            if exist_ok:
+                project = self.get_project(name)
+            else:
+                raise ValueError(
+                    f"This project '{name}' already exists. You can pass the flag exist_ok=True to create_project to obtain the existing project."
+                )
+        else:
+            response = self.__request_with_json_response(
+                "post",
+                f"/v1/projects",
+                params={"name": name, "description": description},
+            )
+            project = Project(self, response["payload"]["name"])
+        return project
 
     def get_project(self, name: str) -> Project:
         """

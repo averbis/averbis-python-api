@@ -158,7 +158,7 @@ def test_get_build_info(client, requests_mock):
 
 
 def test_create_project(client, requests_mock):
-    def callback(request, _):
+    def create_project_callback(request, _):
         return {
             "payload": {
                 "id": 93498,
@@ -169,12 +169,32 @@ def test_create_project(client, requests_mock):
         }
 
     requests_mock.post(
-        f"{API_BASE}/projects", headers={"Content-Type": "application/json"}, json=callback
+        f"{API_BASE}/projects",
+        headers={"Content-Type": "application/json"},
+        json=create_project_callback,
+    )
+
+    existing_project_name = "test_project"
+    requests_mock.get(
+        f"{API_BASE}/projects",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": [
+                {"name": existing_project_name, "description": ""},
+                {"name": "intern", "description": ""},
+            ],
+            "errorMessages": [],
+        },
     )
 
     project = client.create_project(PROJECT_NAME, "Project for load testing")
-
     assert project.name == PROJECT_NAME
+
+    with pytest.raises(ValueError):
+        client.create_project(existing_project_name)
+
+    project = client.create_project(existing_project_name, exist_ok=True)
+    assert project.name == existing_project_name
 
 
 def test_get_project(client):
