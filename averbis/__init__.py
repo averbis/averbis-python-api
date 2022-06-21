@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021 Averbis GmbH.
+# Copyright (c) 2022 Averbis GmbH.
 #
 # This file is part of Averbis Python API.
 # See https://www.averbis.com for further info.
@@ -17,7 +17,8 @@
 # limitations under the License.
 #
 #
-from .core import Client, Project, Pipeline, Result, Terminology, DocumentCollection, Pear, Process
+from .core import Client, Project, Pipeline, Result, Terminology, DocumentCollection, Pear, Process, \
+    EvaluationConfiguration
 
 __all__ = [
     "Client",
@@ -25,6 +26,7 @@ __all__ = [
     "Pipeline",
     "Result",
     "Terminology",
+    "EvaluationConfiguration",
     "DocumentCollection",
     "Pear",
     "Process",
