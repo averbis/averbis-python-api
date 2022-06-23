@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021 Averbis GmbH.
+# Copyright (c) 2022 Averbis GmbH.
 #
 # This file is part of Averbis Python API.
 # See https://www.averbis.com for further info.
@@ -17,4 +17,4 @@
 # limitations under the License.
 #
 #
-__version__ = "0.9.0"
+__version__ = "0.10.0dev"
