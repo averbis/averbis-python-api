@@ -80,6 +80,15 @@ def requests_mock_id6_7(requests_mock):
     )
 
 
+@pytest.fixture()
+def requests_mock_id6_11(requests_mock):
+    requests_mock.get(
+        f"{URL_BASE_ID + '/rest/v1'}/buildInfo",
+        headers={"Content-Type": "application/json"},
+        json={"payload": {"specVersion": "6.11.0", "buildNumber": ""}, "errorMessages": []},
+    )
+
+
 ## Different clients based on the above platforms
 
 # Tests that should work for all platform versions
@@ -105,7 +114,13 @@ def client_version_6(requests_mock_id6):
     return Client(URL_BASE_ID, api_token=TEST_API_TOKEN)
 
 
-# Tests that should work in platform version 6.7
+# Tests that should work in version 6.7
 @pytest.fixture()
 def client_version_6_7(requests_mock_id6_7):
+    return Client(URL_BASE_ID, api_token=TEST_API_TOKEN)
+
+
+# Tests that should work in version 6.11
+@pytest.fixture()
+def client_version_6_11(requests_mock_id6_11):
     return Client(URL_BASE_ID, api_token=TEST_API_TOKEN)

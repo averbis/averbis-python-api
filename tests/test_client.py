@@ -158,7 +158,7 @@ def test_get_build_info(client, requests_mock):
 
 
 def test_create_project(client, requests_mock):
-    def callback(request, _):
+    def create_project_callback(request, _):
         return {
             "payload": {
                 "id": 93498,
@@ -169,12 +169,32 @@ def test_create_project(client, requests_mock):
         }
 
     requests_mock.post(
-        f"{API_BASE}/projects", headers={"Content-Type": "application/json"}, json=callback
+        f"{API_BASE}/projects",
+        headers={"Content-Type": "application/json"},
+        json=create_project_callback,
+    )
+
+    existing_project_name = "test_project"
+    requests_mock.get(
+        f"{API_BASE}/projects",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": [
+                {"name": existing_project_name, "description": ""},
+                {"name": "intern", "description": ""},
+            ],
+            "errorMessages": [],
+        },
     )
 
     project = client.create_project(PROJECT_NAME, "Project for load testing")
-
     assert project.name == PROJECT_NAME
+
+    with pytest.raises(ValueError):
+        client.create_project(existing_project_name)
+
+    project = client.create_project(existing_project_name, exist_ok=True)
+    assert project.name == existing_project_name
 
 
 def test_get_project(client):
@@ -184,6 +204,7 @@ def test_get_project(client):
 
 
 def test_list_projects(client, requests_mock):
+
     def callback(request, _):
         return {
             "payload": [
@@ -194,10 +215,34 @@ def test_list_projects(client, requests_mock):
         }
 
     requests_mock.get(
+        f"{API_BASE}/projects", headers={"Content-Type": "application/json"}, status_code=405
+    )
+
+    requests_mock.get(
         f"{API_EXPERIMENTAL}/projects", headers={"Content-Type": "application/json"}, json=callback
     )
 
     project_list = client.list_projects()
+
+    assert project_list[0]["name"] == "Jumble"
+    assert project_list[1]["name"] == "Bumble"
+
+
+def test_list_projects_v6_11(client_version_6_11, requests_mock):
+    def callback(request, _):
+        return {
+            "payload": [
+                {"name": "Jumble", "description": ""},
+                {"name": "Bumble", "description": ""},
+            ],
+            "errorMessages": [],
+        }
+
+    requests_mock.get(
+        f"{API_BASE}/projects", headers={"Content-Type": "application/json"}, json=callback
+    )
+
+    project_list = client_version_6_11.list_projects()
 
     assert project_list[0]["name"] == "Jumble"
     assert project_list[1]["name"] == "Bumble"
@@ -214,10 +259,12 @@ def test_exists_project(client, requests_mock):
         }
 
     requests_mock.get(
-        f"{API_EXPERIMENTAL}/projects", headers={"Content-Type": "application/json"}, json=callback
+        f"{API_BASE}/projects", headers={"Content-Type": "application/json"}, status_code=405
     )
 
-    project_list = client.list_projects()
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/projects", headers={"Content-Type": "application/json"}, json=callback
+    )
 
     assert client.exists_project("Jumble") is True
     assert client.exists_project("Bumble") is True
@@ -226,10 +273,10 @@ def test_exists_project(client, requests_mock):
 
 def test_delete_project(client_version_5):
     with pytest.raises(OperationNotSupported):
-        client._delete_project(PROJECT_NAME)
+        client_version_5._delete_project(PROJECT_NAME)
 
 
-def test_delete_project(client_version_6, requests_mock):
+def test_delete_project_v6(client_version_6, requests_mock):
     project = client_version_6.get_project(PROJECT_NAME)
     requests_mock.delete(
         f"{API_EXPERIMENTAL}/projects/{project.name}",
@@ -704,42 +751,6 @@ def test_analyse_texts_with_some_working_and_some_failing(client_version_5, requ
 
     assert results[0].successful() is True
     assert results[1].successful() is False
-
-
-def test_analyse_html(client, requests_mock):
-    requests_mock.post(
-        f"{API_BASE}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/analyseHtml",
-        headers={"Content-Type": "application/json"},
-        json={
-            "payload": [
-                {
-                    "begin": 28,
-                    "end": 40,
-                    "type": "de.averbis.types.health.Diagnosis",
-                    "coveredText": "Appendizitis",
-                    # ... truncated ...
-                },
-                {
-                    "begin": 0,
-                    "end": 41,
-                    "type": "de.averbis.types.health.PatientInformation",
-                    "coveredText": "Der Patient leidet an einer Appendizitis.",
-                    # ... truncated ...
-                },
-                # ... truncated ...
-            ],
-            "errorMessages": [],
-        },
-    )
-
-    response = client._analyse_html(
-        PROJECT_NAME,
-        "discharge",
-        "<html><body>Der Patient leidet an einer Appendizitis.</body></html>",
-        language="de",
-    )
-
-    assert response[0]["coveredText"] == "Appendizitis"
 
 
 def test_analyse_html(client, requests_mock):

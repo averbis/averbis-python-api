@@ -834,6 +834,30 @@ class Process:
         return document_collection.get_process(process_name=process_name)
 
     @experimental_api
+    def evaluate_against(
+        self,
+        reference_process: "Process",
+        process_name: str,
+        evaluation_configurations: List["EvaluationConfiguration"],
+        number_of_pipeline_instances: int = 1,
+    ) -> "Process":
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Starts the evaluation of this process in comparison to the given one as a new process.
+        Returns the new evaluation process.
+        """
+        # noinspection PyProtectedMember
+        return self.project.client._evaluate(
+            self.project,
+            self,
+            reference_process,
+            process_name,
+            evaluation_configurations,
+            number_of_pipeline_instances,
+        )
+
+    @experimental_api
     def rerun(self):
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -906,6 +930,7 @@ class Process:
                 "Text analysis export is not supported for platform version 5.x, it is only supported from 6.x onwards."
             )
         document_collection = self.project.get_document_collection(self.document_source_name)
+        # noinspection PyProtectedMember
         document_identifier = document_collection._get_document_identifier(document_name)
         # noinspection PyProtectedMember
         type_system = load_typesystem(
@@ -1404,6 +1429,80 @@ class Project:
         return self.client._upload_resources(zip_file, project_name=self.name)["files"]
 
 
+class EvaluationConfiguration:
+    def __init__(
+        self,
+        comparison_annotation_type_name: str,
+        features_to_compare: List[str],
+        reference_annotation_type_name: str = None,
+    ):
+        """
+        Configuration for the evaluation of one annotation type
+
+        :param comparison_annotation_type_name:   fully qualified name of the annotation that will be compared;
+            can also be a rule of format fully_qualified_name[feature1=value1&amp;&amp;feature2=value2...]
+            can be extended by another rule of the same type, meaning that an annotation must be contained, e.g:
+            fully_qualified_name[feature1=value1&amp;&amp;feature2=value2...] >
+            fully_qualified_name[feature1=value1&amp;&amp;feature2=value2...]
+        :param reference_annotation_type_name:   fully qualified name of the annotation in the reference text analysis
+            result that other annotations should be compared to; can also be a rule (see annotation_type_name above).
+            If not given, the same annotation as the comparison annotation is used
+        :param features_to_compare:   The list of features that should be used in the comparison, e.g., begin, end,
+            uniqueID.
+        """
+        self.partialMatchCriteria: Union[str, None] = None
+        self.partialMatchArguments: List[str] = []
+        # Features to be excluded from deep feature structure comparisons. These are regular
+        # expressions which match against the fully qualified feature name (type:feature).
+        self.excludeFeaturePatterns: List[str] = []
+        # Regular expression specifying character sequences that should be ignored when
+        # values of string features are compared
+        self.stringFeatureComparisonIgnorePattern = None
+        self.compareAnnotationRule = comparison_annotation_type_name
+        if reference_annotation_type_name:
+            self.goldAnnotationRule = reference_annotation_type_name
+        if reference_annotation_type_name is None:
+            self.goldAnnotationRule = comparison_annotation_type_name
+        self.featuresToBeCompared = features_to_compare
+        self.allowMultipleMatches = False
+        self.stringFeatureComparisonIgnoreCase = False
+        self.forceComparisonWhenGoldstandardMissing = False
+
+    def add_feature(self, feature_name: str) -> "EvaluationConfiguration":
+        self.featuresToBeCompared.append(feature_name)
+        return self
+
+    def use_overlap_partial_match(self) -> "EvaluationConfiguration":
+        """
+        Overlapping annotations are used to calculate partial positives.  Normally, these will replace a FalsePositive
+        or FalseNegative if a partial match is identified.
+        """
+        self.partialMatchCriteria = "OVERLAP_MATCH"
+        return self
+
+    def use_range_variance_partial_match(
+        self, range_variance: int
+    ) -> "EvaluationConfiguration":
+        """
+        Annotations that are offset by the given variance are used to calculate partial positives.
+        Normally, these will replace a FalsePositive or FalseNegative if a partial match is identified.
+        """
+        self.partialMatchCriteria = "RANGE_VARIANCE_MATCH"
+        self.partialMatchArguments = [str(range_variance)]
+        return self
+
+    def use_enclosing_annotation_partial_match(
+        self, enclosing_annotation_type_name: str
+    ) -> "EvaluationConfiguration":
+        """
+        Annotations that are covered by the given annotation type are used to calculate partial positives.
+        Normally, these will replace a FalsePositive or FalseNegative if a partial match is identified.
+        """
+        self.partialMatchCriteria = "ENCLOSING_ANNOTATION_MATCH"
+        self.partialMatchArguments = [enclosing_annotation_type_name]
+        return self
+
+
 class Client:
     def __init__(
         self,
@@ -1414,6 +1513,8 @@ class Client:
         username: str = None,
         password: str = None,
         timeout: float = None,
+        polling_timeout: int = 30,
+        poll_delay: int = 5,
     ):
         """
         A Client is the base object for all calls within the Averbis Python API.
@@ -1431,8 +1532,13 @@ class Client:
         :param username:   If no API token is provided, then a username can be provided together with a password to generate a new API token
         :param password:   If no API token is provided, then a username can be provided together with a password to generate a new API token
         :param timeout:    An optional global timeout (in seconds) specifiying how long the Client is waiting for a server response (default=None).
+
+        :param polling_timeout: Timeout (in seconds) after which polling for specific status requests is no longer tried.
+        :param poll_delay: Time (in seconds) between requests to server for specific status.
         """
 
+        self._polling_timeout = polling_timeout
+        self._poll_delay = poll_delay
         self.__logger = logging.getLogger(self.__class__.__module__ + "." + self.__class__.__name__)
         self._api_token = api_token
         self._verify_ssl = verify_ssl
@@ -1723,16 +1829,32 @@ class Client:
             self._build_info = response["payload"]
         return self._build_info
 
-    def create_project(self, name: str, description: str = "") -> Project:
+    def create_project(self, name: str, description: str = "", exist_ok=False) -> Project:
         """
         Creates a new project.
 
+        :param name: The name of the new project
+        :param description: The description of the new project
+        :param exist_ok: If exist_ok is False (the default), a ValueError is raised if the project already exists. If
+        exist_ok is True and the project exists, then the existing project is returned.
         :return: The project.
         """
-        response = self.__request_with_json_response(
-            "post", f"/v1/projects", params={"name": name, "description": description}
-        )
-        return Project(self, response["payload"]["name"])
+
+        if self.exists_project(name):
+            if exist_ok:
+                project = self.get_project(name)
+            else:
+                raise ValueError(
+                    f"This project '{name}' already exists. You can pass the flag exist_ok=True to create_project to obtain the existing project."
+                )
+        else:
+            response = self.__request_with_json_response(
+                "post",
+                f"/v1/projects",
+                params={"name": name, "description": description},
+            )
+            project = Project(self, response["payload"]["name"])
+        return project
 
     def get_project(self, name: str) -> Project:
         """
@@ -1779,15 +1901,18 @@ class Client:
         zip_file = self._create_zip_io(source, path_in_zip)
         return self._upload_resources(zip_file)["files"]
 
-    @experimental_api
     def list_projects(self) -> dict:
         """
-        HIGHLY EXPERIMENTAL API - may soon change or disappear.
-
         Returns a list of the projects.
         """
 
-        response = self.__request_with_json_response("get", f"/experimental/projects")
+        try:
+            response = self.__request_with_json_response("get", f"/v1/projects")
+        except RequestException as e:
+            # in HD 6 below 6.11.0 the following url is used
+            if '405' not in e.args[0]:
+                raise e
+            response = self.__request_with_json_response("get", f"/experimental/projects")
         return response["payload"]
 
     @experimental_api
@@ -2249,7 +2374,7 @@ class Client:
 
         process_name = self.__process_name(process)
 
-        if self._is_higher_equal_version(build_version, 6, 7):
+        try:
             return str(
                 self.__request_with_bytes_response(
                     "get",
@@ -2263,25 +2388,20 @@ class Client:
                 ENCODING_UTF_8,
             )
 
-        return str(
-            self.__request_with_bytes_response(
-                "get",
-                f"/experimental/textanalysis/projects/{project}/documentCollections/{collection_name}"
-                f"/documents/{document_id}/processes/{process_name}/exportTextAnalysisResult",
-                headers={
-                    HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_XMI,
-                },
-            ),
-            ENCODING_UTF_8,
-        )
+        except RequestException as e:
+            # in HD 6 below version 6.7 the endpoint is called with identifiers instead
+            return str(
+                self.__request_with_bytes_response(
+                    "get",
+                    f"/experimental/textanalysis/projects/{project}/documentCollections/{collection_name}"
+                    f"/documents/{document_id}/processes/{process_name}/exportTextAnalysisResult",
+                    headers={
+                        HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_XMI,
+                    },
+                ),
+                ENCODING_UTF_8,
+            )
 
-    @staticmethod
-    def _is_higher_equal_version(version: str, compare_major: int, compare_minor: int) -> bool:
-        version_parts = version.split(".")
-        major = int(version_parts[0])
-        return major > compare_major or (
-            major == compare_major and int(version_parts[1]) >= compare_minor
-        )
 
     @experimental_api
     def _export_analysis_result_typesystem(
@@ -2870,3 +2990,58 @@ class Client:
             )
 
         return files
+
+    @experimental_api
+    def _evaluate(
+        self,
+        project: Project,
+        comparison_process: Process,
+        reference_process: Process,
+        process_name: str,
+        evaluation_configurations: List["EvaluationConfiguration"],
+        number_of_pipeline_instances: int,
+    ) -> Process:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Use {process}.evaluate_against() instead.
+        """
+        creation_response = self.__request_with_json_response(
+            "post",
+            f"/experimental/textanalysis/projects/{project.name}/documentCollections/{comparison_process.document_source_name}/evaluationProcesses",
+            params={
+                "comparisonProcessName": comparison_process.name,
+                "referenceProcessName": reference_process.name,
+                "processName": process_name,
+                "numberOfPipelineInstances": number_of_pipeline_instances,
+                "referenceDocumentCollectionName": reference_process.document_source_name,
+            },
+            json=[vars(evaluation_configuration) for evaluation_configuration in evaluation_configurations],
+            headers={
+                HEADER_CONTENT_TYPE: MEDIA_TYPE_APPLICATION_JSON,
+                HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_JSON,
+            },
+        )
+        if creation_response["errorMessages"]:
+            raise Exception(
+                f"Error during evaluation process creation {creation_response['errorMessages']}"
+            )
+        self._ensure_process_created(project, process_name)
+
+        return Process(
+            project=project,
+            name=process_name,
+            document_source_name=comparison_process.document_source_name,
+        )
+
+    def _ensure_process_created(self, project: Project, process_name: str):
+        processes = self._list_processes(project)
+        total_time_slept = 0
+        while all(p.name != process_name for p in processes):
+            if total_time_slept > self._polling_timeout:
+                raise OperationTimeoutError(
+                    f"Process not found for ${total_time_slept}"
+                )
+            sleep(self._poll_delay)
+            total_time_slept += self._poll_delay
+            processes = self._list_processes(project)
