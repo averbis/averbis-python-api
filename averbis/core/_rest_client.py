@@ -32,7 +32,7 @@ from io import BytesIO, IOBase, BufferedReader
 from json import JSONDecodeError
 
 from time import sleep, time
-from typing import List, Union, IO, Iterable, Dict, Iterator, Optional
+from typing import List, Union, IO, Iterable, Dict, Iterator, Optional, Any
 from pathlib import Path
 import requests
 import mimetypes
@@ -118,7 +118,10 @@ class OperationTimeoutError(Exception):
 
 class Result:
     def __init__(
-        self, data: Dict = None, exception: Exception = None, source: Union[Path, IO, str] = None
+        self,
+        data: Optional[Dict[str, Any]] = None,
+        exception: Optional[Exception] = None,
+        source: Optional[Union[Path, IO, str]] = None
     ):
         self.data = data
         self.exception = exception
@@ -271,9 +274,9 @@ class Pipeline:
     def analyse_text(
         self,
         source: Union[Path, IO, str],
-        annotation_types: str = None,
-        language: str = None,
-        timeout: float = None,
+        annotation_types: Optional[str] = None,
+        language: Optional[str] = None,
+        timeout: Optional[float] = None,
     ) -> dict:
         """
         Analyze the given text or text file using the pipeline.
@@ -301,9 +304,9 @@ class Pipeline:
         self,
         sources: Iterable[Union[Path, IO, str]],
         parallelism: int = 0,
-        annotation_types: str = None,
-        language: str = None,
-        timeout: float = None,
+        annotation_types: Optional[str] = None,
+        language: Optional[str] = None,
+        timeout: Optional[float] = None,
     ) -> Iterator[Result]:
         """
         Analyze the given texts or files using the pipeline. If feasible, multiple documents are processed in parallel.
@@ -369,9 +372,9 @@ class Pipeline:
     def analyse_html(
         self,
         source: Union[Path, IO, str],
-        annotation_types: str = None,
-        language: str = None,
-        timeout: float = None,
+        annotation_types: Optional[str] = None,
+        language: Optional[str] = None,
+        timeout: Optional[float] = None,
     ) -> dict:
         """
         Analyze the given HTML string or HTML file using the pipeline.
@@ -430,8 +433,8 @@ class Pipeline:
     def analyse_text_to_cas(
         self,
         source: Union[Path, IO, str],
-        language: str = None,
-        timeout: float = None,
+        language: Optional[str] = None,
+        timeout: Optional[float] = None,
     ) -> Cas:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear. Processes text using a pipeline and returns the result
@@ -460,8 +463,8 @@ class Pipeline:
         self,
         sources: Iterable[Union[Path, IO, str]],
         parallelism: int = 0,
-        language: str = None,
-        timeout: float = None,
+        language: Optional[str] = None,
+        timeout: Optional[float] = None,
     ) -> Iterator[Result]:
         """
         Analyze the given texts or files using the pipeline. If feasible, multiple documents are processed in parallel.
@@ -528,8 +531,8 @@ class Pipeline:
     def analyse_cas_to_cas(
         self,
         source: Cas,
-        language: str = None,
-        timeout: float = None,
+        language: Optional[str] = None,
+        timeout: Optional[float] = None,
     ) -> Cas:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear. Processes text using a pipeline and returns the result
@@ -755,8 +758,8 @@ class Process:
         project: "Project",
         name: str,
         document_source_name: str,
-        pipeline_name: str = None,
-        preceding_process_name=None,
+        pipeline_name: Optional[str] = None,
+        preceding_process_name: Optional[str] = None,
     ):
         self.project = project
         self.name = name
@@ -880,9 +883,9 @@ class Process:
 
     def export_text_analysis(
         self,
-        annotation_types: str = None,
-        page: Union[int, None] = None,
-        page_size: Union[int, None] = 100,
+        annotation_types: Optional[str] = None,
+        page: Optional[int] = None,
+        page_size: Optional[int] = 100,
     ) -> dict:
         """
         Exports a given text analysis process as a json.
@@ -956,8 +959,8 @@ class Process:
         self,
         source: Union[Cas, Path, IO],
         document_name: str,
-        mime_type: str = None,
-        typesystem: "TypeSystem" = None,
+        mime_type: Optional[str] = None,
+        typesystem: Optional["TypeSystem"] = None,
         overwrite: bool = False,
     ):
         """
@@ -1085,9 +1088,9 @@ class DocumentCollection:
     def import_documents(
         self,
         source: Union[Cas, Path, IO, str],
-        mime_type: str = None,
-        filename: str = None,
-        typesystem: "TypeSystem" = None,
+        mime_type: Optional[str] = None,
+        filename: Optional[str] = None,
+        typesystem: Optional["TypeSystem"] = None,
     ) -> List[dict]:
         """
         Imports documents from a given file or from a given string. Supported file content types are plain text (text/plain),
@@ -1200,7 +1203,7 @@ class Project:
 
         return self.__cached_pipelines[name]
 
-    def create_pipeline(self, configuration: dict, name: str = None) -> Pipeline:
+    def create_pipeline(self, configuration: dict, name: Optional[str] = None) -> Pipeline:
         """
         Create a new pipeline.
 
@@ -1444,7 +1447,7 @@ class EvaluationConfiguration:
         self,
         comparison_annotation_type_name: str,
         features_to_compare: List[str],
-        reference_annotation_type_name: str = None,
+        reference_annotation_type_name: Optional[str] = None,
     ):
         """
         Configuration for the evaluation of one annotation type
@@ -1517,12 +1520,12 @@ class Client:
     def __init__(
         self,
         url_or_id: str,
-        api_token: str = None,
+        api_token: Optional[str] = None,
         verify_ssl: Union[str, bool] = True,
-        settings: Union[str, Path, dict] = None,
-        username: str = None,
-        password: str = None,
-        timeout: float = None,
+        settings: Optional[Union[str, Path, dict]] = None,
+        username: Optional[str] = None,
+        password: Optional[str] = None,
+        timeout: Optional[float] = None,
         polling_timeout: int = 30,
         poll_delay: int = 5,
     ):
@@ -1603,7 +1606,7 @@ class Client:
         if "timeout" in connection_profile:
             self._timeout = connection_profile["timeout"]
 
-    def _load_settings(self, path: Union[str, Path] = None) -> dict:
+    def _load_settings(self, path: Optional[Union[str, Path]] = None) -> dict:
         """
         Loads the client settings from a given path or (as fallback) searches for a "client-settings.json" file in the current path or in $HOME/.averbis.
 
@@ -2010,9 +2013,9 @@ class Client:
         project: str,
         collection_name: str,
         source: Union[Cas, Path, IO, str],
-        mime_type: str = None,
-        filename: str = None,
-        typesystem: "TypeSystem" = None,
+        mime_type: Optional[str] = None,
+        filename: Optional[str] = None,
+        typesystem: Optional["TypeSystem"] = None,
     ) -> List[dict]:
         """
         Use DocumentCollection.import_document() instead.
@@ -2264,7 +2267,7 @@ class Client:
         data,
         classification_set: str = "Default",
         data_format=DOCUMENT_IMPORTER_TEXT,
-        timeout: float = None,
+        timeout: Optional[float] = None,
     ) -> dict:
         def get_media_type_for_format() -> str:
             if data_format == DOCUMENT_IMPORTER_TEXT:
@@ -2287,9 +2290,9 @@ class Client:
         project: str,
         pipeline: str,
         source: Union[Path, IO, str],
-        annotation_types: str = None,
-        language: str = None,
-        timeout: float = None,
+        annotation_types: Optional[str] = None,
+        language: Optional[str] = None,
+        timeout: Optional[float] = None,
     ) -> dict:
         if isinstance(source, Path):
             with source.open("r", encoding=ENCODING_UTF_8) as file:
@@ -2312,9 +2315,9 @@ class Client:
         project: str,
         pipeline: str,
         source: Union[Path, IO, str],
-        annotation_types: str = None,
-        language: str = None,
-        timeout: float = None,
+        annotation_types: Optional[str] = None,
+        language: Optional[str] = None,
+        timeout: Optional[float] = None,
     ) -> dict:
         if isinstance(source, Path):
             with source.open("r", encoding=ENCODING_UTF_8) as file:
@@ -2332,7 +2335,7 @@ class Client:
         )
         return response["payload"]
 
-    def _select(self, project: str, q: str = None, **kwargs) -> dict:
+    def _select(self, project: str, q: Optional[str] = None, **kwargs) -> dict:
         response = self.__request_with_json_response(
             "get",
             f"/v1/search/projects/{project}/select",
@@ -2346,9 +2349,9 @@ class Client:
         project: str,
         document_source: str,
         process: str,
-        annotation_types: str = None,
-        page: Union[int, None] = None,
-        page_size: Union[int, None] = None,
+        annotation_types: Optional[str] = None,
+        page: Optional[int] = None,
+        page_size: Optional[int] = None,
     ):
         """
         Use Process.export_text_analysis() instead.
@@ -2444,8 +2447,8 @@ class Client:
         project: str,
         pipeline: str,
         source: Union[IO, str, Path],
-        language: str = None,
-        timeout: float = None,
+        language: Optional[str] = None,
+        timeout: Optional[float] = None,
     ) -> str:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -2480,8 +2483,8 @@ class Client:
         project: str,
         pipeline: str,
         source: Cas,
-        language: str = None,
-        timeout: float = None,
+        language: Optional[str] = None,
+        timeout: Optional[float] = None,
     ) -> str:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -2628,8 +2631,8 @@ class Client:
         document_collection: DocumentCollection,
         process_name: str,
         pipeline: Union[str, Pipeline],
-        process_type: str = None,
-        preceding_process_name=None,
+        process_type: Optional[str] = None,
+        preceding_process_name: Optional[str] = None,
     ) -> dict:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
