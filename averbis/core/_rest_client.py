@@ -990,6 +990,16 @@ class Process:
             overwrite,
         )
 
+    @experimental_api
+    def rename(self, name: str) -> "Process":
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Rename this process to the given name and return the process
+        """
+        # noinspection PyProtectedMember
+        return self.project.client._rename_process(self, name)
+
 
 class DocumentCollection:
     def __init__(self, project: "Project", name: str):
@@ -3045,3 +3055,26 @@ class Client:
             sleep(self._poll_delay)
             total_time_slept += self._poll_delay
             processes = self._list_processes(project)
+
+    @experimental_api
+    def _rename_process(
+            self,
+            process: Process,
+            new_name: str) -> Process:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Use {process}.rename() instead.
+        """
+
+        self.__request_with_json_response(
+            "post",
+            f"/experimental/textanalysis/projects/{process.project.name}/documentCollections/{process.document_source_name}/processes/{process.name}",
+            data=new_name,
+            headers={
+                HEADER_CONTENT_TYPE: MEDIA_TYPE_TEXT_PLAIN_UTF8,
+                HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_JSON
+            }
+        )
+        process.name = new_name
+        return process
