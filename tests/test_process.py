@@ -511,3 +511,24 @@ def test_evaluate(client_version_6, requests_mock):
 
     assert evaluation_process.name == evaluation_process_name
     assert evaluation_process.document_source_name == collection.name
+
+
+def test_rename_process(process, requests_mock):
+    new_name = "renamed_process"
+
+    requests_mock.post(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{process.project.name}/documentCollections/{process.document_source_name}/processes/{process.name}",
+        headers={"Content-Type": "text/plain; charset=utf-8"},
+        json={"payload": None, "errorMessages": []},
+    )
+
+    actual_renamed_process = process.rename(new_name)
+
+    expected_process = Process(
+        process.project,
+        new_name,
+        process.document_source_name,
+        process.pipeline_name,
+    )
+
+    assert_process_equal(actual_renamed_process, expected_process)
