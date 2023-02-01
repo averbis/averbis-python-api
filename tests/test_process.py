@@ -389,6 +389,62 @@ def test_export_text_analysis_to_cas_v6(client_version_6, requests_mock):
     assert cas.sofa_string == "Test"
 
 
+def test_export_text_analysis_to_cas_v6_7_reuse_typesystem(client_version_6_7, requests_mock):
+    project = client_version_6_7.get_project(PROJECT_NAME)
+    collection = project.get_document_collection(COLLECTION_NAME)
+    document_id = "document0001"
+    document_name = "document.txt"
+    expected_xmi = """<?xml version="1.0" encoding="UTF-8"?>
+        <xmi:XMI xmlns:tcas="http:///uima/tcas.ecore" xmlns:xmi="http://www.omg.org/XMI" 
+        xmlns:cas="http:///uima/cas.ecore"
+                 xmi:version="2.0">
+            <cas:NULL xmi:id="0"/>
+            <tcas:DocumentAnnotation xmi:id="2" sofa="1" begin="0" end="4" language="x-unspecified"/>
+            <cas:Sofa xmi:id="1" sofaNum="1" sofaID="_InitialView" mimeType="text/plain"
+                      sofaString="Test"/>
+            <cas:View sofa="1" members="2"/>
+        </xmi:XMI>
+        """
+    empty_typesystem = '<typeSystemDescription xmlns="http://uima.apache.org/resourceSpecifier"/>'
+    pipeline = Pipeline(project, "my-pipeline")
+    process = Process(project, "my-process", collection.name, pipeline.name)
+    get_typesystem_url = f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/documentCollections/{collection.name}" \
+                         f"/documents/{document_id}/processes/{process.name}/exportTextAnalysisResultTypeSystem"
+
+    requests_mock.get(
+        get_typesystem_url,
+        headers={"Content-Type": "application/xml"},
+        text=empty_typesystem,
+    )
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/projects/{project.name}/documentCollections/{collection.name}/documents",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": [{"documentIdentifier": document_id, "documentName": document_name}],
+            "errorMessages": [],
+        },
+    )
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/documentCollections/{collection.name}"
+        f"/processes/{process.name}/textAnalysisResult",
+        headers={"Content-Type": "application/vnd.uima.cas+xmi"},
+        text=expected_xmi,
+    )
+
+    cas = process.export_text_analysis_to_cas(document_name, reuse_type_system=True)
+    process.export_text_analysis_to_cas(document_name, reuse_type_system=True)
+
+    assert process._cached_type_system is not None
+    assert cas.sofa_string == "Test"
+    assert _extract_number_of_calls_to_url(requests_mock, get_typesystem_url) == 1
+
+
+def _extract_number_of_calls_to_url(requests_mock, url):
+    return len([call for call in requests_mock.request_history if call.url == url])
+
+
 def test_add_text_analysis_result_cas(client_version_6, requests_mock):
     project = client_version_6.get_project(PROJECT_NAME)
     collection = project.get_document_collection(COLLECTION_NAME)

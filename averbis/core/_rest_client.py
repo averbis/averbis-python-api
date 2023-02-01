@@ -759,13 +759,16 @@ class Process:
         name: str,
         document_source_name: str,
         pipeline_name: Optional[str] = None,
-        preceding_process_name: Optional[str] = None,
+        preceding_process_name: Optional[str] = None
     ):
+        self.__logger = logging.getLogger(self.__class__.__module__ + "." + self.__class__.__name__)
         self.project = project
         self.name = name
         self.document_source_name = document_source_name
         self.pipeline_name = pipeline_name
         self.preceding_process_name = preceding_process_name
+        self._export_text_analysis_to_cas_has_been_called = False
+        self._cached_type_system = None
 
     def __repr__(self):
         return (
@@ -922,7 +925,11 @@ class Process:
         )
 
     @experimental_api
-    def export_text_analysis_to_cas(self, document_name: str) -> Cas:
+    def export_text_analysis_to_cas(
+            self,
+            document_name: str,
+            reuse_type_system: Optional[bool] = False
+    ) -> Cas:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
@@ -932,15 +939,17 @@ class Process:
             raise OperationNotSupported(
                 "Text analysis export is not supported for platform version 5.x, it is only supported from 6.x onwards."
             )
+        if reuse_type_system is False and self._export_text_analysis_to_cas_has_been_called is False:
+            self.__logger.info("Exporting more than one result for one process can be sped up by enabling "
+                               "'reuse_type_system' for the export. Enable this only when you are sure that all "
+                               "results of the process use the same typesystem.")
+        self._export_text_analysis_to_cas_has_been_called = True
+
         document_collection = self.project.get_document_collection(self.document_source_name)
         # noinspection PyProtectedMember
         document_identifier = document_collection._get_document_identifier(document_name)
-        # noinspection PyProtectedMember
-        type_system = load_typesystem(
-            self.project.client._export_analysis_result_typesystem(
-                self.project.name, self.document_source_name, document_identifier, self
-            )
-        )
+
+        type_system = self._load_type_system(document_identifier, reuse_type_system)
 
         # noinspection PyProtectedMember
         return load_cas_from_xmi(
@@ -953,6 +962,23 @@ class Process:
             ),
             typesystem=type_system,
         )
+
+    def _load_type_system(self, document_identifier, reuse_type_system):
+        if reuse_type_system is False:
+            # noinspection PyProtectedMember
+            return load_typesystem(
+                self.project.client._export_analysis_result_typesystem(
+                    self.project.name, self.document_source_name, document_identifier, self
+                )
+            )
+        if reuse_type_system is True and self._cached_type_system is None:
+            # noinspection PyProtectedMember
+            self._cached_type_system = load_typesystem(
+                self.project.client._export_analysis_result_typesystem(
+                    self.project.name, self.document_source_name, document_identifier, self
+                )
+            )
+        return self._cached_type_system
 
     @experimental_api
     def import_text_analysis_result(
