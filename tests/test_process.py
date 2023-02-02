@@ -20,7 +20,7 @@
 import tempfile
 from pathlib import Path
 
-from cassis import Cas, TypeSystem
+from cassis import Cas, TypeSystem, load_typesystem
 
 from averbis import Project, Pipeline
 from averbis.core import OperationNotSupported, MEDIA_TYPE_APPLICATION_XMI, EvaluationConfiguration
@@ -389,7 +389,7 @@ def test_export_text_analysis_to_cas_v6(client_version_6, requests_mock):
     assert cas.sofa_string == "Test"
 
 
-def test_export_text_analysis_to_cas_v6_7_reuse_typesystem(client_version_6_7, requests_mock):
+def test_export_text_analysis_to_cas_v6_7_provide_typesystem(client_version_6_7, requests_mock):
     project = client_version_6_7.get_project(PROJECT_NAME)
     collection = project.get_document_collection(COLLECTION_NAME)
     document_id = "document0001"
@@ -406,16 +406,9 @@ def test_export_text_analysis_to_cas_v6_7_reuse_typesystem(client_version_6_7, r
         </xmi:XMI>
         """
     empty_typesystem = '<typeSystemDescription xmlns="http://uima.apache.org/resourceSpecifier"/>'
+    cas_typesystem = load_typesystem(empty_typesystem)
     pipeline = Pipeline(project, "my-pipeline")
     process = Process(project, "my-process", collection.name, pipeline.name)
-    get_typesystem_url = f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/documentCollections/{collection.name}" \
-                         f"/documents/{document_id}/processes/{process.name}/exportTextAnalysisResultTypeSystem"
-
-    requests_mock.get(
-        get_typesystem_url,
-        headers={"Content-Type": "application/xml"},
-        text=empty_typesystem,
-    )
 
     requests_mock.get(
         f"{API_EXPERIMENTAL}/projects/{project.name}/documentCollections/{collection.name}/documents",
@@ -433,12 +426,9 @@ def test_export_text_analysis_to_cas_v6_7_reuse_typesystem(client_version_6_7, r
         text=expected_xmi,
     )
 
-    cas = process.export_text_analysis_to_cas(document_name, reuse_type_system=True)
-    process.export_text_analysis_to_cas(document_name, reuse_type_system=True)
+    cas = process.export_text_analysis_to_cas(document_name, type_system=cas_typesystem)
 
-    assert process._cached_type_system is not None
     assert cas.sofa_string == "Test"
-    assert _extract_number_of_calls_to_url(requests_mock, get_typesystem_url) == 1
 
 
 def _extract_number_of_calls_to_url(requests_mock, url):
