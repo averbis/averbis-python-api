@@ -431,10 +431,6 @@ def test_export_text_analysis_to_cas_v6_7_provide_typesystem(client_version_6_7,
     assert cas.sofa_string == "Test"
 
 
-def _extract_number_of_calls_to_url(requests_mock, url):
-    return len([call for call in requests_mock.request_history if call.url == url])
-
-
 def test_add_text_analysis_result_cas(client_version_6, requests_mock):
     project = client_version_6.get_project(PROJECT_NAME)
     collection = project.get_document_collection(COLLECTION_NAME)
