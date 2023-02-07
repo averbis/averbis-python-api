@@ -944,11 +944,12 @@ class Process:
         self._export_text_analysis_to_cas_has_been_called = True
 
         document_collection = self.project.get_document_collection(self.document_source_name)
-        # noinspection PyProtectedMember
-        document_identifier = document_collection._get_document_identifier(document_name)
 
+        document_identifier = None
         cas_type_system = type_system
         if cas_type_system is None:
+            # noinspection PyProtectedMember
+            document_identifier = document_collection._get_document_identifier(document_name)
             # noinspection PyProtectedMember
             cas_type_system = load_typesystem(
                     self.project.client._export_analysis_result_typesystem(
@@ -2416,6 +2417,10 @@ class Client:
             )
 
         except RequestException as e:
+            if document_id is None:
+                document_collection = process.project.get_document_collection(collection_name)
+                # noinspection PyProtectedMember
+                document_id = document_collection._get_document_identifier(document_name)
             # in HD 6 below version 6.7 the endpoint is called with identifiers instead
             return str(
                 self.__request_with_bytes_response(
