@@ -851,6 +851,8 @@ class Process:
 
         Starts the evaluation of this process in comparison to the given one as a new process.
         Returns the new evaluation process.
+
+        See :ref:`evaluation` for a usage example and more information.
         """
         # noinspection PyProtectedMember
         return self.project.client._evaluate(
