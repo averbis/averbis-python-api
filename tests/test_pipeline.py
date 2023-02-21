@@ -24,7 +24,7 @@ from pathlib import Path
 from cassis import Cas
 from requests_toolbelt import MultipartDecoder
 
-from averbis import Project, Pipeline, Process
+from averbis import Project, Pipeline
 from averbis.core import (
     OperationTimeoutError,
     OperationNotSupported,

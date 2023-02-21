@@ -19,7 +19,6 @@
 #
 import logging
 import zipfile
-import tempfile
 from pathlib import Path
 
 from averbis import Pipeline, Project
@@ -43,6 +42,17 @@ def test_default_headers(client):
 
     assert headers["Accept"] == "application/json"
     assert TEST_API_TOKEN == headers["api-token"]
+
+
+def test_normalize_url_remove_angular_extension_in_client(requests_mock):
+    """ Tests if the url extension '#/' is removed when initializing the Client """
+    requests_mock.get(
+        f"{API_BASE}/buildInfo",
+        headers={"Content-Type": "application/json"},
+        json={"payload": {"specVersion": "6.0", "buildNumber": ""}, "errorMessages": []},
+    )
+    client = Client("http://some-machine/health-discovery/#/", api_token=TEST_API_TOKEN)
+    assert client._url == "http://some-machine/health-discovery/"
 
 
 def test_build_url(client):

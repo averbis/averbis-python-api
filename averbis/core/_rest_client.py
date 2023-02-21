@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021 Averbis GmbH.
+# Copyright (c) 2023 Averbis GmbH.
 #
 # This file is part of Averbis Python API.
 # See https://www.averbis.com for further info.
@@ -1583,6 +1583,8 @@ class Client:
                 self._apply_profile("*")
             self._apply_profile(url_or_id)
 
+        self._normalize_url()
+
         if self._api_token is None:
             if username is not None and password is not None:
                 self.regenerate_api_token(username, password)
@@ -1646,6 +1648,10 @@ class Client:
                 return json.load(source)
 
         return {}
+
+    def _normalize_url(self) -> None:
+        if self._url.endswith("#/"):
+            self._url = self._url[:-2]
 
     def set_timeout(self, timeout: float) -> "Client":
         """
