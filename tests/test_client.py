@@ -50,7 +50,7 @@ def test_normalize_url_remove_angular_extension_in_client():
     assert client._url == "http://some-machine/health-discovery/"
 
 
-def test_build_url(client):
+def test_build_url():
     client = Client("http://some-machine/health-discovery/", api_token=TEST_API_TOKEN)
     assert (
             client._build_url("v1/some-endpoint/")
@@ -58,7 +58,7 @@ def test_build_url(client):
     )
 
 
-def test_build_url_encode_url(client):
+def test_build_url_encode_url():
     client = Client("http://some-machine/health-discovery/", api_token=TEST_API_TOKEN)
     assert (
             client._build_url("v1/some-endpoint/Special URL ä ö # ! ? ³")
