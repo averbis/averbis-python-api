@@ -21,8 +21,7 @@ from pathlib import Path
 
 from cassis import Cas, TypeSystem
 
-from averbis import DocumentCollection, Process
-from averbis.core import MEDIA_TYPE_APPLICATION_XMI
+from averbis import DocumentCollection
 from tests.fixtures import *
 from tests.utils import *
 

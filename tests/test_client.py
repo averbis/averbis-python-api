@@ -19,7 +19,6 @@
 #
 import logging
 import zipfile
-import tempfile
 from pathlib import Path
 
 from averbis import Pipeline, Project
@@ -45,19 +44,25 @@ def test_default_headers(client):
     assert TEST_API_TOKEN == headers["api-token"]
 
 
-def test_build_url(client):
-    client._url = "http://some-machine/health-discovery/"
+def test_normalize_url_remove_angular_extension_in_client():
+    """ Tests if the url extension '#/' is removed when initializing the Client """
+    client = Client("http://some-machine/health-discovery/#/", api_token=TEST_API_TOKEN)
+    assert client._url == "http://some-machine/health-discovery/"
+
+
+def test_build_url():
+    client = Client("http://some-machine/health-discovery/", api_token=TEST_API_TOKEN)
     assert (
-        client._build_url("v1/some-endpoint/")
-        == "http://some-machine/health-discovery/rest/v1/some-endpoint/"
+            client._build_url("v1/some-endpoint/")
+            == "http://some-machine/health-discovery/rest/v1/some-endpoint/"
     )
 
 
-def test_build_url_encode_url(client):
-    client._url = "http://some-machine/health-discovery/"
+def test_build_url_encode_url():
+    client = Client("http://some-machine/health-discovery/", api_token=TEST_API_TOKEN)
     assert (
-        client._build_url("v1/some-endpoint/Special URL ä ö # ! ? ³")
-        == "http://some-machine/health-discovery/rest/v1/some-endpoint/Special%20URL%20%C3%A4%20%C3%B6%20%23%20%21%20%3F%20%C2%B3"
+            client._build_url("v1/some-endpoint/Special URL ä ö # ! ? ³")
+            == "http://some-machine/health-discovery/rest/v1/some-endpoint/Special%20URL%20%C3%A4%20%C3%B6%20%23%20%21%20%3F%20%C2%B3"
     )
 
 
