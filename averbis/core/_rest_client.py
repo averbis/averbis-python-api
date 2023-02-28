@@ -963,9 +963,9 @@ class Process:
             self,
             type_system: TypeSystem,
             document_collection: "DocumentCollection",
-            document_name: str,
-            document_identifier: Optional[str] = None
-    ) -> Tuple[TypeSystem, str]:
+            document_name: str
+    ) -> Tuple[TypeSystem, Optional[str]]:
+        document_identifier = None
         cas_type_system = type_system
         if cas_type_system is None:
             try:
