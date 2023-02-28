@@ -32,7 +32,7 @@ from io import BytesIO, IOBase, BufferedReader
 from json import JSONDecodeError
 
 from time import sleep, time
-from typing import List, Union, IO, Iterable, Dict, Iterator, Optional, Any
+from typing import List, Union, IO, Iterable, Dict, Iterator, Optional, Any, Tuple
 from pathlib import Path
 import requests
 import mimetypes
@@ -945,17 +945,7 @@ class Process:
 
         document_collection = self.project.get_document_collection(self.document_source_name)
 
-        document_identifier = None
-        cas_type_system = type_system
-        if cas_type_system is None:
-            # noinspection PyProtectedMember
-            document_identifier = document_collection._get_document_identifier(document_name)
-            # noinspection PyProtectedMember
-            cas_type_system = load_typesystem(
-                    self.project.client._export_analysis_result_typesystem(
-                        self.project.name, self.document_source_name, document_identifier, self
-                    )
-                )
+        cas_type_system, document_identifier = self._load_typesystem(type_system, document_collection, document_name)
 
         # noinspection PyProtectedMember
         return load_cas_from_xmi(
@@ -968,6 +958,33 @@ class Process:
             ),
             typesystem=cas_type_system,
         )
+
+    def _load_typesystem(
+            self,
+            type_system: TypeSystem,
+            document_collection: "DocumentCollection",
+            document_name: str,
+            document_identifier: Optional[str] = None
+    ) -> Tuple[TypeSystem, str]:
+        cas_type_system = type_system
+        if cas_type_system is None:
+            try:
+                # noinspection PyProtectedMember
+                cas_type_system = load_typesystem(
+                    self.project.client._export_analysis_result_typesystem(
+                        self.project.name, self.document_source_name, document_name, self
+                    )
+                )
+            except RequestException as e:
+                # noinspection PyProtectedMember
+                document_identifier = document_collection._get_document_identifier(document_name)
+                # noinspection PyProtectedMember
+                cas_type_system = load_typesystem(
+                    self.project.client._export_analysis_result_typesystem(
+                        self.project.name, self.document_source_name, document_name, self, document_identifier
+                    )
+                )
+        return cas_type_system, document_identifier
 
     @experimental_api
     def import_text_analysis_result(
@@ -2443,7 +2460,12 @@ class Client:
 
     @experimental_api
     def _export_analysis_result_typesystem(
-        self, project: str, collection_name: str, document_id: str, process: Union[Process, str]
+            self,
+            project: str,
+            collection_name: str,
+            document_name: str,
+            process: Union[Process, str],
+            document_id: Optional[str] = None
     ) -> str:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -2455,6 +2477,18 @@ class Client:
             )
 
         process_name = self.__process_name(process)
+
+        if document_id is None:
+            return str(
+                self.__request_with_bytes_response(
+                    "get",
+                    f"/experimental/textanalysis/projects/{project}/documentCollections/{collection_name}"
+                    f"/processes/{process_name}/textAnalysisResultTypeSystem",
+                    headers={HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_XML},
+                    params={"documentName": document_name}
+                ),
+                ENCODING_UTF_8,
+            )
 
         return str(
             self.__request_with_bytes_response(
