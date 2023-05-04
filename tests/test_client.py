@@ -21,7 +21,7 @@ import logging
 import zipfile
 from pathlib import Path
 
-from averbis import Pipeline, Project
+from averbis import Pipeline, Project, EvaluationConfiguration
 from averbis.core import (
     OperationNotSupported,
     TERMINOLOGY_EXPORTER_OBO_1_4,
@@ -1067,6 +1067,10 @@ def test_create_zip_io__folder(client):
     zip_archive_bytes_io = client._create_zip_io(TEST_DIRECTORY + "/" + "resources/zip_test")
     assert_zip_archive_bytes_io_content(zip_archive_bytes_io)
 
+
+def test_evaluation_configuration_constructor_handles_kwargs():
+    eval_config = EvaluationConfiguration("de.averbis.types.health.diagnosis", features_to_compare=["begin","end"], projectAnnotationsTo="de.averbis.extraction.types.Token")
+    assert eval_config.projectAnnotationsTo == "de.averbis.extraction.types.Token"
 
 def assert_zip_archive_bytes_io_content(zip_archive_bytes_io, prefix=""):
     zip_file = zipfile.ZipFile(zip_archive_bytes_io)

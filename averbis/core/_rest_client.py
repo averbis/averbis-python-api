@@ -1463,6 +1463,7 @@ class EvaluationConfiguration:
         comparison_annotation_type_name: str,
         features_to_compare: List[str],
         reference_annotation_type_name: Optional[str] = None,
+        **kwargs
     ):
         """
         Configuration for the evaluation of one annotation type
@@ -1495,6 +1496,8 @@ class EvaluationConfiguration:
         self.allowMultipleMatches = False
         self.stringFeatureComparisonIgnoreCase = False
         self.forceComparisonWhenGoldstandardMissing = False
+        self.projectAnnotationsTo = None
+        self.__dict__.update(kwargs)
 
     def add_feature(self, feature_name: str) -> "EvaluationConfiguration":
         self.featuresToBeCompared.append(feature_name)
