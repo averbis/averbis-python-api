@@ -929,17 +929,30 @@ class Process:
     def export_text_analysis_to_cas(
             self,
             document_name: str,
-            type_system: Optional[TypeSystem] = None
+            type_system: Optional[TypeSystem] = None,
+            annotation_types: Optional[str] = None
     ) -> Cas:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
         Returns an analysis as a UIMA CAS.
+        :param document_name: the name of the document whose text analysis result will be exported
+        :param type_system: Optional parameter for the typesystem that the exported CAS will be set up with.
+        :param annotation_types: Optional parameter indicating which types should be returned. Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types with prefix "de.averbis.types"
+
         """
-        if self.project.client.get_build_info()["specVersion"].startswith("5."):
+        build_info = self.project.client.get_build_info()
+        if build_info["specVersion"].startswith("5."):
             raise OperationNotSupported(
                 "Text analysis export is not supported for platform version 5.x, it is only supported from 6.x onwards."
             )
+
+        # noinspection PyProtectedMember
+        if annotation_types is not None and \
+                "platformVersion" in build_info and \
+                not self.project.client._is_higher_equal_version(build_info["platformVersion"], 6, 49):
+            self.__logger.warning("Filtering by annotation types is not supported in this product version.")
+
         if type_system is None and self._export_text_analysis_to_cas_has_been_called is False:
             self.__logger.info("Providing the typesystem that the CAS will be set up with to the export may speed up "
                                "the process.")
@@ -957,6 +970,7 @@ class Process:
                 document_name,
                 document_identifier,
                 self,
+                annotation_types
             ),
             typesystem=cas_type_system,
         )
@@ -2417,6 +2431,7 @@ class Client:
         document_name: str,
         document_id: str,
         process: Union[Process, str],
+        annotation_types: str
     ) -> str:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -2431,6 +2446,9 @@ class Client:
             )
 
         process_name = self.__process_name(process)
+        request_params = {"documentName": document_name}
+        if annotation_types is not None:
+            request_params["annotationTypes"] = annotation_types
 
         try:
             return str(
@@ -2441,7 +2459,7 @@ class Client:
                     headers={
                         HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_XMI,
                     },
-                    params={"documentName": document_name},
+                    params=request_params,
                 ),
                 ENCODING_UTF_8,
             )
