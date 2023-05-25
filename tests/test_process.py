@@ -20,7 +20,7 @@
 import tempfile
 from pathlib import Path
 
-from cassis import Cas, TypeSystem
+from cassis import Cas, TypeSystem, load_typesystem
 
 from averbis import Project, Pipeline
 from averbis.core import OperationNotSupported, MEDIA_TYPE_APPLICATION_XMI, EvaluationConfiguration
@@ -286,7 +286,45 @@ def test_export_text_analysis_to_cas_v5(client_version_5):
         process.export_text_analysis_to_cas(document_name)
 
 
-def test_export_text_analysis_to_cas_v6_7(client_version_6_7, requests_mock):
+def test_export_text_analysis_to_cas_v6_full_name_support(client_version_6_17_platform_6_50, requests_mock):
+    project = client_version_6_17_platform_6_50.get_project(PROJECT_NAME)
+    collection = project.get_document_collection(COLLECTION_NAME)
+    document_name = "document.txt"
+    expected_xmi = """<?xml version="1.0" encoding="UTF-8"?>
+        <xmi:XMI xmlns:tcas="http:///uima/tcas.ecore" xmlns:xmi="http://www.omg.org/XMI" 
+        xmlns:cas="http:///uima/cas.ecore"
+                 xmi:version="2.0">
+            <cas:NULL xmi:id="0"/>
+            <tcas:DocumentAnnotation xmi:id="2" sofa="1" begin="0" end="4" language="x-unspecified"/>
+            <cas:Sofa xmi:id="1" sofaNum="1" sofaID="_InitialView" mimeType="text/plain"
+                      sofaString="Test"/>
+            <cas:View sofa="1" members="2"/>
+        </xmi:XMI>
+        """
+    empty_typesystem = '<typeSystemDescription xmlns="http://uima.apache.org/resourceSpecifier"/>'
+    pipeline = Pipeline(project, "my-pipeline")
+    process = Process(project, "my-process", collection.name, pipeline.name)
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/documentCollections/{collection.name}"
+        f"/processes/{process.name}/textAnalysisResultTypeSystem",
+        headers={"Content-Type": "application/xml"},
+        text=empty_typesystem,
+    )
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/documentCollections/{collection.name}"
+        f"/processes/{process.name}/textAnalysisResult",
+        headers={"Content-Type": "application/vnd.uima.cas+xmi"},
+        text=expected_xmi,
+    )
+
+    cas = process.export_text_analysis_to_cas(document_name)
+
+    assert cas.sofa_string == "Test"
+
+
+def test_export_text_analysis_to_cas_v6_onlycas_export_by_name_support(client_version_6_7, requests_mock):
     project = client_version_6_7.get_project(PROJECT_NAME)
     collection = project.get_document_collection(COLLECTION_NAME)
     document_id = "document0001"
@@ -310,7 +348,7 @@ def test_export_text_analysis_to_cas_v6_7(client_version_6_7, requests_mock):
         f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/documentCollections/{collection.name}"
         f"/documents/{document_id}/processes/{process.name}/exportTextAnalysisResultTypeSystem",
         headers={"Content-Type": "application/xml"},
-        text=empty_typesystem,
+        text=empty_typesystem
     )
 
     requests_mock.get(
@@ -321,12 +359,11 @@ def test_export_text_analysis_to_cas_v6_7(client_version_6_7, requests_mock):
             "errorMessages": [],
         },
     )
-
     requests_mock.get(
         f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/documentCollections/{collection.name}"
         f"/processes/{process.name}/textAnalysisResult",
         headers={"Content-Type": "application/vnd.uima.cas+xmi"},
-        text=expected_xmi,
+        text=expected_xmi
     )
 
     cas = process.export_text_analysis_to_cas(document_name)
@@ -334,7 +371,7 @@ def test_export_text_analysis_to_cas_v6_7(client_version_6_7, requests_mock):
     assert cas.sofa_string == "Test"
 
 
-def test_export_text_analysis_to_cas_v6(client_version_6, requests_mock):
+def test_export_text_analysis_to_cas_v6_only_id_support(client_version_6, requests_mock):
     project = client_version_6.get_project(PROJECT_NAME)
     collection = project.get_document_collection(COLLECTION_NAME)
     document_id = "document0001"
@@ -356,9 +393,17 @@ def test_export_text_analysis_to_cas_v6(client_version_6, requests_mock):
 
     requests_mock.get(
         f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/documentCollections/{collection.name}"
-        f"/documents/{document_id}/processes/{process.name}/exportTextAnalysisResultTypeSystem",
+        f"/processes/{process.name}/textAnalysisResultTypeSystem",
         headers={"Content-Type": "application/xml"},
         text=empty_typesystem,
+        status_code=405
+    )
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/documentCollections/{collection.name}"
+        f"/documents/{document_id}/processes/{process.name}/exportTextAnalysisResultTypeSystem",
+        headers={"Content-Type": "application/xml"},
+        text=empty_typesystem
     )
 
     requests_mock.get(
@@ -374,6 +419,7 @@ def test_export_text_analysis_to_cas_v6(client_version_6, requests_mock):
         f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/documentCollections/{collection.name}"
         f"/processes/{process.name}/textAnalysisResult",
         headers={"Content-Type": "application/vnd.uima.cas+xmi"},
+        text=expected_xmi,
         status_code=405
     )
 
@@ -385,6 +431,95 @@ def test_export_text_analysis_to_cas_v6(client_version_6, requests_mock):
     )
 
     cas = process.export_text_analysis_to_cas(document_name)
+
+    assert cas.sofa_string == "Test"
+
+
+def test_export_text_analysis_to_cas_v6_7_provide_typesystem(client_version_6_7, requests_mock):
+    project = client_version_6_7.get_project(PROJECT_NAME)
+    collection = project.get_document_collection(COLLECTION_NAME)
+    document_id = "document0001"
+    document_name = "document.txt"
+    expected_xmi = """<?xml version="1.0" encoding="UTF-8"?>
+        <xmi:XMI xmlns:tcas="http:///uima/tcas.ecore" xmlns:xmi="http://www.omg.org/XMI" 
+        xmlns:cas="http:///uima/cas.ecore"
+                 xmi:version="2.0">
+            <cas:NULL xmi:id="0"/>
+            <tcas:DocumentAnnotation xmi:id="2" sofa="1" begin="0" end="4" language="x-unspecified"/>
+            <cas:Sofa xmi:id="1" sofaNum="1" sofaID="_InitialView" mimeType="text/plain"
+                      sofaString="Test"/>
+            <cas:View sofa="1" members="2"/>
+        </xmi:XMI>
+        """
+    empty_typesystem = '<typeSystemDescription xmlns="http://uima.apache.org/resourceSpecifier"/>'
+    cas_typesystem = load_typesystem(empty_typesystem)
+    pipeline = Pipeline(project, "my-pipeline")
+    process = Process(project, "my-process", collection.name, pipeline.name)
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/projects/{project.name}/documentCollections/{collection.name}/documents",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": [{"documentIdentifier": document_id, "documentName": document_name}],
+            "errorMessages": [],
+        },
+    )
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/documentCollections/{collection.name}"
+        f"/processes/{process.name}/textAnalysisResult",
+        headers={"Content-Type": "application/vnd.uima.cas+xmi"},
+        text=expected_xmi,
+    )
+
+    cas = process.export_text_analysis_to_cas(document_name, type_system=cas_typesystem)
+
+    assert cas.sofa_string == "Test"
+
+
+def test_export_text_analysis_to_cas_annotation_types_not_supported(
+        client_version_6_17_0_platform_6_48_0,
+        requests_mock):
+    project = client_version_6_17_0_platform_6_48_0.get_project(PROJECT_NAME)
+    collection = project.get_document_collection(COLLECTION_NAME)
+    document_id = "document0001"
+    document_name = "document.txt"
+    expected_xmi = """<?xml version="1.0" encoding="UTF-8"?>
+        <xmi:XMI xmlns:tcas="http:///uima/tcas.ecore" xmlns:xmi="http://www.omg.org/XMI" 
+        xmlns:cas="http:///uima/cas.ecore"
+                 xmi:version="2.0">
+            <cas:NULL xmi:id="0"/>
+            <tcas:DocumentAnnotation xmi:id="2" sofa="1" begin="0" end="4" language="x-unspecified"/>
+            <cas:Sofa xmi:id="1" sofaNum="1" sofaID="_InitialView" mimeType="text/plain"
+                      sofaString="Test"/>
+            <cas:View sofa="1" members="2"/>
+        </xmi:XMI>
+        """
+    empty_typesystem = '<typeSystemDescription xmlns="http://uima.apache.org/resourceSpecifier"/>'
+    cas_typesystem = load_typesystem(empty_typesystem)
+    pipeline = Pipeline(project, "my-pipeline")
+    process = Process(project, "my-process", collection.name, pipeline.name)
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/projects/{project.name}/documentCollections/{collection.name}/documents",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": [{"documentIdentifier": document_id, "documentName": document_name}],
+            "errorMessages": [],
+        },
+    )
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/documentCollections/{collection.name}"
+        f"/processes/{process.name}/textAnalysisResult",
+        headers={"Content-Type": "application/vnd.uima.cas+xmi"},
+        text=expected_xmi,
+    )
+
+    cas = process.export_text_analysis_to_cas(
+        document_name,
+        type_system=cas_typesystem,
+        annotation_types="de.averbis.types.health.Diagnosis")
 
     assert cas.sofa_string == "Test"
 
@@ -511,3 +646,24 @@ def test_evaluate(client_version_6, requests_mock):
 
     assert evaluation_process.name == evaluation_process_name
     assert evaluation_process.document_source_name == collection.name
+
+
+def test_rename_process(process, requests_mock):
+    new_name = "renamed_process"
+
+    requests_mock.post(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{process.project.name}/documentCollections/{process.document_source_name}/processes/{process.name}",
+        headers={"Content-Type": "text/plain; charset=utf-8"},
+        json={"payload": None, "errorMessages": []},
+    )
+
+    actual_renamed_process = process.rename(new_name)
+
+    expected_process = Process(
+        process.project,
+        new_name,
+        process.document_source_name,
+        process.pipeline_name,
+    )
+
+    assert_process_equal(actual_renamed_process, expected_process)

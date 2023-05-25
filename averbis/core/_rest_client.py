@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021 Averbis GmbH.
+# Copyright (c) 2023 Averbis GmbH.
 #
 # This file is part of Averbis Python API.
 # See https://www.averbis.com for further info.
@@ -32,7 +32,7 @@ from io import BytesIO, IOBase, BufferedReader
 from json import JSONDecodeError
 
 from time import sleep, time
-from typing import List, Union, IO, Iterable, Dict, Iterator, Optional
+from typing import List, Union, IO, Iterable, Dict, Iterator, Optional, Any, Tuple
 from pathlib import Path
 import requests
 import mimetypes
@@ -118,7 +118,10 @@ class OperationTimeoutError(Exception):
 
 class Result:
     def __init__(
-        self, data: Dict = None, exception: Exception = None, source: Union[Path, IO, str] = None
+        self,
+        data: Optional[Dict[str, Any]] = None,
+        exception: Optional[Exception] = None,
+        source: Optional[Union[Path, IO, str]] = None
     ):
         self.data = data
         self.exception = exception
@@ -271,9 +274,9 @@ class Pipeline:
     def analyse_text(
         self,
         source: Union[Path, IO, str],
-        annotation_types: str = None,
-        language: str = None,
-        timeout: float = None,
+        annotation_types: Optional[str] = None,
+        language: Optional[str] = None,
+        timeout: Optional[float] = None,
     ) -> dict:
         """
         Analyze the given text or text file using the pipeline.
@@ -301,9 +304,9 @@ class Pipeline:
         self,
         sources: Iterable[Union[Path, IO, str]],
         parallelism: int = 0,
-        annotation_types: str = None,
-        language: str = None,
-        timeout: float = None,
+        annotation_types: Optional[str] = None,
+        language: Optional[str] = None,
+        timeout: Optional[float] = None,
     ) -> Iterator[Result]:
         """
         Analyze the given texts or files using the pipeline. If feasible, multiple documents are processed in parallel.
@@ -369,9 +372,9 @@ class Pipeline:
     def analyse_html(
         self,
         source: Union[Path, IO, str],
-        annotation_types: str = None,
-        language: str = None,
-        timeout: float = None,
+        annotation_types: Optional[str] = None,
+        language: Optional[str] = None,
+        timeout: Optional[float] = None,
     ) -> dict:
         """
         Analyze the given HTML string or HTML file using the pipeline.
@@ -430,8 +433,8 @@ class Pipeline:
     def analyse_text_to_cas(
         self,
         source: Union[Path, IO, str],
-        language: str = None,
-        timeout: float = None,
+        language: Optional[str] = None,
+        timeout: Optional[float] = None,
     ) -> Cas:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear. Processes text using a pipeline and returns the result
@@ -460,8 +463,8 @@ class Pipeline:
         self,
         sources: Iterable[Union[Path, IO, str]],
         parallelism: int = 0,
-        language: str = None,
-        timeout: float = None,
+        language: Optional[str] = None,
+        timeout: Optional[float] = None,
     ) -> Iterator[Result]:
         """
         Analyze the given texts or files using the pipeline. If feasible, multiple documents are processed in parallel.
@@ -528,8 +531,8 @@ class Pipeline:
     def analyse_cas_to_cas(
         self,
         source: Cas,
-        language: str = None,
-        timeout: float = None,
+        language: Optional[str] = None,
+        timeout: Optional[float] = None,
     ) -> Cas:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear. Processes text using a pipeline and returns the result
@@ -755,14 +758,16 @@ class Process:
         project: "Project",
         name: str,
         document_source_name: str,
-        pipeline_name: str = None,
-        preceding_process_name=None,
+        pipeline_name: Optional[str] = None,
+        preceding_process_name: Optional[str] = None
     ):
+        self.__logger = logging.getLogger(self.__class__.__module__ + "." + self.__class__.__name__)
         self.project = project
         self.name = name
         self.document_source_name = document_source_name
         self.pipeline_name = pipeline_name
         self.preceding_process_name = preceding_process_name
+        self._export_text_analysis_to_cas_has_been_called = False
 
     def __repr__(self):
         return (
@@ -846,6 +851,8 @@ class Process:
 
         Starts the evaluation of this process in comparison to the given one as a new process.
         Returns the new evaluation process.
+
+        See :ref:`evaluation` for a usage example and more information.
         """
         # noinspection PyProtectedMember
         return self.project.client._evaluate(
@@ -880,9 +887,9 @@ class Process:
 
     def export_text_analysis(
         self,
-        annotation_types: str = None,
-        page: Union[int, None] = None,
-        page_size: Union[int, None] = 100,
+        annotation_types: Optional[str] = None,
+        page: Optional[int] = None,
+        page_size: Optional[int] = 100,
     ) -> dict:
         """
         Exports a given text analysis process as a json.
@@ -919,25 +926,41 @@ class Process:
         )
 
     @experimental_api
-    def export_text_analysis_to_cas(self, document_name: str) -> Cas:
+    def export_text_analysis_to_cas(
+            self,
+            document_name: str,
+            type_system: Optional[TypeSystem] = None,
+            annotation_types: Optional[str] = None
+    ) -> Cas:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
         Returns an analysis as a UIMA CAS.
+        :param document_name: the name of the document whose text analysis result will be exported
+        :param type_system: Optional parameter for the typesystem that the exported CAS will be set up with.
+        :param annotation_types: Optional parameter indicating which types should be returned. Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types with prefix "de.averbis.types"
+
         """
-        if self.project.client.get_build_info()["specVersion"].startswith("5."):
+        build_info = self.project.client.get_build_info()
+        if build_info["specVersion"].startswith("5."):
             raise OperationNotSupported(
                 "Text analysis export is not supported for platform version 5.x, it is only supported from 6.x onwards."
             )
+
+        # noinspection PyProtectedMember
+        if annotation_types is not None and \
+                "platformVersion" in build_info and \
+                not self.project.client._is_higher_equal_version(build_info["platformVersion"], 6, 49):
+            self.__logger.warning("Filtering by annotation types is not supported in this product version.")
+
+        if type_system is None and self._export_text_analysis_to_cas_has_been_called is False:
+            self.__logger.info("Providing the typesystem that the CAS will be set up with to the export may speed up "
+                               "the process.")
+        self._export_text_analysis_to_cas_has_been_called = True
+
         document_collection = self.project.get_document_collection(self.document_source_name)
-        # noinspection PyProtectedMember
-        document_identifier = document_collection._get_document_identifier(document_name)
-        # noinspection PyProtectedMember
-        type_system = load_typesystem(
-            self.project.client._export_analysis_result_typesystem(
-                self.project.name, self.document_source_name, document_identifier, self
-            )
-        )
+
+        cas_type_system, document_identifier = self._load_typesystem(type_system, document_collection, document_name)
 
         # noinspection PyProtectedMember
         return load_cas_from_xmi(
@@ -947,17 +970,47 @@ class Process:
                 document_name,
                 document_identifier,
                 self,
+                annotation_types
             ),
-            typesystem=type_system,
+            typesystem=cas_type_system,
         )
+
+    def _load_typesystem(
+            self,
+            type_system: TypeSystem,
+            document_collection: "DocumentCollection",
+            document_name: str
+    ) -> Tuple[TypeSystem, Optional[str]]:
+        document_identifier = None
+        cas_type_system = type_system
+        if cas_type_system is None:
+            build_info = self.project.client.get_build_info()
+            # noinspection PyProtectedMember
+            if "platformVersion" in build_info and self.project.client._is_higher_equal_version(build_info["platformVersion"], 6, 50):
+                # noinspection PyProtectedMember
+                cas_type_system = load_typesystem(
+                    self.project.client._export_analysis_result_typesystem(
+                        self.project.name, self.document_source_name, document_name, self
+                    )
+                )
+            else:
+                # noinspection PyProtectedMember
+                document_identifier = document_collection._get_document_identifier(document_name)
+                # noinspection PyProtectedMember
+                cas_type_system = load_typesystem(
+                    self.project.client._export_analysis_result_typesystem(
+                        self.project.name, self.document_source_name, document_name, self, document_identifier
+                    )
+                )
+        return cas_type_system, document_identifier
 
     @experimental_api
     def import_text_analysis_result(
         self,
         source: Union[Cas, Path, IO],
         document_name: str,
-        mime_type: str = None,
-        typesystem: "TypeSystem" = None,
+        mime_type: Optional[str] = None,
+        typesystem: Optional["TypeSystem"] = None,
         overwrite: bool = False,
     ):
         """
@@ -989,6 +1042,16 @@ class Process:
             typesystem,
             overwrite,
         )
+
+    @experimental_api
+    def rename(self, name: str) -> "Process":
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Rename this process to the given name and return the process
+        """
+        # noinspection PyProtectedMember
+        return self.project.client._rename_process(self, name)
 
 
 class DocumentCollection:
@@ -1075,9 +1138,9 @@ class DocumentCollection:
     def import_documents(
         self,
         source: Union[Cas, Path, IO, str],
-        mime_type: str = None,
-        filename: str = None,
-        typesystem: "TypeSystem" = None,
+        mime_type: Optional[str] = None,
+        filename: Optional[str] = None,
+        typesystem: Optional["TypeSystem"] = None,
     ) -> List[dict]:
         """
         Imports documents from a given file or from a given string. Supported file content types are plain text (text/plain),
@@ -1190,7 +1253,7 @@ class Project:
 
         return self.__cached_pipelines[name]
 
-    def create_pipeline(self, configuration: dict, name: str = None) -> Pipeline:
+    def create_pipeline(self, configuration: dict, name: Optional[str] = None) -> Pipeline:
         """
         Create a new pipeline.
 
@@ -1434,7 +1497,8 @@ class EvaluationConfiguration:
         self,
         comparison_annotation_type_name: str,
         features_to_compare: List[str],
-        reference_annotation_type_name: str = None,
+        reference_annotation_type_name: Optional[str] = None,
+        **kwargs
     ):
         """
         Configuration for the evaluation of one annotation type
@@ -1467,6 +1531,8 @@ class EvaluationConfiguration:
         self.allowMultipleMatches = False
         self.stringFeatureComparisonIgnoreCase = False
         self.forceComparisonWhenGoldstandardMissing = False
+        self.projectAnnotationsTo = None
+        self.__dict__.update(kwargs)
 
     def add_feature(self, feature_name: str) -> "EvaluationConfiguration":
         self.featuresToBeCompared.append(feature_name)
@@ -1507,12 +1573,12 @@ class Client:
     def __init__(
         self,
         url_or_id: str,
-        api_token: str = None,
+        api_token: Optional[str] = None,
         verify_ssl: Union[str, bool] = True,
-        settings: Union[str, Path, dict] = None,
-        username: str = None,
-        password: str = None,
-        timeout: float = None,
+        settings: Optional[Union[str, Path, dict]] = None,
+        username: Optional[str] = None,
+        password: Optional[str] = None,
+        timeout: Optional[float] = None,
         polling_timeout: int = 30,
         poll_delay: int = 5,
     ):
@@ -1556,6 +1622,8 @@ class Client:
                 self._apply_profile("*")
             self._apply_profile(url_or_id)
 
+        self._normalize_url()
+
         if self._api_token is None:
             if username is not None and password is not None:
                 self.regenerate_api_token(username, password)
@@ -1593,7 +1661,7 @@ class Client:
         if "timeout" in connection_profile:
             self._timeout = connection_profile["timeout"]
 
-    def _load_settings(self, path: Union[str, Path] = None) -> dict:
+    def _load_settings(self, path: Optional[Union[str, Path]] = None) -> dict:
         """
         Loads the client settings from a given path or (as fallback) searches for a "client-settings.json" file in the current path or in $HOME/.averbis.
 
@@ -1619,6 +1687,10 @@ class Client:
                 return json.load(source)
 
         return {}
+
+    def _normalize_url(self) -> None:
+        if self._url.endswith("#/"):
+            self._url = self._url[:-2]
 
     def set_timeout(self, timeout: float) -> "Client":
         """
@@ -2000,9 +2072,9 @@ class Client:
         project: str,
         collection_name: str,
         source: Union[Cas, Path, IO, str],
-        mime_type: str = None,
-        filename: str = None,
-        typesystem: "TypeSystem" = None,
+        mime_type: Optional[str] = None,
+        filename: Optional[str] = None,
+        typesystem: Optional["TypeSystem"] = None,
     ) -> List[dict]:
         """
         Use DocumentCollection.import_document() instead.
@@ -2254,7 +2326,7 @@ class Client:
         data,
         classification_set: str = "Default",
         data_format=DOCUMENT_IMPORTER_TEXT,
-        timeout: float = None,
+        timeout: Optional[float] = None,
     ) -> dict:
         def get_media_type_for_format() -> str:
             if data_format == DOCUMENT_IMPORTER_TEXT:
@@ -2277,9 +2349,9 @@ class Client:
         project: str,
         pipeline: str,
         source: Union[Path, IO, str],
-        annotation_types: str = None,
-        language: str = None,
-        timeout: float = None,
+        annotation_types: Optional[str] = None,
+        language: Optional[str] = None,
+        timeout: Optional[float] = None,
     ) -> dict:
         if isinstance(source, Path):
             with source.open("r", encoding=ENCODING_UTF_8) as file:
@@ -2302,9 +2374,9 @@ class Client:
         project: str,
         pipeline: str,
         source: Union[Path, IO, str],
-        annotation_types: str = None,
-        language: str = None,
-        timeout: float = None,
+        annotation_types: Optional[str] = None,
+        language: Optional[str] = None,
+        timeout: Optional[float] = None,
     ) -> dict:
         if isinstance(source, Path):
             with source.open("r", encoding=ENCODING_UTF_8) as file:
@@ -2322,7 +2394,7 @@ class Client:
         )
         return response["payload"]
 
-    def _select(self, project: str, q: str = None, **kwargs) -> dict:
+    def _select(self, project: str, q: Optional[str] = None, **kwargs) -> dict:
         response = self.__request_with_json_response(
             "get",
             f"/v1/search/projects/{project}/select",
@@ -2336,9 +2408,9 @@ class Client:
         project: str,
         document_source: str,
         process: str,
-        annotation_types: str = None,
-        page: Union[int, None] = None,
-        page_size: Union[int, None] = None,
+        annotation_types: Optional[str] = None,
+        page: Optional[int] = None,
+        page_size: Optional[int] = None,
     ):
         """
         Use Process.export_text_analysis() instead.
@@ -2359,6 +2431,7 @@ class Client:
         document_name: str,
         document_id: str,
         process: Union[Process, str],
+        annotation_types: str
     ) -> str:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -2373,6 +2446,9 @@ class Client:
             )
 
         process_name = self.__process_name(process)
+        request_params = {"documentName": document_name}
+        if annotation_types is not None:
+            request_params["annotationTypes"] = annotation_types
 
         try:
             return str(
@@ -2383,12 +2459,16 @@ class Client:
                     headers={
                         HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_XMI,
                     },
-                    params={"documentName": document_name},
+                    params=request_params,
                 ),
                 ENCODING_UTF_8,
             )
 
         except RequestException as e:
+            if document_id is None:
+                document_collection = process.project.get_document_collection(collection_name)
+                # noinspection PyProtectedMember
+                document_id = document_collection._get_document_identifier(document_name)
             # in HD 6 below version 6.7 the endpoint is called with identifiers instead
             return str(
                 self.__request_with_bytes_response(
@@ -2405,7 +2485,12 @@ class Client:
 
     @experimental_api
     def _export_analysis_result_typesystem(
-        self, project: str, collection_name: str, document_id: str, process: Union[Process, str]
+            self,
+            project: str,
+            collection_name: str,
+            document_name: str,
+            process: Union[Process, str],
+            document_id: Optional[str] = None
     ) -> str:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -2417,6 +2502,18 @@ class Client:
             )
 
         process_name = self.__process_name(process)
+
+        if document_id is None:
+            return str(
+                self.__request_with_bytes_response(
+                    "get",
+                    f"/experimental/textanalysis/projects/{project}/documentCollections/{collection_name}"
+                    f"/processes/{process_name}/textAnalysisResultTypeSystem",
+                    headers={HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_XML},
+                    params={"documentName": document_name}
+                ),
+                ENCODING_UTF_8,
+            )
 
         return str(
             self.__request_with_bytes_response(
@@ -2434,8 +2531,8 @@ class Client:
         project: str,
         pipeline: str,
         source: Union[IO, str, Path],
-        language: str = None,
-        timeout: float = None,
+        language: Optional[str] = None,
+        timeout: Optional[float] = None,
     ) -> str:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -2470,8 +2567,8 @@ class Client:
         project: str,
         pipeline: str,
         source: Cas,
-        language: str = None,
-        timeout: float = None,
+        language: Optional[str] = None,
+        timeout: Optional[float] = None,
     ) -> str:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -2618,8 +2715,8 @@ class Client:
         document_collection: DocumentCollection,
         process_name: str,
         pipeline: Union[str, Pipeline],
-        process_type: str = None,
-        preceding_process_name=None,
+        process_type: Optional[str] = None,
+        preceding_process_name: Optional[str] = None,
     ) -> dict:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -3045,3 +3142,32 @@ class Client:
             sleep(self._poll_delay)
             total_time_slept += self._poll_delay
             processes = self._list_processes(project)
+
+    @experimental_api
+    def _rename_process(
+            self,
+            process: Process,
+            new_name: str) -> Process:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Use {process}.rename() instead.
+        """
+
+        self.__request_with_json_response(
+            "post",
+            f"/experimental/textanalysis/projects/{process.project.name}/documentCollections/{process.document_source_name}/processes/{process.name}",
+            data=new_name,
+            headers={
+                HEADER_CONTENT_TYPE: MEDIA_TYPE_TEXT_PLAIN_UTF8,
+                HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_JSON
+            }
+        )
+        process.name = new_name
+        return process
+
+    @staticmethod
+    def _is_higher_equal_version(version: str, compare_major: int, compare_minor: int) -> bool:
+        version_parts = version.split(".")
+        major = int(version_parts[0])
+        return major > compare_major or (major == compare_major and int(version_parts[1]) >= compare_minor)
