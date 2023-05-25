@@ -939,10 +939,18 @@ class Process:
         :param annotation_types: Optional parameter indicating which types should be returned. Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types with prefix "de.averbis.types"
 
         """
-        if self.project.client.get_build_info()["specVersion"].startswith("5."):
+        build_info = self.project.client.get_build_info()
+        if build_info["specVersion"].startswith("5."):
             raise OperationNotSupported(
                 "Text analysis export is not supported for platform version 5.x, it is only supported from 6.x onwards."
             )
+
+        # noinspection PyProtectedMember
+        if annotation_types is not None and \
+                "platformVersion" in build_info and \
+                not self.project.client._is_higher_equal_version(build_info["platformVersion"], 6, 49):
+            self.__logger.warning("Filtering by annotation types is not supported in this product version.")
+
         if type_system is None and self._export_text_analysis_to_cas_has_been_called is False:
             self.__logger.info("Providing the typesystem that the CAS will be set up with to the export may speed up "
                                "the process.")
@@ -3105,3 +3113,12 @@ class Client:
         )
         process.name = new_name
         return process
+
+    @staticmethod
+    def _is_higher_equal_version(version: str, compare_major: int, compare_minor: int) -> bool:
+        version_parts = version.split(".")
+        major = int(version_parts[0])
+        return major > compare_major or (
+                major == compare_major and int(version_parts[1]) >= compare_minor
+        )
+
