@@ -20,6 +20,7 @@
 import logging
 import time
 from pathlib import Path
+from typing import Optional
 
 from cassis import Cas
 from requests_toolbelt import MultipartDecoder
@@ -256,7 +257,7 @@ class PipelineEndpointMock:
         self.state_locked = False
 
     def set_state(
-        self, state: str, locked: bool = False, pipeline_state_message: str = None
+        self, state: str, locked: bool = False, pipeline_state_message: Optional[str] = None
     ) -> None:
         self.state = state
         self.requested_state = state
