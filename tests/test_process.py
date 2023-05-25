@@ -286,8 +286,8 @@ def test_export_text_analysis_to_cas_v5(client_version_5):
         process.export_text_analysis_to_cas(document_name)
 
 
-def test_export_text_analysis_to_cas_v6_full_name_support(client_version_6_7, requests_mock):
-    project = client_version_6_7.get_project(PROJECT_NAME)
+def test_export_text_analysis_to_cas_v6_full_name_support(client_version_6_17_platform_6_50, requests_mock):
+    project = client_version_6_17_platform_6_50.get_project(PROJECT_NAME)
     collection = project.get_document_collection(COLLECTION_NAME)
     document_name = "document.txt"
     expected_xmi = """<?xml version="1.0" encoding="UTF-8"?>
@@ -346,14 +346,6 @@ def test_export_text_analysis_to_cas_v6_onlycas_export_by_name_support(client_ve
 
     requests_mock.get(
         f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/documentCollections/{collection.name}"
-        f"/processes/{process.name}/textAnalysisResultTypeSystem",
-        headers={"Content-Type": "application/xml"},
-        text=empty_typesystem,
-        status_code=405
-    )
-
-    requests_mock.get(
-        f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/documentCollections/{collection.name}"
         f"/documents/{document_id}/processes/{process.name}/exportTextAnalysisResultTypeSystem",
         headers={"Content-Type": "application/xml"},
         text=empty_typesystem
@@ -367,7 +359,6 @@ def test_export_text_analysis_to_cas_v6_onlycas_export_by_name_support(client_ve
             "errorMessages": [],
         },
     )
-
     requests_mock.get(
         f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/documentCollections/{collection.name}"
         f"/processes/{process.name}/textAnalysisResult",

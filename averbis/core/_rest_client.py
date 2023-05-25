@@ -968,14 +968,16 @@ class Process:
         document_identifier = None
         cas_type_system = type_system
         if cas_type_system is None:
-            try:
+            build_info = self.project.client.get_build_info()
+            # noinspection PyProtectedMember
+            if "platformVersion" in build_info and self.project.client._is_higher_equal_version(build_info["platformVersion"], 6, 50):
                 # noinspection PyProtectedMember
                 cas_type_system = load_typesystem(
                     self.project.client._export_analysis_result_typesystem(
                         self.project.name, self.document_source_name, document_name, self
                     )
                 )
-            except RequestException as e:
+            else:
                 # noinspection PyProtectedMember
                 document_identifier = document_collection._get_document_identifier(document_name)
                 # noinspection PyProtectedMember
@@ -3140,3 +3142,9 @@ class Client:
         )
         process.name = new_name
         return process
+
+    @staticmethod
+    def _is_higher_equal_version(version: str, compare_major: int, compare_minor: int) -> bool:
+        version_parts = version.split(".")
+        major = int(version_parts[0])
+        return major > compare_major or (major == compare_major and int(version_parts[1]) >= compare_minor)
