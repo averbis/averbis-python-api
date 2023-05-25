@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021 Averbis GmbH.
+# Copyright (c) 2023 Averbis GmbH.
 #
 # This file is part of Averbis Python API.
 # See https://www.averbis.com for further info.
@@ -32,7 +32,7 @@ from io import BytesIO, IOBase, BufferedReader
 from json import JSONDecodeError
 
 from time import sleep, time
-from typing import List, Union, IO, Iterable, Dict, Iterator, Optional, Any
+from typing import List, Union, IO, Iterable, Dict, Iterator, Optional, Any, Tuple
 from pathlib import Path
 import requests
 import mimetypes
@@ -957,17 +957,8 @@ class Process:
         self._export_text_analysis_to_cas_has_been_called = True
 
         document_collection = self.project.get_document_collection(self.document_source_name)
-        # noinspection PyProtectedMember
-        document_identifier = document_collection._get_document_identifier(document_name)
 
-        cas_type_system = type_system
-        if cas_type_system is None:
-            # noinspection PyProtectedMember
-            cas_type_system = load_typesystem(
-                    self.project.client._export_analysis_result_typesystem(
-                        self.project.name, self.document_source_name, document_identifier, self
-                    )
-                )
+        cas_type_system, document_identifier = self._load_typesystem(type_system, document_collection, document_name)
 
         # noinspection PyProtectedMember
         return load_cas_from_xmi(
@@ -981,6 +972,35 @@ class Process:
             ),
             typesystem=cas_type_system,
         )
+
+    def _load_typesystem(
+            self,
+            type_system: TypeSystem,
+            document_collection: "DocumentCollection",
+            document_name: str
+    ) -> Tuple[TypeSystem, Optional[str]]:
+        document_identifier = None
+        cas_type_system = type_system
+        if cas_type_system is None:
+            build_info = self.project.client.get_build_info()
+            # noinspection PyProtectedMember
+            if "platformVersion" in build_info and self.project.client._is_higher_equal_version(build_info["platformVersion"], 6, 50):
+                # noinspection PyProtectedMember
+                cas_type_system = load_typesystem(
+                    self.project.client._export_analysis_result_typesystem(
+                        self.project.name, self.document_source_name, document_name, self
+                    )
+                )
+            else:
+                # noinspection PyProtectedMember
+                document_identifier = document_collection._get_document_identifier(document_name)
+                # noinspection PyProtectedMember
+                cas_type_system = load_typesystem(
+                    self.project.client._export_analysis_result_typesystem(
+                        self.project.name, self.document_source_name, document_name, self, document_identifier
+                    )
+                )
+        return cas_type_system, document_identifier
 
     @experimental_api
     def import_text_analysis_result(
@@ -1476,6 +1496,7 @@ class EvaluationConfiguration:
         comparison_annotation_type_name: str,
         features_to_compare: List[str],
         reference_annotation_type_name: Optional[str] = None,
+        **kwargs
     ):
         """
         Configuration for the evaluation of one annotation type
@@ -1508,6 +1529,8 @@ class EvaluationConfiguration:
         self.allowMultipleMatches = False
         self.stringFeatureComparisonIgnoreCase = False
         self.forceComparisonWhenGoldstandardMissing = False
+        self.projectAnnotationsTo = None
+        self.__dict__.update(kwargs)
 
     def add_feature(self, feature_name: str) -> "EvaluationConfiguration":
         self.featuresToBeCompared.append(feature_name)
@@ -1597,6 +1620,8 @@ class Client:
                 self._apply_profile("*")
             self._apply_profile(url_or_id)
 
+        self._normalize_url()
+
         if self._api_token is None:
             if username is not None and password is not None:
                 self.regenerate_api_token(username, password)
@@ -1660,6 +1685,10 @@ class Client:
                 return json.load(source)
 
         return {}
+
+    def _normalize_url(self) -> None:
+        if self._url.endswith("#/"):
+            self._url = self._url[:-2]
 
     def set_timeout(self, timeout: float) -> "Client":
         """
@@ -2434,6 +2463,10 @@ class Client:
             )
 
         except RequestException as e:
+            if document_id is None:
+                document_collection = process.project.get_document_collection(collection_name)
+                # noinspection PyProtectedMember
+                document_id = document_collection._get_document_identifier(document_name)
             # in HD 6 below version 6.7 the endpoint is called with identifiers instead
             return str(
                 self.__request_with_bytes_response(
@@ -2450,7 +2483,12 @@ class Client:
 
     @experimental_api
     def _export_analysis_result_typesystem(
-        self, project: str, collection_name: str, document_id: str, process: Union[Process, str]
+            self,
+            project: str,
+            collection_name: str,
+            document_name: str,
+            process: Union[Process, str],
+            document_id: Optional[str] = None
     ) -> str:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -2462,6 +2500,18 @@ class Client:
             )
 
         process_name = self.__process_name(process)
+
+        if document_id is None:
+            return str(
+                self.__request_with_bytes_response(
+                    "get",
+                    f"/experimental/textanalysis/projects/{project}/documentCollections/{collection_name}"
+                    f"/processes/{process_name}/textAnalysisResultTypeSystem",
+                    headers={HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_XML},
+                    params={"documentName": document_name}
+                ),
+                ENCODING_UTF_8,
+            )
 
         return str(
             self.__request_with_bytes_response(
@@ -3118,7 +3168,4 @@ class Client:
     def _is_higher_equal_version(version: str, compare_major: int, compare_minor: int) -> bool:
         version_parts = version.split(".")
         major = int(version_parts[0])
-        return major > compare_major or (
-                major == compare_major and int(version_parts[1]) >= compare_minor
-        )
-
+        return major > compare_major or (major == compare_major and int(version_parts[1]) >= compare_minor)
