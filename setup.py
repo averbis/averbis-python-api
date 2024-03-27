@@ -43,7 +43,6 @@ install_requires = [
 test_dependencies = [
     "requests-toolbelt>=0.9.1",
     "pytest>=5.2.1",
-    "pytest-lazy-fixture",
     "codecov",
     "pytest-cov",
     "requests-mock",
