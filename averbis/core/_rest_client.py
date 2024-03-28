@@ -1087,26 +1087,35 @@ class DocumentCollection:
         self,
         process_name: str,
         pipeline: Union[str, Pipeline],
+        annotation_types: Optional[str] = None
     ) -> Process:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
         Creates a process and runs the document analysis.
+        :param process_name    : The name of the newly created process
+        :param pipeline        : The name of the pipeline or a reference to the Pipeline that should be used
+        :param annotation_types: Optional parameter indicating which types should be saved. Supports wildcard expressions,
+                                 - Example 1: "de.averbis.types.*" returns all types with prefix "de.averbis.types".
+                                 - Example 2: Can also be a comma-seperated list of types, e.g. "de.averbis.types.health.Diagnosis,de.averbis.types.health.Medication"
         :return: The created process
         """
         # noinspection PyProtectedMember
-        self.project.client._create_and_run_process(self, process_name, pipeline)
+        self.project.client._create_and_run_process(self, process_name, pipeline, annotation_types=annotation_types)
 
         return self.get_process(process_name)
 
     @experimental_api
-    def create_process(self, process_name: str, is_manual_annotation: bool = False) -> Process:
+    def create_process(self, process_name: str, is_manual_annotation: bool = False, annotation_types: Optional[str] = None) -> Process:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
         Creates a process without a pipeline (e.g. for later manual annotation or text analysis result import)
-        :param: is_manual_annotation the created process will be used for manual annotation
-        i.e. the underlying data structure will be initialized immediately and not on later text analysis result import
+        :param process_name        : The name of the newly created process
+        :param is_manual_annotation: The created process will be used for manual annotation i.e. the underlying data structure will be initialized immediately and not on later text analysis result import
+        :param annotation_types    : Optional String parameter indicating which types should be saved. Supports wildcard expressions,
+                                      - Example 1: "de.averbis.types.*" returns all types with prefix "de.averbis.types".
+                                      - Example 2: Can also be a comma-seperated list of types, e.g. "de.averbis.types.health.Diagnosis,de.averbis.types.health.Medication"
         :return: The created process
         """
         process_type = self._map_process_type(Process._ProcessType.NO_INIT)
@@ -1114,7 +1123,7 @@ class DocumentCollection:
             process_type = self._map_process_type(Process._ProcessType.INIT)
         # noinspection PyProtectedMember
         self.project.client._create_and_run_process(
-            self, process_name, pipeline=None, process_type=process_type
+            self, process_name, pipeline=None, process_type=process_type, annotation_types=annotation_types,
         )
 
         return self.get_process(process_name)
@@ -2717,6 +2726,7 @@ class Client:
         pipeline: Union[str, Pipeline],
         process_type: Optional[str] = None,
         preceding_process_name: Optional[str] = None,
+        annotation_types: Optional[str] = None
     ) -> dict:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -2740,6 +2750,12 @@ class Client:
 
         if preceding_process_name:
             request_json["precedingProcessName"] = preceding_process_name
+
+        if annotation_types:
+            build_version = self.get_build_info()
+            if build_version["platformVersion"] < "8.11":
+                raise OperationNotSupported(f"The parameter 'annotation_types' is only supported for platform versions >= 8.11 (available from Health Discovery version 7.1), but current platform is {build_version['platformVersion']}.")
+            request_json["annotationTypesToBeSaved"] = annotation_types
 
         response = self.__request_with_json_response(
             "post",
