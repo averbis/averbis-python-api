@@ -1068,10 +1068,15 @@ def test_create_zip_io__folder(client):
     assert_zip_archive_bytes_io_content(zip_archive_bytes_io)
 
 
+def test_annotation_types_normalization(client):
+    assert client._preprocess_annotation_types(["custom.Diagnosis", "custom.Medication"]) == "custom.Diagnosis,custom.Medication"
+    assert client._preprocess_annotation_types("custom.Diagnosis, custom.Medication") == "custom.Diagnosis,custom.Medication"
+    assert client._preprocess_annotation_types(None) is None
+
+
 def test_evaluation_configuration_constructor_handles_kwargs():
     eval_config = EvaluationConfiguration("de.averbis.types.health.diagnosis", features_to_compare=["begin","end"], projectAnnotationsTo="de.averbis.extraction.types.Token")
     assert eval_config.projectAnnotationsTo == "de.averbis.extraction.types.Token"
-
 def assert_zip_archive_bytes_io_content(zip_archive_bytes_io, prefix=""):
     zip_file = zipfile.ZipFile(zip_archive_bytes_io)
     files_in_zip = [f.filename for f in zip_file.filelist]
@@ -1081,3 +1086,4 @@ def assert_zip_archive_bytes_io_content(zip_archive_bytes_io, prefix=""):
     assert f"{prefix}text3.txt" in files_in_zip
     assert f"{prefix}sub/text4.txt" in files_in_zip
     assert f"{prefix}zip_test.zip" in files_in_zip
+
