@@ -21,6 +21,7 @@ import copy
 from enum import Enum, auto
 from urllib.parse import quote
 
+import re
 from cassis import Cas, TypeSystem, load_cas_from_xmi, load_typesystem, merge_typesystems  # type: ignore
 import json
 import logging
@@ -274,7 +275,7 @@ class Pipeline:
     def analyse_text(
         self,
         source: Union[Path, IO, str],
-        annotation_types: Optional[str] = None,
+        annotation_types: Union[None, str, List[str]] = None,
         language: Optional[str] = None,
         timeout: Optional[float] = None,
     ) -> dict:
@@ -304,7 +305,7 @@ class Pipeline:
         self,
         sources: Iterable[Union[Path, IO, str]],
         parallelism: int = 0,
-        annotation_types: Optional[str] = None,
+        annotation_types: Union[None, str, List[str]] = None,
         language: Optional[str] = None,
         timeout: Optional[float] = None,
     ) -> Iterator[Result]:
@@ -372,7 +373,7 @@ class Pipeline:
     def analyse_html(
         self,
         source: Union[Path, IO, str],
-        annotation_types: Optional[str] = None,
+        annotation_types: Union[None, str, List[str]] = None,
         language: Optional[str] = None,
         timeout: Optional[float] = None,
     ) -> dict:
@@ -887,7 +888,7 @@ class Process:
 
     def export_text_analysis(
         self,
-        annotation_types: Optional[str] = None,
+        annotation_types: Union[None, str, List[str]] = None,
         page: Optional[int] = None,
         page_size: Optional[int] = 100,
     ) -> dict:
@@ -930,7 +931,7 @@ class Process:
             self,
             document_name: str,
             type_system: Optional[TypeSystem] = None,
-            annotation_types: Optional[str] = None
+            annotation_types: Union[None, str, List[str]] = None
     ) -> Cas:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -1087,26 +1088,35 @@ class DocumentCollection:
         self,
         process_name: str,
         pipeline: Union[str, Pipeline],
+        annotation_types: Union[None, str, List[str]] = None
     ) -> Process:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
         Creates a process and runs the document analysis.
+        :param process_name    : The name of the newly created process
+        :param pipeline        : The name of the pipeline or a reference to the Pipeline that should be used
+        :param annotation_types: Optional parameter indicating which types should be saved. Supports wildcard expressions,
+                                 - Example 1: "de.averbis.types.*" returns all types with prefix "de.averbis.types".
+                                 - Example 2: Can also be a list of type names, e.g. ["de.averbis.types.health.Diagnosis", "de.averbis.types.health.Medication"]
         :return: The created process
         """
         # noinspection PyProtectedMember
-        self.project.client._create_and_run_process(self, process_name, pipeline)
+        self.project.client._create_and_run_process(self, process_name, pipeline, annotation_types=annotation_types)
 
         return self.get_process(process_name)
 
     @experimental_api
-    def create_process(self, process_name: str, is_manual_annotation: bool = False) -> Process:
+    def create_process(self, process_name: str, is_manual_annotation: bool = False, annotation_types: Union[None, str, List[str]] = None) -> Process:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
         Creates a process without a pipeline (e.g. for later manual annotation or text analysis result import)
-        :param: is_manual_annotation the created process will be used for manual annotation
-        i.e. the underlying data structure will be initialized immediately and not on later text analysis result import
+        :param process_name        : The name of the newly created process
+        :param is_manual_annotation: The created process will be used for manual annotation i.e. the underlying data structure will be initialized immediately and not on later text analysis result import
+        :param annotation_types    : Optional String parameter indicating which types should be saved. Supports wildcard expressions,
+                                      - Example 1: "de.averbis.types.*" returns all types with prefix "de.averbis.types".
+                                      - Example 2: Can also be a list of type names, e.g. ["de.averbis.types.health.Diagnosis", "de.averbis.types.health.Medication"]
         :return: The created process
         """
         process_type = self._map_process_type(Process._ProcessType.NO_INIT)
@@ -1114,7 +1124,7 @@ class DocumentCollection:
             process_type = self._map_process_type(Process._ProcessType.INIT)
         # noinspection PyProtectedMember
         self.project.client._create_and_run_process(
-            self, process_name, pipeline=None, process_type=process_type
+            self, process_name, pipeline=None, process_type=process_type, annotation_types=annotation_types,
         )
 
         return self.get_process(process_name)
@@ -2349,7 +2359,7 @@ class Client:
         project: str,
         pipeline: str,
         source: Union[Path, IO, str],
-        annotation_types: Optional[str] = None,
+        annotation_types: Union[None, str, List[str]] = None,
         language: Optional[str] = None,
         timeout: Optional[float] = None,
     ) -> dict:
@@ -2363,7 +2373,7 @@ class Client:
             "post",
             f"/v1/textanalysis/projects/{project}/pipelines/{pipeline}/analyseText",
             data=data,
-            params={"annotationTypes": annotation_types, "language": language},
+            params={"annotationTypes": self._preprocess_annotation_types(annotation_types), "language": language},
             headers={HEADER_CONTENT_TYPE: MEDIA_TYPE_TEXT_PLAIN_UTF8},
             timeout=timeout,
         )
@@ -2374,7 +2384,7 @@ class Client:
         project: str,
         pipeline: str,
         source: Union[Path, IO, str],
-        annotation_types: Optional[str] = None,
+        annotation_types: Union[None, str, List[str]] = None,
         language: Optional[str] = None,
         timeout: Optional[float] = None,
     ) -> dict:
@@ -2388,7 +2398,7 @@ class Client:
             "post",
             f"/v1/textanalysis/projects/{project}/pipelines/{pipeline}/analyseHtml",
             data=data,
-            params={"annotationTypes": annotation_types, "language": language},
+            params={"annotationTypes": self._preprocess_annotation_types(annotation_types), "language": language},
             headers={HEADER_CONTENT_TYPE: MEDIA_TYPE_TEXT_PLAIN_UTF8},
             timeout=timeout,
         )
@@ -2408,7 +2418,7 @@ class Client:
         project: str,
         document_source: str,
         process: str,
-        annotation_types: Optional[str] = None,
+        annotation_types: Union[None, str, List[str]] = None,
         page: Optional[int] = None,
         page_size: Optional[int] = None,
     ):
@@ -2418,7 +2428,7 @@ class Client:
         response = self.__request_with_json_response(
             "get",
             f"/v1/textanalysis/projects/{project}/documentSources/{document_source}/processes/{process}/export",
-            params={"annotationTypes": annotation_types, "page": page, "pageSize": page_size},
+            params={"annotationTypes": self._preprocess_annotation_types(annotation_types), "page": page, "pageSize": page_size},
             headers={HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_JSON},
         )
         return response["payload"]
@@ -2431,7 +2441,7 @@ class Client:
         document_name: str,
         document_id: str,
         process: Union[Process, str],
-        annotation_types: str
+        annotation_types: Union[None, str, List[str]]
     ) -> str:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -2448,7 +2458,7 @@ class Client:
         process_name = self.__process_name(process)
         request_params = {"documentName": document_name}
         if annotation_types is not None:
-            request_params["annotationTypes"] = annotation_types
+            request_params["annotationTypes"] = self._preprocess_annotation_types(annotation_types)
 
         try:
             return str(
@@ -2717,6 +2727,7 @@ class Client:
         pipeline: Union[str, Pipeline],
         process_type: Optional[str] = None,
         preceding_process_name: Optional[str] = None,
+        annotation_types: Union[None, str, List[str]] = None
     ) -> dict:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -2740,6 +2751,12 @@ class Client:
 
         if preceding_process_name:
             request_json["precedingProcessName"] = preceding_process_name
+
+        if annotation_types:
+            build_version = self.get_build_info()
+            if build_version["platformVersion"] < "8.11":
+                raise OperationNotSupported(f"The parameter 'annotation_types' is only supported for platform versions >= 8.11 (available from Health Discovery version 7.1), but current platform is {build_version['platformVersion']}.")
+            request_json["annotationTypesToBeSaved"] = self._preprocess_annotation_types(annotation_types)
 
         response = self.__request_with_json_response(
             "post",
@@ -3171,3 +3188,15 @@ class Client:
         version_parts = version.split(".")
         major = int(version_parts[0])
         return major > compare_major or (major == compare_major and int(version_parts[1]) >= compare_minor)
+
+    @staticmethod
+    def _preprocess_annotation_types(annotation_types: Union[None, str, List[str]]):
+        if annotation_types is None:
+            return None
+        if isinstance(annotation_types, list):
+            annotation_types = list(set(annotation_types)) # deduplication
+            annotation_types = ",".join(annotation_types)
+
+        # Remove whitespaces
+        annotation_types = re.sub(r"\s+", "", annotation_types)
+        return annotation_types
