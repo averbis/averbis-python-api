@@ -227,4 +227,4 @@ To install the latest development version of the library directly from GitHub, y
 
 .. code-block:: shell
 
-  $ pip install --force-reinstall --upgrade git+https://github.com/averbis/averbis-python-api.git@refs/heads/dev
+  $ pip install --force-reinstall --upgrade git+https://github.com/averbis/averbis-python-api.git@refs/heads/main
