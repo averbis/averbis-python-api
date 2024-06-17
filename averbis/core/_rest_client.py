@@ -1298,9 +1298,24 @@ class Project:
 
         :return: List of pipelines.
         """
+        # noinspection PyProtectedMember
         response = self.client._list_pipelines(self.name)
 
         return [Pipeline(self, p["name"]) for p in response]
+
+    @experimental_api
+    def list_annotators(self) -> List[dict]:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        List annotators (components) for the current project i.e. their identifier, displayName, bundle and version.
+
+        :return: List of annotator information.
+        """
+        # noinspection PyProtectedMember
+        return self.client._list_annotators(self.name)
+
+
 
     @experimental_api
     def exists_pipeline(self, name: str) -> bool:
@@ -2296,6 +2311,22 @@ class Client:
 
         response = self.__request_with_json_response(
             "get", f"/experimental/textanalysis/projects/{project}/pipelines"
+        )
+        return response["payload"]
+
+    def _list_annotators(self, project: str) -> List[dict]:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Use Project.list_annotators() instead.
+        """
+        spec_version = self.get_spec_version()
+        if spec_version.startswith("5.") or spec_version.startswith("6."):
+            raise OperationNotSupported(
+                "Listing annotators is only supported by the REST API from version 7.x onwards."
+            )
+        response = self.__request_with_json_response(
+            "get", f"/experimental/textanalysis/projects/{project}/annotators"
         )
         return response["payload"]
 

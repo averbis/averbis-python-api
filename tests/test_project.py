@@ -113,6 +113,35 @@ def test_list_pipelines(client_version_6, requests_mock):
     assert pipelines[1].project == project
 
 
+def test_list_pipelines(client_version_7, requests_mock):
+    project = client_version_7.get_project(PROJECT_NAME)
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/annotators",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": [
+                {
+                    "identifier": "DummyAnnotator",
+                    "displayName": "DummyAnnotator",
+                    "bundle": "my.cool.bundle",
+                    "version": "1.2.3",
+                },
+                {
+                    "identifier": "DummyAnnotator2",
+                    "displayName": "DummyAnnotator2",
+                    "bundle": "my.cool.bundle",
+                    "version": "1.2.3",
+                }
+            ],
+            "errorMessages": [],
+        },
+    )
+    annotators = project.list_annotators()
+
+    assert annotators[0]["identifier"] == "DummyAnnotator"
+    assert annotators[1]["displayName"] == "DummyAnnotator2"
+
+
 def test_exists_pipeline(client_version_6, requests_mock):
     project = client_version_6.get_project(PROJECT_NAME)
     requests_mock.get(
