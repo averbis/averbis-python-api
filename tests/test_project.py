@@ -113,7 +113,7 @@ def test_list_pipelines(client_version_6, requests_mock):
     assert pipelines[1].project == project
 
 
-def test_list_pipelines(client_version_7, requests_mock):
+def test_list_annotators(client_version_7, requests_mock):
     project = client_version_7.get_project(PROJECT_NAME)
     requests_mock.get(
         f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/annotators",
