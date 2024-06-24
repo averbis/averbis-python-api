@@ -162,7 +162,7 @@ class Pipeline:
             self.__fail_on_pipeline_error_state(pipeline_info)
             if total_time_slept > self.pipeline_state_change_timeout:
                 raise OperationTimeoutError(
-                    f"Pipeline stuck in transient state {pipeline_info['pipelineState']} for ${total_time_slept}"
+                    f"Pipeline stuck in transient state {pipeline_info['pipelineState']} for {total_time_slept}s"
                 )
             sleep(self.pipeline_state_poll_interval)
             total_time_slept += self.pipeline_state_poll_interval
@@ -176,7 +176,7 @@ class Pipeline:
             self.__fail_on_pipeline_error_state(pipeline_info)
             if total_time_slept > self.pipeline_state_change_timeout:
                 raise OperationTimeoutError(
-                    f"Pipeline did not arrive at state {target_state} after ${total_time_slept}"
+                    f"Pipeline did not arrive at state {target_state} after {total_time_slept}s"
                 )
             sleep(self.pipeline_state_poll_interval)
             total_time_slept += self.pipeline_state_poll_interval
@@ -3180,16 +3180,20 @@ class Client:
         )
 
     def _ensure_process_created(self, project: Project, process_name: str):
-        processes = self._list_processes(project)
+        def _get_process_names(project_name: str):
+            response = self.__request_with_json_response(
+                "get", f"/experimental/textanalysis/projects/{project_name}/processes"
+            )
+            return [p["processName"] for p in response["payload"]]
+
         total_time_slept = 0
-        while all(p.name != process_name for p in processes):
+        while process_name not in _get_process_names(project.name):
             if total_time_slept > self._polling_timeout:
                 raise OperationTimeoutError(
-                    f"Process not found for ${total_time_slept}"
+                    f"Process '{process_name}' not found for {total_time_slept}s."
                 )
             sleep(self._poll_delay)
             total_time_slept += self._poll_delay
-            processes = self._list_processes(project)
 
     @experimental_api
     def _rename_process(
