@@ -618,21 +618,6 @@ def test_evaluate(client_version_6, requests_mock):
         f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/processes",
         json={"payload": list_processes_payload, "errorMessages": []},
     )
-    get_process_payload = {
-        "processName": evaluation_process_name,
-        "documentSourceName": collection.name,
-        "state": "IDLE",
-        "numberOfTotalDocuments": 3,
-        "numberOfSuccessfulDocuments": 3,
-        "numberOfUnsuccessfulDocuments": 0,
-        "errorMessages": [],
-        "comparisonProcessName": comparison_process.name,
-        "referenceProcessName": reference_process.name
-    }
-    requests_mock.get(
-        f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/documentSources/{collection.name}/processes/{evaluation_process_name}",
-        json={"payload": get_process_payload, "errorMessages": []},
-    )
 
     clinical_section_keyword_config = EvaluationConfiguration("de.averbis.types.health.ClinicalSectionKeyword",
                                                                      ["begin", "end"])
