@@ -31,6 +31,7 @@ from averbis.core import (
     OperationNotSupported,
     MEDIA_TYPE_APPLICATION_XMI,
     MEDIA_TYPE_APPLICATION_XML,
+    MEDIA_TYPE_PDF
 )
 from tests.fixtures import *
 
@@ -348,6 +349,37 @@ def test_analyse_texts(client, pipeline_analyse_text_mock):
     assert not exceptions[1]
     assert sources[0].endswith("tests/resources/texts/text1.txt")
     assert sources[1].endswith("tests/resources/texts/text2.txt")
+
+
+def test_analyse_pdf_to_pdf(client, requests_mock):
+    def callback(request, _content):
+        doc_text = request.text.read().decode("utf-8")
+        return doc_text
+
+    requests_mock.get(
+        f"{API_BASE}/buildInfo",
+        headers={"Content-Type": "application/json"},
+        json={
+              "payload": {
+                "specVersion": "7.4.0-SNAPSHOT",
+                "buildNumber": "branch: main f2731e315ee137cf94c48e5f2fa431777fe49cef",
+                "platformVersion": "8.17.0"
+              },
+              "errorMessages": []
+            },
+    )
+
+    requests_mock.post(
+        f"{API_BASE}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/analyseText",
+        headers={"Content-Type": MEDIA_TYPE_PDF, "Accept": MEDIA_TYPE_PDF},
+        text=callback
+    )
+
+    pdf1_path = Path(TEST_DIRECTORY) / "resources" / "texts" / "text1.txt"
+    pipeline = Pipeline(Project(client, PROJECT_NAME), "discharge")
+
+    result = pipeline.analyse_pdf(pdf1_path, accept_type=MEDIA_TYPE_PDF)
+    assert result == b"This is a test."
 
 
 def test_analyse_texts_to_cas(client, pipeline_analyse_text_to_cas_mock):
