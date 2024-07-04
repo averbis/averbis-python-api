@@ -275,11 +275,11 @@ class Pipeline:
 
     def analyse_pdf_to_json(
         self,
-        source: Union[Path, IO, str],
+        source: Union[Path, IO],
         annotation_types: Union[None, str, List[str]] = None,
         language: Optional[str] = None,
         timeout: Optional[float] = None
-    ) -> Union[dict, bytes]:
+    ) -> dict:
         """
         Analyze the given pdf using the pipeline. The returned analysis is in json format.
 
@@ -305,7 +305,7 @@ class Pipeline:
 
     def analyse_pdf_to_pdf(
         self,
-        source: Union[Path, IO, str],
+        source: Union[Path, IO],
         annotation_types: Union[None, str, List[str]] = None,
         language: Optional[str] = None,
         timeout: Optional[float] = None
@@ -2452,7 +2452,7 @@ class Client:
         language: Optional[str] = None,
         timeout: Optional[float] = None,
         accept_type: Optional[str] = MEDIA_TYPE_APPLICATION_JSON
-    ) -> Union[dict, bytes]:
+    ):
         build_version = self.get_build_info()
 
         if accept_type != MEDIA_TYPE_APPLICATION_JSON and build_version["platformVersion"] < "8.16":
@@ -2496,7 +2496,7 @@ class Client:
                               language: Optional[str] = None,
                               timeout: Optional[float] = None,
                               content_type: Optional[str] = MEDIA_TYPE_TEXT_PLAIN_UTF8,
-                              accept_type: Optional[str] = MEDIA_TYPE_APPLICATION_JSON) -> Union[dict, bytes]:
+                              accept_type: Optional[str] = MEDIA_TYPE_APPLICATION_JSON):
         url = f"/v1/textanalysis/projects/{project}/pipelines/{pipeline}/analyseText"
         request_params = {"annotationTypes": self._preprocess_annotation_types(annotation_types), "language": language}
         request_headers = {HEADER_CONTENT_TYPE: content_type, HEADER_ACCEPT: accept_type}
