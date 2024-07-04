@@ -378,7 +378,7 @@ def test_analyse_pdf_to_pdf(client, requests_mock):
     pdf1_path = Path(TEST_DIRECTORY) / "resources" / "texts" / "text1.txt"
     pipeline = Pipeline(Project(client, PROJECT_NAME), "discharge")
 
-    result = pipeline.analyse_pdf(pdf1_path, accept_type=MEDIA_TYPE_PDF)
+    result = pipeline.analyse_pdf_to_pdf(pdf1_path)
     assert result == b"This is a test."
 
 
