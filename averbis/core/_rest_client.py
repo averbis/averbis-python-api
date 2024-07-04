@@ -53,6 +53,7 @@ MEDIA_TYPE_APPLICATION_SOLR_XML = "application/vnd.averbis.solr+xml"
 MEDIA_TYPE_TEXT_PLAIN = "text/plain"
 MEDIA_TYPE_TEXT_PLAIN_UTF8 = "text/plain; charset=utf-8"
 MEDIA_TYPE_OCTET_STREAM = "application/octet-stream"
+MEDIA_TYPE_PDF = "application/pdf"
 
 # uima cas formats
 MEDIA_TYPE_APPLICATION_XMI = "application/vnd.uima.cas+xmi"
@@ -271,6 +272,63 @@ class Pipeline:
         :return: Whether the pipeline has started.
         """
         return self.get_info()["pipelineState"] == "STARTED"
+
+    def analyse_pdf_to_json(
+        self,
+        source: Union[Path, IO],
+        annotation_types: Union[None, str, List[str]] = None,
+        language: Optional[str] = None,
+        timeout: Optional[float] = None
+    ) -> dict:
+        """
+        Analyze the given pdf using the pipeline. The returned analysis is in json format.
+
+        :param source:           The pdf document to be analyzed.
+        :param annotation_types: Optional parameter indicating which types should be returned. Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types with prefix "de.averbis.types"
+        :param language:         Optional parameter setting the language of the document, e.g. "en" or "de".
+        :param timeout:          Optional timeout (in seconds) specifying how long the request is waiting for a server response.
+
+        :return: The raw payload of the server response. Future versions of this library may return a better-suited
+                 representation.
+        """
+
+        # noinspection PyProtectedMember
+        return self.project.client._analyse_pdf(
+            project=self.project.name,
+            pipeline=self.name,
+            source=source,
+            annotation_types=annotation_types,
+            language=language,
+            timeout=timeout,
+            accept_type=MEDIA_TYPE_APPLICATION_JSON
+        )
+
+    def analyse_pdf_to_pdf(
+        self,
+        source: Union[Path, IO],
+        annotation_types: Union[None, str, List[str]] = None,
+        language: Optional[str] = None,
+        timeout: Optional[float] = None
+    ) -> bytes:
+        """
+        Analyze the given pdf using the pipeline. The returned analysis is a marked pdf.
+
+        :param source:           The pdf document to be analyzed.
+        :param annotation_types: Optional parameter indicating which types should be returned. Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types with prefix "de.averbis.types"
+        :param language:         Optional parameter setting the language of the document, e.g. "en" or "de".
+        :param timeout:          Optional timeout (in seconds) specifying how long the request is waiting for a server response.
+        """
+
+        # noinspection PyProtectedMember
+        return self.project.client._analyse_pdf(
+            project=self.project.name,
+            pipeline=self.name,
+            source=source,
+            annotation_types=annotation_types,
+            language=language,
+            timeout=timeout,
+            accept_type=MEDIA_TYPE_PDF
+        )
 
     def analyse_text(
         self,
@@ -2385,6 +2443,30 @@ class Client:
         )
         return response["payload"]
 
+    def _analyse_pdf(
+        self,
+        project: str,
+        pipeline: str,
+        source: Union[Path, IO],
+        annotation_types: Union[None, str, List[str]] = None,
+        language: Optional[str] = None,
+        timeout: Optional[float] = None,
+        accept_type: Optional[str] = MEDIA_TYPE_APPLICATION_JSON
+    ):
+        build_version = self.get_build_info()
+
+        if accept_type != MEDIA_TYPE_APPLICATION_JSON and build_version["platformVersion"] < "8.16":
+            raise OperationNotSupported(
+                f"Accept types other than json are only supported for platform versions >= 8.16 (available from Health Discovery version 7.3), "
+                f"but current platform is {build_version['platformVersion']}.")
+
+        if isinstance(source, Path):
+            with source.open("rb") as file:
+                return self._request_analyse_text(project, pipeline, file, annotation_types, language, timeout,
+                                                  MEDIA_TYPE_PDF, accept_type)
+        return self._request_analyse_text(project, pipeline, source, annotation_types, language, timeout,
+                                          MEDIA_TYPE_PDF, accept_type)
+
     def _analyse_text(
         self,
         project: str,
@@ -2392,23 +2474,49 @@ class Client:
         source: Union[Path, IO, str],
         annotation_types: Union[None, str, List[str]] = None,
         language: Optional[str] = None,
-        timeout: Optional[float] = None,
+        timeout: Optional[float] = None
     ) -> dict:
+
         if isinstance(source, Path):
             with source.open("r", encoding=ENCODING_UTF_8) as file:
                 source = file.read()
 
         data: IO = BytesIO(source.encode(ENCODING_UTF_8)) if isinstance(source, str) else source
 
-        response = self.__request_with_json_response(
-            "post",
-            f"/v1/textanalysis/projects/{project}/pipelines/{pipeline}/analyseText",
-            data=data,
-            params={"annotationTypes": self._preprocess_annotation_types(annotation_types), "language": language},
-            headers={HEADER_CONTENT_TYPE: MEDIA_TYPE_TEXT_PLAIN_UTF8},
-            timeout=timeout,
-        )
-        return response["payload"]
+        response = self._request_analyse_text(project, pipeline, data, annotation_types, language, timeout,
+                                              MEDIA_TYPE_TEXT_PLAIN_UTF8, MEDIA_TYPE_APPLICATION_JSON)
+        payload: Dict = response["payload"]
+        return payload
+
+    def _request_analyse_text(self,
+                              project: str,
+                              pipeline: str,
+                              data: IO,
+                              annotation_types: Union[None, str, List[str]] = None,
+                              language: Optional[str] = None,
+                              timeout: Optional[float] = None,
+                              content_type: Optional[str] = MEDIA_TYPE_TEXT_PLAIN_UTF8,
+                              accept_type: Optional[str] = MEDIA_TYPE_APPLICATION_JSON):
+        url = f"/v1/textanalysis/projects/{project}/pipelines/{pipeline}/analyseText"
+        request_params = {"annotationTypes": self._preprocess_annotation_types(annotation_types), "language": language}
+        request_headers = {HEADER_CONTENT_TYPE: content_type, HEADER_ACCEPT: accept_type}
+        if accept_type == MEDIA_TYPE_PDF:
+            return self.__request_with_bytes_response(
+                "post",
+                url,
+                data=data,
+                headers=request_headers,
+                params=request_params,
+            )
+        else:
+            return self.__request_with_json_response(
+                "post",
+                url,
+                data=data,
+                params=request_params,
+                headers=request_headers,
+                timeout=timeout,
+            )
 
     def _analyse_html(
         self,
