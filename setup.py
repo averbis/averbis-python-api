@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021 Averbis GmbH.
+# Copyright (c) 2024 Averbis GmbH.
 #
 # This file is part of Averbis Python API.
 # See https://www.averbis.com for further info.
@@ -23,16 +23,14 @@
 
 import io
 import os
-import sys
-from shutil import rmtree
 
-from setuptools import setup, Command, find_packages
+from setuptools import find_packages, setup
 
 # Package meta-data.
 NAME = "averbis-python-api"
 DESCRIPTION = "Averbis REST API client for Python."
 AUTHOR = "Averbis GmbH"
-REQUIRES_PYTHON = ">=3.6.0"
+REQUIRES_PYTHON = ">=3.8.0"
 
 install_requires = [
     "requests",
@@ -121,12 +119,11 @@ setup(
         # Full list: https://pypi.python.org/pypi?%3Aaction=list_classifiers
         "Development Status :: 4 - Beta",
         "Programming Language :: Python :: 3 :: Only",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
-        "License :: OSI Approved :: Apache Software License"
+        "Programming Language :: Python :: 3.12",
+        "License :: OSI Approved :: Apache Software License",
     ],
 )
