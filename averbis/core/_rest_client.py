@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 Averbis GmbH.
+# Copyright (c) 2024 Averbis GmbH.
 #
 # This file is part of Averbis Python API.
 # See https://www.averbis.com for further info.
