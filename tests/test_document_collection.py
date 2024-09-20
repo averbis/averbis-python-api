@@ -252,6 +252,20 @@ def test_get_process(client_version_6, requests_mock):
 
 def test_delete_document(document_collection, requests_mock):
     document_name = "test.txt"
+
+    requests_mock.get(
+        f"{API_BASE}/buildInfo",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": {
+                "specVersion": "7.5.0",
+                "buildNumber": "branch: main f2731e315ee137cf94c48e5f2fa431777fe49cef",
+                "platformVersion": "8.20.0"
+            },
+            "errorMessages": []
+        },
+    )
+
     requests_mock.delete(
         f"{API_BASE}/projects/{PROJECT_NAME}/"
         f"documentCollections/{document_collection.name}/documents/{document_name}",
