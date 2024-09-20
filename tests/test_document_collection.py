@@ -248,3 +248,17 @@ def test_get_process(client_version_6, requests_mock):
     )
     actual = project.get_document_collection(document_source_name).get_process(process_name)
     assert_process_equal(expected_process, actual)
+
+
+def test_delete_document(document_collection, requests_mock):
+    document_name = "test.txt"
+    requests_mock.delete(
+        f"{API_BASE}/projects/{PROJECT_NAME}/"
+        f"documentCollections/{document_collection.name}/documents/{document_name}",
+        headers={"Content-Type": "application/json"},
+        json={"payload": None, "errorMessages": []},
+    )
+
+    actual_results = document_collection.delete_document(document_name)
+
+    assert actual_results is None

@@ -1242,6 +1242,13 @@ class DocumentCollection:
         # noinspection PyProtectedMember
         return self.project.client._list_documents(self.project.name, self.name)
 
+    def delete_document(self, document_name: str) -> dict:
+        """
+        Delete the document identified by name from this docuemnt collection
+        """
+        # noinspection PyProtectedMember
+        return self.project.client._delete_document(self.project.name, self.name, document_name)
+
     @experimental_api
     def list_processes(self) -> List[Process]:
         """
@@ -2857,6 +2864,17 @@ class Client:
             document_collection = project.get_document_collection(item["documentSourceName"])
             processes.append(document_collection.get_process(item["processName"]))
         return processes
+
+    def _delete_document(self, project_name: str, document_collection_name: str, document_name: str) -> dict:
+        build_version = self.get_build_info()
+        if build_version["platformVersion"] < "8.20":
+            raise OperationNotSupported(
+                f"The method 'delete_documents' is only supported for platform versions >= 8.20.0 (available from Health Discovery version 7.5.0), but current platform is {build_version['platformVersion']}.")
+
+        response = self.__request_with_json_response(
+            "delete", f"/v1/projects/{project_name}/documentCollections/{document_collection_name}/documents/{document_name}"
+        )
+        return response["payload"]
 
     @experimental_api
     def _create_and_run_process(
