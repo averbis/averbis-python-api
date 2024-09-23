@@ -83,6 +83,36 @@ def test_change_password(client, requests_mock):
     client.change_password("admin", "admin", "admin")
 
 
+def test_upload_license(client, requests_mock):
+    payload = {
+        "valid": True,
+        "expirationDateInMillis": 1753962034965,
+        "expirationDate": "Thu Jul 31 13:40:34 CEST 2025"
+    }
+
+    requests_mock.get(
+        f"{API_BASE}/buildInfo",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": {
+                "specVersion": "7.5.0",
+                "buildNumber": "branch: main f2731e315ee137cf94c48e5f2fa431777fe49cef",
+                "platformVersion": "8.21.0"
+            },
+            "errorMessages": []
+        },
+    )
+
+    requests_mock.put(
+        f"{API_BASE}/license",
+        headers={"Content-Type": "multi-part/form-data"},
+        json={"payload": payload, "errorMessages": []},
+    )
+    license_path = Path(TEST_DIRECTORY) / "resources" / "texts" / "text1.txt"
+    license_info = client.upload_license(license_path)
+    assert license_info == payload
+
+
 def test_generate_api_token(client, requests_mock):
     requests_mock.post(
         f"{API_BASE}/users/admin/apitoken",

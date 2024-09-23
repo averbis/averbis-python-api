@@ -1722,6 +1722,21 @@ class Client:
     def __repr__(self):
         return f"{self.__class__.__name__}({self._url})"
 
+    def upload_license(self, license_path: Path) -> dict:
+        build_version = self.get_build_info()
+        if build_version["platformVersion"] < "8.21":
+            raise OperationNotSupported(f"The method 'upload_license' is only supported for platform versions >= 8.21.0 (available from Health Discovery version 7.5.0), but current platform is {build_version['platformVersion']}.")
+        with license_path.open("r", encoding=ENCODING_UTF_8) as license_file:
+            license_content = license_file.read()
+            data: IO = BytesIO(license_content.encode(ENCODING_UTF_8))
+            files = {"licenseFile": (license_path.name, data, MEDIA_TYPE_TEXT_PLAIN)}
+            response = self.__request_with_json_response(
+                'put',
+                f"/v1/license",
+                files=files,
+            )
+            return response['payload']
+
     def _exists_profile(self, profile: str):
         return (
             self._settings
