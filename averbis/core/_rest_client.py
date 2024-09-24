@@ -1722,12 +1722,13 @@ class Client:
     def __repr__(self):
         return f"{self.__class__.__name__}({self._url})"
 
-    def upload_license(self, license_path: Path) -> dict:
-        build_version = self.get_build_info()
-        if build_version["platformVersion"] < "8.21":
-            raise OperationNotSupported(f"The method 'upload_license' is only supported for platform versions >= 8.21.0 (available from Health Discovery version 7.5.0), but current platform is {build_version['platformVersion']}.")
-        with license_path.open("r", encoding=ENCODING_UTF_8) as license_file:
-            license_content = license_file.read()
+    def upload_license(self, license_path: Union[Path, str]) -> dict:
+        if isinstance(license_path, str):
+            license_path = Path(license_path)
+
+        # We cannot check directly for build information here because this is not allowed without active license file
+        try: 
+            license_content = license_path.read_text(encoding=ENCODING_UTF_8)
             data: IO = BytesIO(license_content.encode(ENCODING_UTF_8))
             files = {"licenseFile": (license_path.name, data, MEDIA_TYPE_TEXT_PLAIN)}
             response = self.__request_with_json_response(
@@ -1736,6 +1737,8 @@ class Client:
                 files=files,
             )
             return response['payload']
+        except RequestException as e:
+            raise RequestException(f"A problem occurred while uploading the license file. Please note that the function 'client.upload_license(license_path)' is only supported for Health Discovery version 7.4.0 and newer. The full error was:\n{e}")
 
     def _exists_profile(self, profile: str):
         return (
