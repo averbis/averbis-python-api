@@ -382,6 +382,120 @@ def test_analyse_pdf_to_pdf(client, requests_mock):
     assert result == b"This is a test."
 
 
+def test_list_resource_containers(client, requests_mock):
+    requests_mock.get(
+        f"{API_BASE}/buildInfo",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": {
+                "specVersion": "7.7.0",
+                "buildNumber": "branch: main f2731e315ee137cf94c48e5f2fa431777fe49cef",
+                "platformVersion": "8.23.0"
+            },
+            "errorMessages": []
+        },
+    )
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/test/pipelines/pipeline/containers",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": {
+                "containers": [
+                    {
+                        "name": "container",
+                        "scope": "GLOBAL"
+                    }
+                ]
+            },
+            "errorMessages": []
+        }
+    )
+
+    project = client.get_project("test")
+    pipeline = project.get_pipeline("pipeline")
+    actual_containers = pipeline.list_resource_containers()
+    assert len(actual_containers) == 1
+    actual_container = actual_containers[0]
+    assert actual_container.name == "container"
+
+
+def test_create_resource_container(client, requests_mock):
+    requests_mock.get(
+        f"{API_BASE}/buildInfo",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": {
+                "specVersion": "7.7.0",
+                "buildNumber": "branch: main f2731e315ee137cf94c48e5f2fa431777fe49cef",
+                "platformVersion": "8.23.0"
+            },
+            "errorMessages": []
+        },
+    )
+
+    requests_mock.post(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/test/pipelines/pipeline/containers",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": {
+                "containerName": "container",
+                "scope": "GLOBAL",
+                "resources": [
+                    {
+                        "relativePath": "text3.txt"
+                    },
+                    {
+                        "relativePath": "text2.txt"
+                    },
+                    {
+                        "relativePath": "text1.txt"
+                    },
+                    {
+                        "relativePath": "sub/text4.txt"
+                    }
+                ]
+            },
+            "errorMessages": []
+        }
+    )
+
+    resource_zip_file = Path(TEST_DIRECTORY) / "resources" / "zip_test" / "zip_test.zip"
+    project = client.get_project("test")
+    pipeline = project.get_pipeline("pipeline")
+    actual_resource_container = pipeline.create_resource_container("container", resource_zip_file)
+    assert actual_resource_container.name == "container"
+
+
+def test_delete_resource_container(client, requests_mock):
+    requests_mock.get(
+        f"{API_BASE}/buildInfo",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": {
+                "specVersion": "7.7.0",
+                "buildNumber": "branch: main f2731e315ee137cf94c48e5f2fa431777fe49cef",
+                "platformVersion": "8.23.0"
+            },
+            "errorMessages": []
+        },
+    )
+
+    requests_mock.delete(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/test/pipelines/pipeline/containers/container",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": {},
+            "errorMessages": [],
+        }
+    )
+
+    project = client.get_project("test")
+    pipeline = project.get_pipeline("pipeline")
+    response = pipeline.delete_resource_container("container")
+    assert response is None
+
+
 def test_analyse_texts_to_cas(client, pipeline_analyse_text_to_cas_mock):
     pipeline = Pipeline(Project(client, PROJECT_NAME), "discharge")
     file1_path = os.path.join(TEST_DIRECTORY, "resources/texts/text1.txt")
