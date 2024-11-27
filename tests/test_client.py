@@ -211,33 +211,6 @@ def test_create_resource_container(client, requests_mock):
     assert actual_resource_container.name == "container"
 
 
-def test_delete_resource_container(client, requests_mock):
-    requests_mock.get(
-        f"{API_BASE}/buildInfo",
-        headers={"Content-Type": "application/json"},
-        json={
-            "payload": {
-                "specVersion": "7.7.0",
-                "buildNumber": "branch: main f2731e315ee137cf94c48e5f2fa431777fe49cef",
-                "platformVersion": "8.23.0"
-            },
-            "errorMessages": []
-        },
-    )
-
-    requests_mock.delete(
-        f"{API_EXPERIMENTAL}/textanalysis/containers/container",
-        headers={"Content-Type": "application/json"},
-        json={
-            "payload": {},
-            "errorMessages": [],
-        }
-    )
-
-    response = client.delete_resource_container("container")
-    assert response is None
-
-
 def test_generate_api_token(client, requests_mock):
     requests_mock.post(
         f"{API_BASE}/users/admin/apitoken",

@@ -163,6 +163,9 @@ class ResourceContainer:
         self.scope = scope
         self.base_url = base_url
 
+    def __repr__(self):
+        return f'{self.__class__.__name__}(name="{self.name}", scope="{self.scope}")'
+
     @experimental_api
     def list_resources(self) -> List[str]:
         """
@@ -191,13 +194,13 @@ class ResourceContainer:
         self.client._export_resource(target_path, self.name, self.base_url, resource_path)
 
     @experimental_api
-    def upsert_resource(self, resource_file_path: Union[str, Path], resource_path: str) -> None:
+    def upsert_resource(self, upload_file_path: Union[str, Path], resource_path: str) -> None:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
         Insert or update the resource at the given resource_path in the container with the file located at resource_file_path.
         """
         # noinspection PyProtectedMember
-        self.client._upsert_resource(resource_file_path, self.name, self.base_url, resource_path)
+        self.client._upsert_resource(upload_file_path, self.name, self.base_url, resource_path)
 
     @experimental_api
     def delete_resource(self, resource_path: str) -> None:
@@ -207,6 +210,15 @@ class ResourceContainer:
         """
         # noinspection PyProtectedMember
         self.client._delete_resource(self.name, self.base_url, resource_path)
+
+    @experimental_api
+    def delete(self) -> None:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+        Delete this resource container
+        """
+        # noinspection PyProtectedMember
+        self.client._delete_resource_container(self.name, self.base_url)
 
 
 class Pipeline:
@@ -339,17 +351,6 @@ class Pipeline:
         pipeline_url = f"/experimental/textanalysis/projects/{self.project.name}/pipelines/{self.name}"
         # noinspection PyProtectedMember
         return self.project.client._create_resource_container(name, pipeline_url, resources_zip_path)
-
-    @experimental_api
-    def delete_resource_container(self, name: str) -> None:
-        """
-        HIGHLY EXPERIMENTAL API - may soon change or disappear.
-
-        Delete the resource container with the given name from this project.
-        """
-        pipeline_url = f"/experimental/textanalysis/projects/{self.project.name}/pipelines/{self.name}"
-        # noinspection PyProtectedMember
-        return self.project.client._delete_resource_container(name, pipeline_url)
 
     @experimental_api
     def delete(self) -> dict:
@@ -738,6 +739,8 @@ class Pipeline:
     @deprecated("Use resource container API instead.")
     def list_resources(self) -> List[str]:
         """
+        DEPRECATED: Use ResourceContainer.list_resources() instead.
+
         List the resources of the pipeline.
 
         :return: The list of pipeline resources.
@@ -751,6 +754,8 @@ class Pipeline:
     @deprecated("Use resource container API instead.")
     def delete_resources(self) -> None:
         """
+        DEPRECATED: Use ResourceContainer.delete() instead.
+
         Delete the resources of the pipeline.
         """
         # noinspection PyProtectedMember
@@ -764,6 +769,8 @@ class Pipeline:
         self, source: Union[IO, Path, str], path_in_zip: Union[Path, str] = ""
     ) -> List[str]:
         """
+        DEPRECATED: Use create_resource_container() instead.
+
         Upload file to the pipeline resources. Existing files with same path/name will be overwritten.
 
         :return: List of resources after upload.
@@ -779,6 +786,8 @@ class Pipeline:
     @deprecated("Use resource container API instead.")
     def download_resources(self, target_zip_path: Union[Path, str]) -> None:
         """
+        DEPRECATED: Use ResourceContainer.export_resources() instead.
+
         Download pipeline resources and store in given path.
         """
         # noinspection PyProtectedMember
@@ -1510,17 +1519,6 @@ class Project:
         return self.client._create_resource_container(name, project_url, resources_zip_path)
 
     @experimental_api
-    def delete_resource_container(self, name: str) -> None:
-        """
-        HIGHLY EXPERIMENTAL API - may soon change or disappear.
-
-        Delete the resource container with the given name from this project.
-        """
-        project_url = f"/experimental/textanalysis/projects/{self.name}"
-        # noinspection PyProtectedMember
-        return self.client._delete_resource_container(name, project_url)
-
-    @experimental_api
     def exists_pipeline(self, name: str) -> bool:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -1683,6 +1681,8 @@ class Project:
     @deprecated("Use resource container API instead.")
     def list_resources(self) -> List[str]:
         """
+        DEPRECATED: Use ResourceContainer.list_resources() instead.
+
         List the resources of the project.
 
         :return: The list of project resources.
@@ -1694,6 +1694,8 @@ class Project:
     @deprecated("Use resource container API instead.")
     def download_resources(self, target_zip_path: Union[Path, str]) -> None:
         """
+        DEPRECATED: Use ResourceContainer.export_resources() instead.
+
         Download Project-level pipeline resources and store in given path.
         """
         # noinspection PyProtectedMember
@@ -1703,6 +1705,8 @@ class Project:
     @deprecated("Use resource container API instead.")
     def delete_resources(self) -> None:
         """
+        DEPRECATED: Use ResourceContainer.delete() instead.
+
         Delete the resources of the project.
         """
         # noinspection PyProtectedMember
@@ -1714,6 +1718,8 @@ class Project:
         self, source: Union[IO, Path, str], path_in_zip: Union[Path, str] = ""
     ) -> List[str]:
         """
+        DEPRECATED: Use create_resource_container() instead.
+
         Upload file to the project resources. Existing files with same path/name will be overwritten.
 
         :return: List of resources after upload.
@@ -2187,25 +2193,16 @@ class Client:
         return Project(self, name)
 
     @experimental_api
-    def delete_resource_container(self, name: str) -> None:
-        """
-        HIGHLY EXPERIMENTAL API - may soon change or disappear.
-        Delete the named global resource container
-        """
-        client_base_url = "/experimental/textanalysis"
-        self._delete_resource_container(name, client_base_url)
-
-    @experimental_api
     def _delete_resource_container(self, name: str, base_url: str) -> None:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
-        Use the respective public delete_resource_container() method.
+        Use the ResourceContainer.delete() instead.
         """
         build_version = self.get_build_info()
-        if build_version["platformVersion"] < "8.23":
+        if not self._is_higher_equal_version(build_version["platformVersion"], 8, 23):
             raise OperationNotSupported(
                 f"The container resource API is only supported for platform versions >= 8.23, but current platform is {build_version['platformVersion']}.")
-        container_url = f"{base_url}/containers/{name}"
+        container_url = f"{base_url}/{name}"
         self.__request_with_json_response("delete", container_url)
 
     @experimental_api
@@ -2215,7 +2212,7 @@ class Client:
         Use ResourceContainer.delete_resource() instead.
         """
         build_version = self.get_build_info()
-        if build_version["platformVersion"] < "8.23":
+        if not self._is_higher_equal_version(build_version["platformVersion"], 8, 23):
             raise OperationNotSupported(
                 f"The container resource API is only supported for platform versions >= 8.23, but current platform is {build_version['platformVersion']}.")
         self.__request_with_json_response("delete", f"{base_url}/{container_name}/resources",
@@ -2237,7 +2234,7 @@ class Client:
         Use respective public list_container_resources() instead
         """
         build_version = self.get_build_info()
-        if build_version["platformVersion"] < "8.23":
+        if not self._is_higher_equal_version(build_version["platformVersion"], 8, 23):
             raise OperationNotSupported(
                 f"The container resource API is only supported for platform versions >= 8.23, but current platform is {build_version['platformVersion']}.")
         container_url = f"{base_url}/containers"
@@ -2267,7 +2264,7 @@ class Client:
         Use respective public create_resource_container() method instead.
         """
         build_version = self.get_build_info()
-        if build_version["platformVersion"] < "8.23":
+        if not self._is_higher_equal_version(build_version["platformVersion"], 8, 23):
             raise OperationNotSupported(
                 f"The container resource API is only supported for platform versions >= 8.23, but current platform is {build_version['platformVersion']}.")
         container_url = f"{base_url}/containers"
@@ -2298,7 +2295,7 @@ class Client:
         Use ResourceContainer.list_resources() instead.
         """
         build_version = self.get_build_info()
-        if build_version["platformVersion"] < "8.23":
+        if not self._is_higher_equal_version(build_version["platformVersion"], 8, 23):
             raise OperationNotSupported(
                 f"The container resource API is only supported for platform versions >= 8.23, but current platform is {build_version['platformVersion']}.")
         response = self.__request_with_json_response("get", f"{base_url}/{container_name}")
@@ -2317,7 +2314,7 @@ class Client:
         Use ResourceContainer.export_resource() instead.
         """
         build_version = self.get_build_info()
-        if build_version["platformVersion"] < "8.23":
+        if not self._is_higher_equal_version(build_version["platformVersion"], 8, 23):
             raise OperationNotSupported(
                 f"The container resource API is only supported for platform versions >= 8.23, but current platform is {build_version['platformVersion']}.")
         if isinstance(target_path, str):
@@ -2328,13 +2325,14 @@ class Client:
                                                           params={"relativePath": resource_path})
             resource_file.write(resource)
 
+    @experimental_api
     def _upsert_resource(self, resource_file_path: Union[str, Path], container_name: str, base_url: str, resource_path: str) -> None:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
         Use ResourceContainer.upsert_resource() instead.
         """
         build_version = self.get_build_info()
-        if build_version["platformVersion"] < "8.23":
+        if not self._is_higher_equal_version(build_version["platformVersion"], 8, 23):
             raise OperationNotSupported(
                 f"The container resource API is only supported for platform versions >= 8.23, but current platform is {build_version['platformVersion']}.")
         request_params = {"relativePath": resource_path}
@@ -2360,7 +2358,7 @@ class Client:
         Use ResourceContainer.export_resources() instead.
         """
         build_version = self.get_build_info()
-        if build_version["platformVersion"] < "8.23":
+        if not self._is_higher_equal_version(build_version["platformVersion"], 8, 23):
             raise OperationNotSupported(
                 f"The container resource API is only supported for platform versions >= 8.23, but current platform is {build_version['platformVersion']}.")
         if isinstance(target_zip_path, str):
@@ -2376,6 +2374,8 @@ class Client:
     @deprecated("Use resource container API instead.")
     def list_resources(self) -> List[str]:
         """
+        DEPRECATED: Use ResourceContainer.list_resources() instead.
+
         List the resources that are globally available.
 
         :return: List of resources.
@@ -2386,6 +2386,8 @@ class Client:
     @deprecated("Use resource container API instead.")
     def download_resources(self, target_zip_path: Union[Path, str]) -> None:
         """
+        DEPRECATED: Use ResourceContainer.export_resources() instead.
+
         Download Client-level pipeline resources and store in given path.
         """
         # noinspection PyProtectedMember
@@ -2395,6 +2397,8 @@ class Client:
     @deprecated("Use resource container API instead.")
     def delete_resources(self) -> None:
         """
+        DEPRECATED: Use ResourceContainer.delete() instead.
+
         Delete the global resources.
         """
         # noinspection PyProtectedMember
@@ -2406,6 +2410,8 @@ class Client:
         self, source: Union[IO, Path, str], path_in_zip: Union[Path, str] = ""
     ) -> List[str]:
         """
+        DEPRECATED: Use create_resource_container() instead.
+
         Upload file to the global resources. Existing files with same path/name will be overwritten.
 
         :return: List of resources after upload.
@@ -2812,7 +2818,7 @@ class Client:
     ):
         build_version = self.get_build_info()
 
-        if accept_type != MEDIA_TYPE_APPLICATION_JSON and build_version["platformVersion"] < "8.16":
+        if accept_type != MEDIA_TYPE_APPLICATION_JSON and not self._is_higher_equal_version(build_version["platformVersion"], 8, 16):
             raise OperationNotSupported(
                 f"Accept types other than json are only supported for platform versions >= 8.16 (available from Health Discovery version 7.3), "
                 f"but current platform is {build_version['platformVersion']}.")
@@ -3216,7 +3222,7 @@ class Client:
 
     def _delete_document(self, project_name: str, document_collection_name: str, document_name: str) -> dict:
         build_version = self.get_build_info()
-        if build_version["platformVersion"] < "8.20":
+        if not self._is_higher_equal_version(build_version["platformVersion"], 8, 20):
             raise OperationNotSupported(
                 f"The method 'delete_documents' is only supported for platform versions >= 8.20.0 (available from Health Discovery version 7.5.0), but current platform is {build_version['platformVersion']}.")
 
@@ -3260,7 +3266,7 @@ class Client:
 
         if annotation_types:
             build_version = self.get_build_info()
-            if build_version["platformVersion"] < "8.11":
+            if not self._is_higher_equal_version(build_version["platformVersion"], 8, 11):
                 raise OperationNotSupported(f"The parameter 'annotation_types' is only supported for platform versions >= 8.11 (available from Health Discovery version 7.1), but current platform is {build_version['platformVersion']}.")
             request_json["annotationTypesToBeSaved"] = self._preprocess_annotation_types(annotation_types)
 

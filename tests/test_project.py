@@ -225,34 +225,6 @@ def test_create_resource_container(client, requests_mock):
     assert actual_resource_container.name == "container"
 
 
-def test_delete_resource_container(client, requests_mock):
-    requests_mock.get(
-        f"{API_BASE}/buildInfo",
-        headers={"Content-Type": "application/json"},
-        json={
-            "payload": {
-                "specVersion": "7.7.0",
-                "buildNumber": "branch: main f2731e315ee137cf94c48e5f2fa431777fe49cef",
-                "platformVersion": "8.23.0"
-            },
-            "errorMessages": []
-        },
-    )
-
-    requests_mock.delete(
-        f"{API_EXPERIMENTAL}/textanalysis/projects/test/containers/container",
-        headers={"Content-Type": "application/json"},
-        json={
-            "payload": {},
-            "errorMessages": [],
-        }
-    )
-
-    project = client.get_project("test")
-    response = project.delete_resource_container("container")
-    assert response is None
-
-
 def test_exists_pipeline(client_version_6, requests_mock):
     project = client_version_6.get_project(PROJECT_NAME)
     requests_mock.get(
