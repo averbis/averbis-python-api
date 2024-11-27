@@ -38,7 +38,6 @@ from pathlib import Path
 import requests
 import mimetypes
 
-from deprecation import deprecated
 from requests import RequestException
 
 ENCODING_UTF_8 = "utf-8"
@@ -102,6 +101,16 @@ def experimental_api(original_function):
         return original_function(*args, **kwargs)
 
     return new_function
+
+
+def deprecated(reason):
+    def decorator_deprecated(original_function):
+        @wraps(original_function)
+        def wrapper_deprecated(*args, **kwargs):
+            logging.warning(f"Deprecation: {reason}")
+            return original_function(*args, **kwargs)
+        return wrapper_deprecated
+    return decorator_deprecated
 
 
 class OperationNotSupported(Exception):
