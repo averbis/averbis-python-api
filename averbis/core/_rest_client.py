@@ -103,6 +103,16 @@ def experimental_api(original_function):
     return new_function
 
 
+def deprecated(reason):
+    def decorator_deprecated(original_function):
+        @wraps(original_function)
+        def wrapper_deprecated(*args, **kwargs):
+            logging.warning(f"Deprecation: {reason}")
+            return original_function(*args, **kwargs)
+        return wrapper_deprecated
+    return decorator_deprecated
+
+
 class OperationNotSupported(Exception):
     """Raised when the REST API does not support a given operation."""
 
@@ -137,6 +147,78 @@ class Result:
 
     def successful(self):
         return self.exception is None
+
+
+class ResourceContainer:
+
+    def __init__(
+            self,
+            client: "Client",
+            name: str,
+            scope: str,
+            base_url: str,
+    ):
+        self.client = client
+        self.name = name
+        self.scope = scope
+        self.base_url = base_url
+
+    def __repr__(self):
+        return f'{self.__class__.__name__}(name="{self.name}", scope="{self.scope}")'
+
+    @experimental_api
+    def list_resources(self) -> List[str]:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+        List paths of resources in the container.
+        """
+        # noinspection PyProtectedMember
+        return self.client._list_container_resources(self.name, self.base_url)
+
+    @experimental_api
+    def export_resources(self, target_path: Union[str, Path]) -> None:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+        Export the whole resource container as a zip file.
+        """
+        # noinspection PyProtectedMember
+        self.client._export_container_resources(target_path, self.name, self.base_url)
+
+    @experimental_api
+    def export_resource(self, target_path: Union[str, Path], resource_path: str) -> None:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+        Export a specific resource file from within the container at the given resources_path.
+        """
+        # noinspection PyProtectedMember
+        self.client._export_resource(target_path, self.name, self.base_url, resource_path)
+
+    @experimental_api
+    def upsert_resource(self, upload_file_path: Union[str, Path], resource_path: str) -> None:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+        Insert or update the resource at the given resource_path in the container with the file located at resource_file_path.
+        """
+        # noinspection PyProtectedMember
+        self.client._upsert_resource(upload_file_path, self.name, self.base_url, resource_path)
+
+    @experimental_api
+    def delete_resource(self, resource_path: str) -> None:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+        Delete the resource located at the given path in the container from the container.
+        """
+        # noinspection PyProtectedMember
+        self.client._delete_resource(self.name, self.base_url, resource_path)
+
+    @experimental_api
+    def delete(self) -> None:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+        Delete this resource container
+        """
+        # noinspection PyProtectedMember
+        self.client._delete_resource_container(self.name, self.base_url)
 
 
 class Pipeline:
@@ -247,6 +329,28 @@ class Pipeline:
         """
         # noinspection PyProtectedMember
         return self.project.client._get_pipeline_info(self.project.name, self.name)
+
+    @experimental_api
+    def list_resource_containers(self) -> List[ResourceContainer]:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        List the resource containers for the current pipeline.
+        """
+        pipeline_url = f"/experimental/textanalysis/projects/{self.project.name}/pipelines/{self.name}"
+        # noinspection PyProtectedMember
+        return self.project.client._list_resource_containers(pipeline_url)
+
+    @experimental_api
+    def create_resource_container(self, name: str, resources_zip_path: Optional[Union[Path, str]] = None) -> ResourceContainer:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Create empty resource container with given name for this pipeline or additionally upload zipped resources.
+        """
+        pipeline_url = f"/experimental/textanalysis/projects/{self.project.name}/pipelines/{self.name}"
+        # noinspection PyProtectedMember
+        return self.project.client._create_resource_container(name, pipeline_url, resources_zip_path)
 
     @experimental_api
     def delete(self) -> dict:
@@ -632,8 +736,11 @@ class Pipeline:
         return self.cached_type_system
 
     @experimental_api
+    @deprecated("Use resource container API instead.")
     def list_resources(self) -> List[str]:
         """
+        DEPRECATED: Use ResourceContainer.list_resources() instead.
+
         List the resources of the pipeline.
 
         :return: The list of pipeline resources.
@@ -644,8 +751,11 @@ class Pipeline:
         )["files"]
 
     @experimental_api
+    @deprecated("Use resource container API instead.")
     def delete_resources(self) -> None:
         """
+        DEPRECATED: Use ResourceContainer.delete() instead.
+
         Delete the resources of the pipeline.
         """
         # noinspection PyProtectedMember
@@ -654,10 +764,13 @@ class Pipeline:
         )
 
     @experimental_api
+    @deprecated("Use resource container API instead.")
     def upload_resources(
         self, source: Union[IO, Path, str], path_in_zip: Union[Path, str] = ""
     ) -> List[str]:
         """
+        DEPRECATED: Use create_resource_container() instead.
+
         Upload file to the pipeline resources. Existing files with same path/name will be overwritten.
 
         :return: List of resources after upload.
@@ -670,8 +783,11 @@ class Pipeline:
         )["files"]
 
     @experimental_api
+    @deprecated("Use resource container API instead.")
     def download_resources(self, target_zip_path: Union[Path, str]) -> None:
         """
+        DEPRECATED: Use ResourceContainer.export_resources() instead.
+
         Download pipeline resources and store in given path.
         """
         # noinspection PyProtectedMember
@@ -1380,7 +1496,27 @@ class Project:
         # noinspection PyProtectedMember
         return self.client._list_annotators(self.name)
 
+    @experimental_api
+    def list_resource_containers(self) -> List[ResourceContainer]:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
+        List the resource containers for the current project.
+        """
+        project_url = f"/experimental/textanalysis/projects/{self.name}"
+        # noinspection PyProtectedMember
+        return self.client._list_resource_containers(project_url)
+
+    @experimental_api
+    def create_resource_container(self, name: str, resources_zip_path: Optional[Union[Path, str]] = None) -> ResourceContainer:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Create empty resource container with given name for this project or additionally upload zipped resources.
+        """
+        project_url = f"/experimental/textanalysis/projects/{self.name}"
+        # noinspection PyProtectedMember
+        return self.client._create_resource_container(name, project_url, resources_zip_path)
 
     @experimental_api
     def exists_pipeline(self, name: str) -> bool:
@@ -1542,8 +1678,11 @@ class Project:
         return self.client._list_processes(self)
 
     @experimental_api
+    @deprecated("Use resource container API instead.")
     def list_resources(self) -> List[str]:
         """
+        DEPRECATED: Use ResourceContainer.list_resources() instead.
+
         List the resources of the project.
 
         :return: The list of project resources.
@@ -1552,26 +1691,35 @@ class Project:
         return self.client._list_resources(project_name=self.name)["files"]
 
     @experimental_api
+    @deprecated("Use resource container API instead.")
     def download_resources(self, target_zip_path: Union[Path, str]) -> None:
         """
+        DEPRECATED: Use ResourceContainer.export_resources() instead.
+
         Download Project-level pipeline resources and store in given path.
         """
         # noinspection PyProtectedMember
         self.client._download_resources(target_zip_path, project_name=self.name)
 
     @experimental_api
+    @deprecated("Use resource container API instead.")
     def delete_resources(self) -> None:
         """
+        DEPRECATED: Use ResourceContainer.delete() instead.
+
         Delete the resources of the project.
         """
         # noinspection PyProtectedMember
         self.client._delete_resources(project_name=self.name)
 
     @experimental_api
+    @deprecated("Use resource container API instead.")
     def upload_resources(
         self, source: Union[IO, Path, str], path_in_zip: Union[Path, str] = ""
     ) -> List[str]:
         """
+        DEPRECATED: Use create_resource_container() instead.
+
         Upload file to the project resources. Existing files with same path/name will be overwritten.
 
         :return: List of resources after upload.
@@ -2045,8 +2193,189 @@ class Client:
         return Project(self, name)
 
     @experimental_api
+    def _delete_resource_container(self, name: str, base_url: str) -> None:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+        Use the ResourceContainer.delete() instead.
+        """
+        build_version = self.get_build_info()
+        if not self._is_higher_equal_version(build_version["platformVersion"], 8, 23):
+            raise OperationNotSupported(
+                f"The container resource API is only supported for platform versions >= 8.23, but current platform is {build_version['platformVersion']}.")
+        container_url = f"{base_url}/{name}"
+        self.__request_with_json_response("delete", container_url)
+
+    @experimental_api
+    def _delete_resource(self, container_name: str, base_url: str, resource_path: str) -> None:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+        Use ResourceContainer.delete_resource() instead.
+        """
+        build_version = self.get_build_info()
+        if not self._is_higher_equal_version(build_version["platformVersion"], 8, 23):
+            raise OperationNotSupported(
+                f"The container resource API is only supported for platform versions >= 8.23, but current platform is {build_version['platformVersion']}.")
+        self.__request_with_json_response("delete", f"{base_url}/{container_name}/resources",
+                                          params={"relativePath": resource_path})
+
+    @experimental_api
+    def list_resource_containers(self) -> List[ResourceContainer]:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+        List all global resource containers
+        """
+        client_base_url = "/experimental/textanalysis"
+        return self._list_resource_containers(client_base_url)
+
+    @experimental_api
+    def _list_resource_containers(self, base_url) -> List[ResourceContainer]:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+        Use respective public list_container_resources() instead
+        """
+        build_version = self.get_build_info()
+        if not self._is_higher_equal_version(build_version["platformVersion"], 8, 23):
+            raise OperationNotSupported(
+                f"The container resource API is only supported for platform versions >= 8.23, but current platform is {build_version['platformVersion']}.")
+        container_url = f"{base_url}/containers"
+        response = self.__request_with_json_response("get", container_url)
+        if response["errorMessages"]:
+            raise Exception(
+                f"Error while listing resource containers: {response['errorMessages']}"
+            )
+        payload = response["payload"]
+        containers = payload["containers"]
+        return [ResourceContainer(self, container["name"], container["scope"], container_url) for container in
+                containers]
+
+    @experimental_api
+    def create_resource_container(self, name: str, resources_zip_path: Optional[Union[Path, str]] = None) -> ResourceContainer:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+        Create global empty resource container or additionally upload provided resources to the new container.
+        """
+        client_base_url = "/experimental/textanalysis"
+        return self._create_resource_container(name, client_base_url, resources_zip_path)
+
+    @experimental_api
+    def _create_resource_container(self, name: str, base_url: str, resources_zip_path: Optional[Union[Path, str]] = None) -> ResourceContainer:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+        Use respective public create_resource_container() method instead.
+        """
+        build_version = self.get_build_info()
+        if not self._is_higher_equal_version(build_version["platformVersion"], 8, 23):
+            raise OperationNotSupported(
+                f"The container resource API is only supported for platform versions >= 8.23, but current platform is {build_version['platformVersion']}.")
+        container_url = f"{base_url}/containers"
+        request_params = {"containerName": name}
+        if resources_zip_path is None:
+            response = self.__request_with_json_response("post", container_url, params=request_params)
+        else:
+            if isinstance(resources_zip_path, str):
+                resources_zip_path = Path(resources_zip_path)
+            with open(resources_zip_path, 'rb') as data:
+                response = self.__request_with_json_response(
+                    "post",
+                    container_url,
+                    params=request_params,
+                    files={"zippedResourceContainer": ("zippedResourceContainer", data)}
+                )
+        if response["errorMessages"]:
+            raise Exception(
+                f"Error during resource container creation {response['errorMessages']}"
+            )
+        resource_container = response["payload"]
+        return ResourceContainer(self, name=resource_container["containerName"], scope=resource_container["scope"], base_url=container_url)
+
+    @experimental_api
+    def _list_container_resources(self, container_name: str, base_url: str) -> List[str]:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+        Use ResourceContainer.list_resources() instead.
+        """
+        build_version = self.get_build_info()
+        if not self._is_higher_equal_version(build_version["platformVersion"], 8, 23):
+            raise OperationNotSupported(
+                f"The container resource API is only supported for platform versions >= 8.23, but current platform is {build_version['platformVersion']}.")
+        response = self.__request_with_json_response("get", f"{base_url}/{container_name}")
+        if response["errorMessages"]:
+            raise Exception(
+                f"Error while listing resources in container {container_name}: {response['errorMessages']}"
+            )
+        payload = response["payload"]
+        resources = payload["resources"]
+        return [resource["relativePath"] for resource in resources]
+
+    @experimental_api
+    def _export_resource(self, target_path: Union[str, Path], container_name: str, base_url: str, resource_path: str) -> None:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+        Use ResourceContainer.export_resource() instead.
+        """
+        build_version = self.get_build_info()
+        if not self._is_higher_equal_version(build_version["platformVersion"], 8, 23):
+            raise OperationNotSupported(
+                f"The container resource API is only supported for platform versions >= 8.23, but current platform is {build_version['platformVersion']}.")
+        if isinstance(target_path, str):
+            target_path = Path(target_path)
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(target_path, "wb") as resource_file:
+            resource = self.__request_with_bytes_response("get", f"{base_url}/{container_name}/resources",
+                                                          params={"relativePath": resource_path})
+            resource_file.write(resource)
+
+    @experimental_api
+    def _upsert_resource(self, resource_file_path: Union[str, Path], container_name: str, base_url: str, resource_path: str) -> None:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+        Use ResourceContainer.upsert_resource() instead.
+        """
+        build_version = self.get_build_info()
+        if not self._is_higher_equal_version(build_version["platformVersion"], 8, 23):
+            raise OperationNotSupported(
+                f"The container resource API is only supported for platform versions >= 8.23, but current platform is {build_version['platformVersion']}.")
+        request_params = {"relativePath": resource_path}
+        request_url = f"{base_url}/{container_name}/resources"
+        if isinstance(resource_file_path, str):
+            resource_file_path = Path(resource_file_path)
+        with resource_file_path.open("rb") as data:
+            response = self.__request_with_json_response(
+                "post",
+                request_url,
+                params=request_params,
+                files={"resource": ("resource", data)}
+            )
+            if response["errorMessages"]:
+                raise Exception(
+                    f"Error during resource upload {response['errorMessages']}"
+                )
+
+    @experimental_api
+    def _export_container_resources(self, target_zip_path: Union[Path, str], container_name: str, base_url: str) -> None:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+        Use ResourceContainer.export_resources() instead.
+        """
+        build_version = self.get_build_info()
+        if not self._is_higher_equal_version(build_version["platformVersion"], 8, 23):
+            raise OperationNotSupported(
+                f"The container resource API is only supported for platform versions >= 8.23, but current platform is {build_version['platformVersion']}.")
+        if isinstance(target_zip_path, str):
+            target_zip_path = Path(target_zip_path)
+
+        target_zip_path.parent.mkdir(parents=True, exist_ok=True)
+        request_headers = {HEADER_CONTENT_TYPE: MEDIA_TYPE_APPLICATION_JSON, HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_ZIP}
+        with open(target_zip_path, "wb") as zip_file:
+            resources = self.__request_with_bytes_response("get", f"{base_url}/{container_name}", headers=request_headers)
+            zip_file.write(resources)
+
+    @experimental_api
+    @deprecated("Use resource container API instead.")
     def list_resources(self) -> List[str]:
         """
+        DEPRECATED: Use ResourceContainer.list_resources() instead.
+
         List the resources that are globally available.
 
         :return: List of resources.
@@ -2054,26 +2383,35 @@ class Client:
         return self._list_resources()["files"]
 
     @experimental_api
+    @deprecated("Use resource container API instead.")
     def download_resources(self, target_zip_path: Union[Path, str]) -> None:
         """
+        DEPRECATED: Use ResourceContainer.export_resources() instead.
+
         Download Client-level pipeline resources and store in given path.
         """
         # noinspection PyProtectedMember
         self._download_resources(target_zip_path)
 
     @experimental_api
+    @deprecated("Use resource container API instead.")
     def delete_resources(self) -> None:
         """
+        DEPRECATED: Use ResourceContainer.delete() instead.
+
         Delete the global resources.
         """
         # noinspection PyProtectedMember
         self._delete_resources()
 
     @experimental_api
+    @deprecated("Use resource container API instead.")
     def upload_resources(
         self, source: Union[IO, Path, str], path_in_zip: Union[Path, str] = ""
     ) -> List[str]:
         """
+        DEPRECATED: Use create_resource_container() instead.
+
         Upload file to the global resources. Existing files with same path/name will be overwritten.
 
         :return: List of resources after upload.
@@ -2480,7 +2818,7 @@ class Client:
     ):
         build_version = self.get_build_info()
 
-        if accept_type != MEDIA_TYPE_APPLICATION_JSON and build_version["platformVersion"] < "8.16":
+        if accept_type != MEDIA_TYPE_APPLICATION_JSON and not self._is_higher_equal_version(build_version["platformVersion"], 8, 16):
             raise OperationNotSupported(
                 f"Accept types other than json are only supported for platform versions >= 8.16 (available from Health Discovery version 7.3), "
                 f"but current platform is {build_version['platformVersion']}.")
@@ -2655,7 +2993,6 @@ class Client:
                 ),
                 ENCODING_UTF_8,
             )
-
 
     @experimental_api
     def _export_analysis_result_typesystem(
@@ -2885,7 +3222,7 @@ class Client:
 
     def _delete_document(self, project_name: str, document_collection_name: str, document_name: str) -> dict:
         build_version = self.get_build_info()
-        if build_version["platformVersion"] < "8.20":
+        if not self._is_higher_equal_version(build_version["platformVersion"], 8, 20):
             raise OperationNotSupported(
                 f"The method 'delete_documents' is only supported for platform versions >= 8.20.0 (available from Health Discovery version 7.5.0), but current platform is {build_version['platformVersion']}.")
 
@@ -2929,7 +3266,7 @@ class Client:
 
         if annotation_types:
             build_version = self.get_build_info()
-            if build_version["platformVersion"] < "8.11":
+            if not self._is_higher_equal_version(build_version["platformVersion"], 8, 11):
                 raise OperationNotSupported(f"The parameter 'annotation_types' is only supported for platform versions >= 8.11 (available from Health Discovery version 7.1), but current platform is {build_version['platformVersion']}.")
             request_json["annotationTypesToBeSaved"] = self._preprocess_annotation_types(annotation_types)
 

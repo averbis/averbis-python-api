@@ -113,6 +113,104 @@ def test_upload_license(client, requests_mock):
     assert license_info == payload
 
 
+def test_list_resource_containers_not_supported(client, requests_mock):
+    requests_mock.get(
+        f"{API_BASE}/buildInfo",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": {
+                "specVersion": "7.6.0",
+                "buildNumber": "branch: main f2731e315ee137cf94c48e5f2fa431777fe49cef",
+                "platformVersion": "8.22.0"
+            },
+            "errorMessages": []
+        },
+    )
+    with pytest.raises(OperationNotSupported):
+        client.list_resource_containers()
+
+
+def test_list_resource_containers(client, requests_mock):
+    requests_mock.get(
+        f"{API_BASE}/buildInfo",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": {
+                "specVersion": "7.7.0",
+                "buildNumber": "branch: main f2731e315ee137cf94c48e5f2fa431777fe49cef",
+                "platformVersion": "8.23.0"
+            },
+            "errorMessages": []
+        },
+    )
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/containers",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": {
+                "containers": [
+                    {
+                        "name": "container",
+                        "scope": "GLOBAL"
+                    }
+                ]
+            },
+            "errorMessages": []
+        }
+    )
+
+    actual_containers = client.list_resource_containers()
+    assert len(actual_containers) == 1
+    actual_container = actual_containers[0]
+    assert actual_container.name == "container"
+
+
+def test_create_resource_container(client, requests_mock):
+    requests_mock.get(
+        f"{API_BASE}/buildInfo",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": {
+                "specVersion": "7.7.0",
+                "buildNumber": "branch: main f2731e315ee137cf94c48e5f2fa431777fe49cef",
+                "platformVersion": "8.23.0"
+            },
+            "errorMessages": []
+        },
+    )
+
+    requests_mock.post(
+        f"{API_EXPERIMENTAL}/textanalysis/containers",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": {
+                "containerName": "container",
+                "scope": "GLOBAL",
+                "resources": [
+                    {
+                        "relativePath": "text3.txt"
+                    },
+                    {
+                        "relativePath": "text2.txt"
+                    },
+                    {
+                        "relativePath": "text1.txt"
+                    },
+                    {
+                        "relativePath": "sub/text4.txt"
+                    }
+                ]
+            },
+            "errorMessages": []
+        }
+    )
+
+    resource_zip_file = Path(TEST_DIRECTORY) / "resources" / "zip_test" / "zip_test.zip"
+    actual_resource_container = client.create_resource_container("container", resource_zip_file)
+    assert actual_resource_container.name == "container"
+
+
 def test_generate_api_token(client, requests_mock):
     requests_mock.post(
         f"{API_BASE}/users/admin/apitoken",

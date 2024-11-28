@@ -18,7 +18,7 @@
 #
 #
 from .core import Client, Project, Pipeline, Result, Terminology, DocumentCollection, Pear, Process, \
-    EvaluationConfiguration
+    EvaluationConfiguration, ResourceContainer
 
 __all__ = [
     "Client",
@@ -30,4 +30,5 @@ __all__ = [
     "DocumentCollection",
     "Pear",
     "Process",
+    "ResourceContainer"
 ]

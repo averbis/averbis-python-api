@@ -23,6 +23,7 @@
 from ._rest_client import (
     OperationNotSupported,
     OperationTimeoutError,
+    ResourceContainer,
     Terminology,
     Client,
     Result,
@@ -56,6 +57,7 @@ from ._rest_client import (
 __all__ = [
     "OperationNotSupported",
     "OperationTimeoutError",
+    "ResourceContainer",
     "Terminology",
     "Client",
     "Result",

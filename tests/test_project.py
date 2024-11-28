@@ -142,6 +142,89 @@ def test_list_annotators(client_version_7, requests_mock):
     assert annotators[1]["displayName"] == "DummyAnnotator2"
 
 
+def test_list_resource_containers(client, requests_mock):
+    requests_mock.get(
+        f"{API_BASE}/buildInfo",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": {
+                "specVersion": "7.7.0",
+                "buildNumber": "branch: main f2731e315ee137cf94c48e5f2fa431777fe49cef",
+                "platformVersion": "8.23.0"
+            },
+            "errorMessages": []
+        },
+    )
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/test/containers",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": {
+                "containers": [
+                    {
+                        "name": "container",
+                        "scope": "GLOBAL"
+                    }
+                ]
+            },
+            "errorMessages": []
+        }
+    )
+
+    project = client.get_project("test")
+    actual_containers = project.list_resource_containers()
+    assert len(actual_containers) == 1
+    actual_container = actual_containers[0]
+    assert actual_container.name == "container"
+
+
+def test_create_resource_container(client, requests_mock):
+    requests_mock.get(
+        f"{API_BASE}/buildInfo",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": {
+                "specVersion": "7.7.0",
+                "buildNumber": "branch: main f2731e315ee137cf94c48e5f2fa431777fe49cef",
+                "platformVersion": "8.23.0"
+            },
+            "errorMessages": []
+        },
+    )
+
+    requests_mock.post(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/test/containers",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": {
+                "containerName": "container",
+                "scope": "GLOBAL",
+                "resources": [
+                    {
+                        "relativePath": "text3.txt"
+                    },
+                    {
+                        "relativePath": "text2.txt"
+                    },
+                    {
+                        "relativePath": "text1.txt"
+                    },
+                    {
+                        "relativePath": "sub/text4.txt"
+                    }
+                ]
+            },
+            "errorMessages": []
+        }
+    )
+
+    resource_zip_file = Path(TEST_DIRECTORY) / "resources" / "zip_test" / "zip_test.zip"
+    project = client.get_project("test")
+    actual_resource_container = project.create_resource_container("container", resource_zip_file)
+    assert actual_resource_container.name == "container"
+
+
 def test_exists_pipeline(client_version_6, requests_mock):
     project = client_version_6.get_project(PROJECT_NAME)
     requests_mock.get(
