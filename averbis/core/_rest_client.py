@@ -928,13 +928,13 @@ class Terminology:
 
     @experimental_api
     def concept_autosuggest(
-        self, query: str, include_concept_identifier: bool, max_suggestions: int
+        self, query: str, include_concept_identifier: bool=True, max_suggestions: int = 5,
     ) -> dict:
         """
         Trigger the concept autosuggest for this terminology.
 
         :param query: The query string for autosuggest.
-        :param include_concept_identifier: Whether to include the concept identifier in the suggestions.
+        :param include_concept_identifier: Whether the conceptId field of the terminology concepts is also searched by the query string.
         :param max_suggestions: The maximum number of suggestions to return.
         :return: The raw payload of the server response.
         """
@@ -2722,10 +2722,10 @@ class Client:
                                              project: str,
                                              terminology: str,
                                              query: str, 
-                                             include_concept_identifier: bool = False,
-                                             max_suggestions: int = 10) -> dict:
+                                             include_concept_identifier: bool,
+                                             max_suggestions: int) -> dict:
         """
-        Use Terminology.get_concept_autosuggest() instead.
+        Use Terminology.concept_autosuggest() instead.
         """
         request_json = {
             "query": query,
