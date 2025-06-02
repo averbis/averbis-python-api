@@ -926,6 +926,29 @@ class Terminology:
         # noinspection PyProtectedMember
         self.project.client._delete_terminology(self.project.name, self.name)
 
+    @experimental_api
+    def concept_autosuggest(
+        self, query: str, include_concept_identifier: bool, max_suggestions: int
+    ) -> dict:
+        """
+        Trigger the concept autosuggest for this terminology.
+
+        :param include_concept_identifier: Whether to include the concept identifier in the suggestions.
+        :param max_suggestions: The maximum number of suggestions to return.
+        :param query: The query string for autosuggest.
+        :return: The raw payload of the server response.
+        """
+        request_json = {
+            "includeConceptIdentifier": include_concept_identifier,
+            "maxSuggestions": max_suggestions,
+            "query": query,
+        }
+        endpoint = f"/experimental/terminology/projects/{self.project.name}/terminologies/{self.name}/conceptAutosuggest"
+        response = self.project.client._Client__request_with_json_response(
+            "post", endpoint, json=request_json
+        )
+        return response["payload"]
+
 
 class Process:
     def __init__(
