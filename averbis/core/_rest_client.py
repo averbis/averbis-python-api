@@ -933,21 +933,18 @@ class Terminology:
         """
         Trigger the concept autosuggest for this terminology.
 
+        :param query: The query string for autosuggest.
         :param include_concept_identifier: Whether to include the concept identifier in the suggestions.
         :param max_suggestions: The maximum number of suggestions to return.
-        :param query: The query string for autosuggest.
         :return: The raw payload of the server response.
         """
-        request_json = {
-            "includeConceptIdentifier": include_concept_identifier,
-            "maxSuggestions": max_suggestions,
-            "query": query,
-        }
-        endpoint = f"/experimental/terminology/projects/{self.project.name}/terminologies/{self.name}/conceptAutosuggest"
-        response = self.project.client._Client__request_with_json_response(
-            "post", endpoint, json=request_json
+        return self.project.client._get_terminology_concept_autosuggest(
+            self.project.name,
+            self.name,
+            query,
+            include_concept_identifier,
+            max_suggestions,
         )
-        return response["payload"]
 
 
 class Process:
@@ -2718,6 +2715,26 @@ class Client:
             "get",
             f"/v1/terminology/projects/{project}/terminologies/{terminology}/terminologyImports",
             headers={HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_JSON},
+        )
+        return response["payload"]
+
+    def _get_terminology_concept_autosuggest(self, 
+                                             project: str,
+                                             terminology: str,
+                                             query: str, 
+                                             include_concept_identifier: bool = False,
+                                             max_suggestions: int = 10) -> dict:
+        """
+        Use Terminology.get_concept_autosuggest() instead.
+        """
+        request_json = {
+            "query": query,
+            "includeConceptIdentifier": include_concept_identifier,
+            "maxSuggestions": max_suggestions,
+        }
+        endpoint = f"/experimental/terminology/projects/{project}/terminologies/{terminology}/conceptAutosuggest"
+        response = self.__request_with_json_response(
+            "post", endpoint, json=request_json
         )
         return response["payload"]
 
