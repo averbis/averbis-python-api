@@ -926,6 +926,26 @@ class Terminology:
         # noinspection PyProtectedMember
         self.project.client._delete_terminology(self.project.name, self.name)
 
+    @experimental_api
+    def concept_autosuggest(
+        self, query: str, include_concept_identifier: bool=True, max_suggestions: int = 5,
+    ) -> dict:
+        """
+        Trigger the concept autosuggest for this terminology.
+
+        :param query: The query string for autosuggest.
+        :param include_concept_identifier: Whether the conceptId field of the terminology concepts is also searched by the query string.
+        :param max_suggestions: The maximum number of suggestions to return.
+        :return: The raw payload of the server response.
+        """
+        return self.project.client._get_terminology_concept_autosuggest(
+            self.project.name,
+            self.name,
+            query,
+            include_concept_identifier,
+            max_suggestions,
+        )
+
 
 class Process:
     def __init__(
@@ -2695,6 +2715,26 @@ class Client:
             "get",
             f"/v1/terminology/projects/{project}/terminologies/{terminology}/terminologyImports",
             headers={HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_JSON},
+        )
+        return response["payload"]
+
+    def _get_terminology_concept_autosuggest(self, 
+                                             project: str,
+                                             terminology: str,
+                                             query: str, 
+                                             include_concept_identifier: bool,
+                                             max_suggestions: int) -> dict:
+        """
+        Use Terminology.concept_autosuggest() instead.
+        """
+        request_json = {
+            "query": query,
+            "includeConceptIdentifier": include_concept_identifier,
+            "maxSuggestions": max_suggestions,
+        }
+        endpoint = f"/experimental/terminology/projects/{project}/terminologies/{terminology}/conceptAutosuggest"
+        response = self.__request_with_json_response(
+            "post", endpoint, json=request_json
         )
         return response["payload"]
 

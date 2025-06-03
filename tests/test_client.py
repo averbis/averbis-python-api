@@ -808,6 +808,61 @@ def test_get_terminology_import_info(client, requests_mock):
     assert response["state"] == "COMPLETED"
 
 
+def test_concept_autosuggest(client, requests_mock):
+    project_name = "test_project"
+    terminology_name = "ICD10GM_2021"
+    # Simulierte Antwort des concept_autosuggest Endpunkts
+    response_json = {
+        "payload": {
+            "suggestions": [
+                {
+                    "matchedTerm": "C50-C50",
+                    "language": "de",
+                    "conceptId": "C50-C50",
+                    "preferredTerm": "Bösartige Neubildungen der Brustdrüse [Mamma]",
+                },
+                {
+                    "matchedTerm": "C50.-",
+                    "language": "de",
+                    "conceptId": "C50.-",
+                    "preferredTerm": "Bösartige Neubildung der Brustdrüse [Mamma]",
+                },
+                {
+                    "matchedTerm": "C50.0",
+                    "language": "de",
+                    "conceptId": "C50.0",
+                    "preferredTerm": "Bösartige Neubildung: Brustwarze und Warzenhof",
+                },
+                {
+                    "matchedTerm": "C50.1",
+                    "language": "de",
+                    "conceptId": "C50.1",
+                    "preferredTerm": "Bösartige Neubildung: Zentraler Drüsenkörper der Brustdrüse",
+                },
+                {
+                    "matchedTerm": "C50.2",
+                    "language": "de",
+                    "conceptId": "C50.2",
+                    "preferredTerm": "Bösartige Neubildung: Oberer innerer Quadrant der Brustdrüse",
+                },
+            ]
+        },
+        "errorMessages": [],
+    }
+    endpoint = f"terminology/projects/{project_name}/terminologies/{terminology_name}/conceptAutosuggest"
+    full_url = f"{API_EXPERIMENTAL}/{endpoint}"
+    requests_mock.post(full_url, json=response_json)
+
+    project = client.get_project(project_name)
+    terminology = project.get_terminology(terminology_name)
+    result = terminology.concept_autosuggest(
+        query="C50", include_concept_identifier=True, max_suggestions=5
+    )
+    suggestions = result.get("suggestions", [])
+    assert len(suggestions) == 5
+    assert suggestions[0]["conceptId"].startswith("C50")
+
+
 def test_analyse_text(client, requests_mock):
     requests_mock.post(
         f"{API_BASE}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/analyseText",
