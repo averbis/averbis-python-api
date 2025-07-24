@@ -441,7 +441,7 @@ class Pipeline:
         annotation_types: Union[None, str, List[str]] = None,
         language: Optional[str] = None,
         timeout: Optional[float] = None
-    ) -> dict:
+    ) -> list[dict]:
         """
         Analyze the given text or text file using the pipeline.
 
@@ -463,9 +463,9 @@ class Pipeline:
             timeout=timeout,
             accept_type=MEDIA_TYPE_APPLICATION_JSON
         )
-        if not isinstance(response, dict):
+        if not isinstance(response, list):
             raise TypeError(
-                f"Expected response to be a dict, but got {type(response)}. "
+                f"Expected response to be a list of dict, but got {type(response)}. "
                 "This may indicate that the server did not return a valid JSON response."
             )
         return response
@@ -3043,7 +3043,7 @@ class Client:
         timeout: Optional[float] = None,
         content_type: Optional[str] = MEDIA_TYPE_TEXT_PLAIN_UTF8,
         accept_type: Optional[str] = MEDIA_TYPE_APPLICATION_JSON
-    ) -> Union[dict, bytes]:
+    ) -> Union[list[dict], dict, bytes]:
 
         if accept_type != MEDIA_TYPE_APPLICATION_JSON or content_type != MEDIA_TYPE_TEXT_PLAIN_UTF8:
             build_version = self.get_build_info()
@@ -3057,7 +3057,7 @@ class Client:
                                           language=language, timeout=timeout, content_type=content_type,
                                           accept_type=accept_type)
         else:
-            data = self._create_request_data(content_type, source)
+            data: IO = self._create_request_data(content_type, source)
             response = self._request_analyse_text(project, pipeline, data, annotation_types, language, timeout,
                                                   content_type, accept_type)
         if isinstance(response, bytes):
@@ -3097,8 +3097,10 @@ class Client:
         )
 
     @staticmethod
-    def _create_request_data(content_type: Optional[str], source: Union[Path, IO, str, dict]) -> IO:
-        if isinstance(source, IO):
+    def _create_request_data(content_type: Optional[str], source: Union[Path, IO, str, dict]):
+        if isinstance(source, str):
+            return BytesIO(source.encode(ENCODING_UTF_8))
+        if isinstance(source, IO) or isinstance(source, IOBase):
             return source
         if isinstance(source, Path):
             if content_type != MEDIA_TYPE_TEXT_PLAIN_UTF8:
