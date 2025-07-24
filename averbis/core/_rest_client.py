@@ -570,7 +570,7 @@ class Pipeline:
 
     def analyse_fhir_to_cas(
             self,
-            source: Union[Path, IO, str],
+            source: Union[Path, IO, str, dict],
             annotation_types: Union[None, str, List[str]] = None,
             language: Optional[str] = None,
             timeout: Optional[float] = None) -> Cas:
@@ -597,13 +597,15 @@ class Pipeline:
                     annotation_types=annotation_types,
                     content_type=MEDIA_TYPE_FHIR_JSON,
                     accept_type=MEDIA_TYPE_APPLICATION_XMI
-                )),
+                ),
+                ENCODING_UTF_8,
+            ),
             typesystem=self.get_type_system(),
         )
 
     def analyse_fhir_to_fhir(
             self,
-            source: Union[Path, IO, str],
+            source: Union[Path, IO, str, dict],
             annotation_types: Union[None, str, List[str]] = None,
             language: Optional[str] = None,
             timeout: Optional[float] = None) -> dict:
@@ -632,7 +634,7 @@ class Pipeline:
 
     def analyse_fhir(
             self,
-            source: Union[Path, IO, str],
+            source: Union[Path, IO, str, dict],
             annotation_types: Union[None, str, List[str]] = None,
             language: Optional[str] = None,
             timeout: Optional[float] = None) -> dict:
@@ -2177,7 +2179,8 @@ class Client:
             kwargs["headers"] = self._default_headers()
 
         if "json" in kwargs:
-            kwargs["headers"][HEADER_CONTENT_TYPE] = MEDIA_TYPE_APPLICATION_JSON
+            if "headers" not in kwargs or HEADER_CONTENT_TYPE not in kwargs["headers"]:
+                kwargs["headers"][HEADER_CONTENT_TYPE] = MEDIA_TYPE_APPLICATION_JSON
 
         if "params" in kwargs:
             kwargs["params"] = {
@@ -2237,10 +2240,12 @@ class Client:
         if items is None:
             items = {}
 
-        headers = {
-            HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_JSON,
-            **items,
-        }
+        headers = items
+        if HEADER_ACCEPT not in headers:
+            headers = {
+                HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_JSON,
+                **items,
+            }
 
         if self._api_token:
             headers["api-token"] = self._api_token
@@ -3025,13 +3030,13 @@ class Client:
         self,
         project: str,
         pipeline: str,
-        source: Union[Path, IO, str],
+        source: Union[Path, IO, str, dict],
         annotation_types: Union[None, str, List[str]] = None,
         language: Optional[str] = None,
         timeout: Optional[float] = None,
         content_type: Optional[str] = MEDIA_TYPE_TEXT_PLAIN_UTF8,
         accept_type: Optional[str] = MEDIA_TYPE_APPLICATION_JSON
-    ) -> dict:
+    ) -> dict | bytes:
 
         if accept_type != MEDIA_TYPE_APPLICATION_JSON or content_type != MEDIA_TYPE_TEXT_PLAIN_UTF8:
             build_version = self.get_build_info()
@@ -3040,16 +3045,62 @@ class Client:
                     f"Accept types other than json and content types other than plain text are only supported "
                     f"for platform versions >= 8.16 (available from Health Discovery version 7.3).")
 
-        if isinstance(source, Path):
+        if isinstance(source, dict):
+            response = self._analyse_fhir(project, pipeline, source, annotation_types=annotation_types,
+                                          language=language, timeout=timeout, content_type=content_type,
+                                          accept_type=accept_type)
+        else:
+            data = self._create_request_data(content_type, source)
+            response = self._request_analyse_text(project, pipeline, data, annotation_types, language, timeout,
+                                                  content_type, accept_type)
+        if isinstance(response, bytes):
+            return response
+        if "payload" in response:
+            payload: Dict = response["payload"]
+            return payload
+        return response
+
+    def _analyse_fhir(self, project: str,
+                      pipeline: str,
+                      source: dict,
+                      annotation_types: Union[None, str, List[str]] = None,
+                      language: Optional[str] = None,
+                      timeout: Optional[float] = None,
+                      content_type: Optional[str] = MEDIA_TYPE_FHIR_JSON,
+                      accept_type: Optional[str] = MEDIA_TYPE_APPLICATION_JSON) -> bytes | dict:
+        url = f"/v1/textanalysis/projects/{project}/pipelines/{pipeline}/analyseText"
+        request_params = {"annotationTypes": self._preprocess_annotation_types(annotation_types), "language": language}
+        request_headers = {HEADER_CONTENT_TYPE: content_type, HEADER_ACCEPT: accept_type}
+        if accept_type == MEDIA_TYPE_APPLICATION_XMI:
+            return self.__request_with_bytes_response(
+                "post",
+                url,
+                json=source,
+                headers=request_headers,
+                params=request_params,
+                timeout=timeout
+            )
+        return self.__request_with_json_response(
+            "post",
+            url,
+            json=source,
+            timeout=timeout,
+            params=request_params,
+            headers=request_headers
+        )
+
+    @staticmethod
+    def _create_request_data(content_type: str, source: Union[Path, IO, str, dict]) -> IO:
+        if isinstance(source, IO):
+            return source
+        if isinstance(source, Path) and content_type != MEDIA_TYPE_TEXT_PLAIN_UTF8:
+            return source.open("rb")
+        if isinstance(source, Path) and content_type == MEDIA_TYPE_TEXT_PLAIN_UTF8:
             with source.open("r", encoding=ENCODING_UTF_8) as file:
                 source = file.read()
-
-        data: IO = BytesIO(source.encode(ENCODING_UTF_8)) if isinstance(source, str) else source
-
-        response = self._request_analyse_text(project, pipeline, data, annotation_types, language, timeout,
-                                              content_type, accept_type)
-        payload: Dict = response["payload"]
-        return payload
+        if isinstance(source, dict):
+            source = json.dumps(source)
+        return BytesIO(source.encode(ENCODING_UTF_8)) if isinstance(source, str) else source
 
     def _request_analyse_text(self,
                               project: str,

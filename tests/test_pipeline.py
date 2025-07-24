@@ -17,6 +17,8 @@
 # limitations under the License.
 #
 #
+import base64
+import json
 import logging
 import time
 from pathlib import Path
@@ -33,6 +35,7 @@ from averbis.core import (
     MEDIA_TYPE_APPLICATION_XML,
     MEDIA_TYPE_PDF
 )
+from averbis.core._rest_client import MEDIA_TYPE_FHIR_JSON, MEDIA_TYPE_TEXT_PLAIN_UTF8, MEDIA_TYPE_APPLICATION_JSON
 from tests.fixtures import *
 
 logging.basicConfig(level=logging.INFO)
@@ -134,23 +137,27 @@ def pipeline_analyse_text_to_cas_mock(client, requests_mock):
 
     def callback(request, _content):
         doc_text = request.text.read().decode("utf-8")
-        return f"""<?xml version="1.0" encoding="UTF-8"?>
-            <xmi:XMI xmlns:tcas="http:///uima/tcas.ecore" xmlns:xmi="http://www.omg.org/XMI" xmlns:cas="http:///uima/cas.ecore"
-                     xmlns:cassis="http:///cassis.ecore" xmi:version="2.0">
-                <cas:NULL xmi:id="0"/>
-                <tcas:DocumentAnnotation xmi:id="2" sofa="1" begin="0" end="{len(doc_text)}" language="x-unspecified"/>
-            
-                <cas:Sofa xmi:id="42" sofaNum="2" sofaID="EmptyView" />
-                <cas:Sofa xmi:id="1" sofaNum="1" sofaID="_InitialView" mimeType="text/plain" sofaString="{doc_text}"/>
-                <cas:View sofa="1" members="2"/>
-            </xmi:XMI>
-            """
+        return _create_cas_xmi(doc_text)
 
     requests_mock.post(
         f"{API_EXPERIMENTAL}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/analyzeTextToCas",
         headers={"Content-Type": MEDIA_TYPE_APPLICATION_XMI},
         text=callback,
     )
+
+
+def _create_cas_xmi(doc_text: str) -> str:
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
+            <xmi:XMI xmlns:tcas="http:///uima/tcas.ecore" xmlns:xmi="http://www.omg.org/XMI" xmlns:cas="http:///uima/cas.ecore"
+                     xmlns:cassis="http:///cassis.ecore" xmi:version="2.0">
+                <cas:NULL xmi:id="0"/>
+                <tcas:DocumentAnnotation xmi:id="2" sofa="1" begin="0" end="{len(doc_text)}" language="x-unspecified"/>
+
+                <cas:Sofa xmi:id="42" sofaNum="2" sofaID="EmptyView" />
+                <cas:Sofa xmi:id="1" sofaNum="1" sofaID="_InitialView" mimeType="text/plain" sofaString="{doc_text}"/>
+                <cas:View sofa="1" members="2"/>
+            </xmi:XMI>
+            """
 
 
 @pytest.fixture
@@ -380,6 +387,114 @@ def test_analyse_pdf_to_pdf(client, requests_mock):
 
     result = pipeline.analyse_pdf_to_pdf(pdf1_path)
     assert result == b"This is a test."
+
+
+def test_analyse_text_to_fhir(client_version_7_3_platform_8_17, requests_mock):
+
+    def callback(request, _content):
+        doc_text = request.text.read().decode("utf-8")
+        return {"payload": {"text": doc_text}}
+
+    requests_mock.post(
+        f"{API_BASE}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/analyseText",
+        headers={"Content-Type": MEDIA_TYPE_TEXT_PLAIN_UTF8, "Accept": MEDIA_TYPE_FHIR_JSON},
+        json=callback
+    )
+
+    pipeline = Pipeline(Project(client_version_7_3_platform_8_17, PROJECT_NAME), "discharge")
+    text = 'The patient has a fever'
+    result = pipeline.analyse_text_to_fhir(source=text)
+    assert result["text"] == text
+
+
+def test_analyse_text_to_fhir_not_supported(client_version_6):
+    pipeline = Pipeline(Project(client_version_6, PROJECT_NAME), "discharge")
+    text = 'The patient has a fever'
+    with pytest.raises(OperationNotSupported):
+        pipeline.analyse_text_to_fhir(source=text)
+
+
+def test_analyse_fhir_to_fhir(client_version_7_3_platform_8_17, requests_mock):
+
+    def callback(request, _content):
+        doc_text = request.text.read().decode("utf-8")
+        return {"payload": {"text": doc_text}}
+
+    requests_mock.post(
+        f"{API_BASE}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/analyseText",
+        headers={"Content-Type": MEDIA_TYPE_FHIR_JSON, "Accept": MEDIA_TYPE_FHIR_JSON},
+        json=callback
+    )
+
+    pipeline = Pipeline(Project(client_version_7_3_platform_8_17, PROJECT_NAME), "discharge")
+    fhir = _create_fhir(b'The patient has a fever')
+    result = pipeline.analyse_fhir_to_fhir(source=str(fhir))
+    assert result["text"] == str(fhir)
+
+
+def test_analyse_fhir_to_cas(client_version_7_3_platform_8_17, requests_mock):
+    def callback(request, _content):
+        request_text = request.text.read().decode("utf-8")
+        request_json = json.loads(request_text)
+        data = request_json["entry"]["resource"]["data"]
+        doc_text = base64.b64decode(data)
+        cas_xmi = _create_cas_xmi(doc_text.decode("utf-8"))
+        return cas_xmi
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/exportTypesystem",
+        headers={"Content-Type": MEDIA_TYPE_APPLICATION_XML},
+        text=EMPTY_TYPESYSTEM,
+    )
+
+    requests_mock.post(
+        f"{API_BASE}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/analyseText",
+        headers={"Content-Type": MEDIA_TYPE_FHIR_JSON, "Accept": MEDIA_TYPE_APPLICATION_XMI},
+        text=callback
+    )
+
+    pipeline = Pipeline(Project(client_version_7_3_platform_8_17, PROJECT_NAME), "discharge")
+    text = "The patient has a fever"
+    fhir = _create_fhir(text.encode("utf-8"))
+    result_cas = pipeline.analyse_fhir_to_cas(source=json.dumps(fhir))
+    assert result_cas.sofa_string == text
+
+
+def test_analyse_fhir_to_json(client_version_7_3_platform_8_17, requests_mock):
+    def callback(request, _content):
+        request_text = request.json()
+        return {"payload": {"text": request_text}}
+
+    requests_mock.post(
+        f"{API_BASE}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/analyseText",
+        headers={"Content-Type": MEDIA_TYPE_FHIR_JSON, "Accept": MEDIA_TYPE_APPLICATION_JSON},
+        json=callback
+    )
+
+    pipeline = Pipeline(Project(client_version_7_3_platform_8_17, PROJECT_NAME), "discharge")
+    text = "The patient has a fever"
+    fhir = _create_fhir(text.encode("utf-8"))
+    result = pipeline.analyse_fhir(source=fhir)
+    assert result["text"] == fhir
+
+
+def _create_fhir(text: bytes):
+    fhir = {
+        "resourceType": "Bundle",
+        "id": "bundleId",
+        "type": "collection",
+        "entry":
+            {
+                "fullUrl": "entryId",
+                "resource": {
+                    "id": "Logical id of this artifact",
+                    "resourceType": "Binary",
+                    "contentType": "text/plain",
+                    "data": base64.b64encode(text).decode("utf-8")
+                }
+            }
+    }
+    return fhir
 
 
 def test_list_resource_containers(client, requests_mock):
