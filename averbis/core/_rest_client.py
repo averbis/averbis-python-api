@@ -3043,7 +3043,7 @@ class Client:
         timeout: Optional[float] = None,
         content_type: Optional[str] = MEDIA_TYPE_TEXT_PLAIN_UTF8,
         accept_type: Optional[str] = MEDIA_TYPE_APPLICATION_JSON
-    ) -> Union[list[dict], dict, bytes]:
+    ) -> Union[List[dict], dict, bytes]:
 
         if accept_type != MEDIA_TYPE_APPLICATION_JSON or content_type != MEDIA_TYPE_TEXT_PLAIN_UTF8:
             build_version = self.get_build_info()
