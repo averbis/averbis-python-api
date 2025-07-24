@@ -454,7 +454,7 @@ class Pipeline:
                  representation.
         """
         # noinspection PyProtectedMember
-        return self.project.client._analyse_text(
+        response = self.project.client._analyse_text(
             project=self.project.name,
             pipeline=self.name,
             source=source,
@@ -463,6 +463,12 @@ class Pipeline:
             timeout=timeout,
             accept_type=MEDIA_TYPE_APPLICATION_JSON
         )
+        if not isinstance(response, dict):
+            raise TypeError(
+                f"Expected response to be a dict, but got {type(response)}. "
+                "This may indicate that the server did not return a valid JSON response."
+            )
+        return response
 
     def analyse_texts(
         self,
@@ -510,7 +516,7 @@ class Pipeline:
         annotation_types: Union[None, str, List[str]] = None,
         language: Optional[str] = None,
         timeout: Optional[float] = None
-    ) -> dict:
+    ):
         """
         Analyze the given text or text file using the pipeline and return FHIR.
 
@@ -519,7 +525,7 @@ class Pipeline:
         :param language:         Optional parameter setting the language of the document, e.g. "en" or "de".
         :param timeout:          Optional timeout (in seconds) specifying how long the request is waiting for a server response.
 
-        :return: The raw payload of the server response. Future versions of this library may return a better-suited
+        :return: The raw payload of the server response as a dictionary. Future versions of this library may return a better-suited
                  representation.
         """
         # noinspection PyProtectedMember
@@ -573,7 +579,7 @@ class Pipeline:
             source: Union[Path, IO, str, dict],
             annotation_types: Union[None, str, List[str]] = None,
             language: Optional[str] = None,
-            timeout: Optional[float] = None) -> Cas:
+            timeout: Optional[float] = None):
         """
             Analyze the given text or text file in FHIR json format using the pipeline and return Cas.
 
@@ -586,9 +592,7 @@ class Pipeline:
                      representation.
         """
         # noinspection PyProtectedMember
-        return load_cas_from_xmi(
-            str(
-                self.project.client._analyse_text(
+        cas_xmi = self.project.client._analyse_text(
                     project=self.project.name,
                     pipeline=self.name,
                     source=source,
@@ -597,18 +601,21 @@ class Pipeline:
                     annotation_types=annotation_types,
                     content_type=MEDIA_TYPE_FHIR_JSON,
                     accept_type=MEDIA_TYPE_APPLICATION_XMI
-                ),
-                ENCODING_UTF_8,
-            ),
-            typesystem=self.get_type_system(),
-        )
+                )
+        if not isinstance(cas_xmi, bytes):
+            raise TypeError(
+                f"Expected response to be bytes, but got {type(cas_xmi)}. "
+                "This may indicate that the server did not return a valid XMI response."
+            )
+        cas_xmi_str = str(cas_xmi, ENCODING_UTF_8)
+        return load_cas_from_xmi(cas_xmi_str, typesystem=self.get_type_system())
 
     def analyse_fhir_to_fhir(
             self,
             source: Union[Path, IO, str, dict],
             annotation_types: Union[None, str, List[str]] = None,
             language: Optional[str] = None,
-            timeout: Optional[float] = None) -> dict:
+            timeout: Optional[float] = None):
         """
             Analyze the given text or text file in FHIR json format using the pipeline and return FHIR json.
 
@@ -617,7 +624,7 @@ class Pipeline:
             :param language:         Optional parameter setting the language of the document, e.g. "en" or "de".
             :param timeout:          Optional timeout (in seconds) specifying how long the request is waiting for a server response.
 
-            :return: The raw payload of the server response. Future versions of this library may return a better-suited
+            :return: The raw payload of the server response as a dictionary. Future versions of this library may return a better-suited
                      representation.
         """
         # noinspection PyProtectedMember
@@ -637,7 +644,7 @@ class Pipeline:
             source: Union[Path, IO, str, dict],
             annotation_types: Union[None, str, List[str]] = None,
             language: Optional[str] = None,
-            timeout: Optional[float] = None) -> dict:
+            timeout: Optional[float] = None):
         """
             Analyze the given text or text file in FHIR json format using the pipeline and return json.
 
@@ -3090,17 +3097,20 @@ class Client:
         )
 
     @staticmethod
-    def _create_request_data(content_type: str, source: Union[Path, IO, str, dict]) -> IO:
+    def _create_request_data(content_type: str | None, source: Union[Path, IO, str, dict]) -> IO:
         if isinstance(source, IO):
             return source
-        if isinstance(source, Path) and content_type != MEDIA_TYPE_TEXT_PLAIN_UTF8:
-            return source.open("rb")
-        if isinstance(source, Path) and content_type == MEDIA_TYPE_TEXT_PLAIN_UTF8:
-            with source.open("r", encoding=ENCODING_UTF_8) as file:
-                source = file.read()
+        if isinstance(source, Path):
+            if content_type != MEDIA_TYPE_TEXT_PLAIN_UTF8:
+                return source.open("rb")
+            if content_type == MEDIA_TYPE_TEXT_PLAIN_UTF8:
+                with source.open("r", encoding=ENCODING_UTF_8) as file:
+                    source = file.read()
+                    return BytesIO(source.encode(ENCODING_UTF_8))
         if isinstance(source, dict):
             source = json.dumps(source)
-        return BytesIO(source.encode(ENCODING_UTF_8)) if isinstance(source, str) else source
+            return BytesIO(source.encode(ENCODING_UTF_8))
+        raise OperationNotSupported(f"Content-type {content_type} is not supported for this source.")
 
     def _request_analyse_text(self,
                               project: str,
