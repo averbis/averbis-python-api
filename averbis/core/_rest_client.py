@@ -3043,7 +3043,7 @@ class Client:
         timeout: Optional[float] = None,
         content_type: Optional[str] = MEDIA_TYPE_TEXT_PLAIN_UTF8,
         accept_type: Optional[str] = MEDIA_TYPE_APPLICATION_JSON
-    ) -> dict | bytes:
+    ) -> Union[dict, bytes]:
 
         if accept_type != MEDIA_TYPE_APPLICATION_JSON or content_type != MEDIA_TYPE_TEXT_PLAIN_UTF8:
             build_version = self.get_build_info()
@@ -3074,7 +3074,7 @@ class Client:
                       language: Optional[str] = None,
                       timeout: Optional[float] = None,
                       content_type: Optional[str] = MEDIA_TYPE_FHIR_JSON,
-                      accept_type: Optional[str] = MEDIA_TYPE_APPLICATION_JSON) -> bytes | dict:
+                      accept_type: Optional[str] = MEDIA_TYPE_APPLICATION_JSON) -> Union[bytes, dict]:
         url = f"/v1/textanalysis/projects/{project}/pipelines/{pipeline}/analyseText"
         request_params = {"annotationTypes": self._preprocess_annotation_types(annotation_types), "language": language}
         request_headers = {HEADER_CONTENT_TYPE: content_type, HEADER_ACCEPT: accept_type}
@@ -3097,7 +3097,7 @@ class Client:
         )
 
     @staticmethod
-    def _create_request_data(content_type: str | None, source: Union[Path, IO, str, dict]) -> IO:
+    def _create_request_data(content_type: Optional[str], source: Union[Path, IO, str, dict]) -> IO:
         if isinstance(source, IO):
             return source
         if isinstance(source, Path):
