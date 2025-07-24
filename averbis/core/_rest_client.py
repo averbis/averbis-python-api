@@ -441,7 +441,7 @@ class Pipeline:
         annotation_types: Union[None, str, List[str]] = None,
         language: Optional[str] = None,
         timeout: Optional[float] = None
-    ) -> list[dict]:
+    ) -> List[Dict]:
         """
         Analyze the given text or text file using the pipeline.
 
