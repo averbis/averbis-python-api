@@ -441,7 +441,7 @@ class Pipeline:
         annotation_types: Union[None, str, List[str]] = None,
         language: Optional[str] = None,
         timeout: Optional[float] = None
-    ) -> List[Dict]:
+    ) -> List[dict]:
         """
         Analyze the given text or text file using the pipeline.
 
@@ -588,8 +588,7 @@ class Pipeline:
             :param language:         Optional parameter setting the language of the document, e.g. "en" or "de".
             :param timeout:          Optional timeout (in seconds) specifying how long the request is waiting for a server response.
 
-            :return: The raw payload of the server response. Future versions of this library may return a better-suited
-                     representation.
+            :return: Analyzed document as a Cas
         """
         # noinspection PyProtectedMember
         cas_xmi = self.project.client._analyse_text(
