@@ -1348,6 +1348,8 @@ class DocumentCollection:
     ) -> List[dict]:
         """
         Imports documents from a given file or from a given string. Supported file content types are plain text (text/plain),
+        json, containing the text in field 'content', the document name in field 'documentName' and 
+        optional key-value pair metadata (application/json),
         Averbis Solr XML (application/vnd.averbis.solr+xml) and the :ref:`UIMA types`.
 
         If a document is provided as a CAS object, the type system information can be automatically picked from the CAS
@@ -2564,11 +2566,12 @@ class Client:
             if isinstance(src, Cas):
                 return MEDIA_TYPE_APPLICATION_XMI
             guessed_mime_type = mimetypes.guess_type(url=file_name)[0]
-            if guessed_mime_type not in [MEDIA_TYPE_TEXT_PLAIN, MEDIA_TYPE_APPLICATION_SOLR_XML]:
+            if guessed_mime_type not in [MEDIA_TYPE_TEXT_PLAIN, MEDIA_TYPE_APPLICATION_SOLR_XML, MEDIA_TYPE_APPLICATION_JSON]:
                 raise ValueError(
                     f"Unable to guess a valid mime_type. Supported file content types are plain text (mime_type = "
                     f"'{MEDIA_TYPE_TEXT_PLAIN}'), Averbis Solr XML (mime_type = "
-                    f"'{MEDIA_TYPE_APPLICATION_SOLR_XML}') and UIMA CAS file types ({','.join(MEDIA_TYPES_CAS)}).\n"
+                    f"'{MEDIA_TYPE_APPLICATION_SOLR_XML}'), '{MEDIA_TYPE_APPLICATION_JSON}' and " +
+                    f"UIMA CAS file types ({','.join(MEDIA_TYPES_CAS)}).\n"
                     f"Please provide the correct mime_type with: `document_collection.import_documents(file, "
                     f"mime_type = ...)`."
                 )
