@@ -2643,8 +2643,6 @@ class Client:
             else:
                 if isinstance(source, (str, bytes)):
                     data = BytesIO(source.encode(ENCODING_UTF_8) if isinstance(source, str) else source)
-                elif isinstance(source, dict):
-                    data = BytesIO(json.dumps(source).encode(ENCODING_UTF_8))
                 elif isinstance(source, IOBase):
                     data = source
                 else:
