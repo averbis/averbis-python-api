@@ -2549,12 +2549,24 @@ class Client:
         Use DocumentCollection.import_document() instead.
         """
 
-        def fetch_filename(src: Union[Path, IO, str]) -> str:
+        def fetch_filename(src: Union[Path, IO, str], filename: str) -> str:
+            if filename is not None and not isinstance(src, dict):
+                return filename
+            
             if isinstance(src, Path):
                 return Path(src).name
 
             if isinstance(src, IOBase) and hasattr(src, "name"):
                 return src.name
+            
+            if isinstance(src,dict) and "documentName" in src:
+                documentName = src["documentName"]
+                if filename is not None and documentName != filename:
+                    raise ValueError(
+                        f"The `filename` parameter '{filename}' does not match the documentName in the provided dict '{documentName}'."
+                    )
+                return documentName
+
 
             raise ValueError(
                 f"The `filename` parameter can only be automatically inferred for [Path, IO], but received a "
@@ -2590,13 +2602,13 @@ class Client:
                 )
             # For multi-documents, the server still needs a filename with the proper extension, otherwise it refuses
             # to parse the result
-            filename = fetch_filename(source)
+            filename = fetch_filename(source, filename)
         else:
-            filename = filename or fetch_filename(source)
+            filename = fetch_filename(source, filename)
 
         if mime_type is None:
             mime_type = guess_mime_type(source, filename)
-
+        
         files = self.create_import_files(source, mime_type, filename, typesystem)
 
         response = self.__request_with_json_response(
