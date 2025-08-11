@@ -1345,6 +1345,7 @@ class DocumentCollection:
         mime_type: Optional[str] = None,
         filename: Optional[str] = None,
         typesystem: Optional["TypeSystem"] = None,
+        meta_data: Optional[dict] = None,
     ) -> List[dict]:
         """
         Imports documents from a given file, from a given string or from a dictionary (representing the json-format). 
@@ -1364,11 +1365,13 @@ class DocumentCollection:
         source is a string or a CAS object), the filename should explicitly be provided. Note that a file in the
         Averbis Solr XML format can contain multiple documents and each of these has its name encoded within the XML.
         In this case, the setting filename parameter is not permitted at all.
+
+        :param meta_data: optional key-value pairs that are saved as generic metadata in addition to the document
         """
 
         # noinspection PyProtectedMember
         return self.project.client._import_documents(
-            self.project.name, self.name, source, mime_type, filename, typesystem
+            self.project.name, self.name, source, mime_type, filename, typesystem, meta_data
         )
 
     @experimental_api
@@ -2544,6 +2547,7 @@ class Client:
         mime_type: Optional[str] = None,
         filename: Optional[str] = None,
         typesystem: Optional["TypeSystem"] = None,
+        meta_data: Optional[dict] = None
     ) -> List[dict]:
         """
         Use DocumentCollection.import_document() instead.
@@ -2611,11 +2615,19 @@ class Client:
         
         files = self.create_import_files(source, mime_type, filename, typesystem)
 
-        response = self.__request_with_json_response(
-            "post",
-            f"/v1/importer/projects/{project}/documentCollections/{collection_name}/documents",
-            files=files,
-        )
+        if meta_data is None:
+            response = self.__request_with_json_response(
+                "post",
+                f"/v1/importer/projects/{project}/documentCollections/{collection_name}/documents",
+                files=files,
+            )
+        else:
+            response = self.__request_with_json_response(
+                "post",
+                f"/v1/importer/projects/{project}/documentCollections/{collection_name}/documents",
+                files=files,
+                params=meta_data
+            )
 
         # When a multi-document file format is uploaded (e.g. SolrXML), we get an array as a result, otherwise we get
         # an object. To have a uniform API we wrap the object in an array so we always get an array as a result.
