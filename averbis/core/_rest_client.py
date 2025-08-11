@@ -2550,7 +2550,7 @@ class Client:
         Use DocumentCollection.import_document() instead.
         """
 
-        def fetch_filename(src: Union[Path, IO, str], filename: Optional[str] = None) -> str:
+        def fetch_filename(src: Union[Cas, Path, IO, str], filename: Optional[str] = None) -> str:
             if filename is not None and not isinstance(src, dict):
                 return filename
             
@@ -2574,7 +2574,7 @@ class Client:
                 f"'{type(src)}' object. The filename is required as it serves as an unique identifier for the document."
             )
 
-        def guess_mime_type(src: Union[Path, IO, str], file_name) -> str:
+        def guess_mime_type(src: Union[Cas, Path, IO, str, dict], file_name) -> str:
             if isinstance(src, str):
                 return MEDIA_TYPE_TEXT_PLAIN
             if isinstance(src, Cas):
@@ -2634,13 +2634,12 @@ class Client:
             if isinstance(source, Path):
                 if mime_type == MEDIA_TYPE_TEXT_PLAIN:
                     with source.open("r", encoding=ENCODING_UTF_8) as text_file:
-                        source = text_file.read()
+                        data = BytesIO(text_file.read().encode(ENCODING_UTF_8))
                 else:
                     with source.open("rb") as binary_file:
-                        source = BytesIO(binary_file.read())
+                        data = BytesIO(binary_file.read())
             elif isinstance(source, dict) and mime_type == MEDIA_TYPE_APPLICATION_JSON:
-                source = json.dumps(source)
-            data: IO = BytesIO(source.encode(ENCODING_UTF_8)) if isinstance(source, str) else source
+                data = BytesIO(json.dumps(source).encode(ENCODING_UTF_8))
 
             files = {"documentFile": (filename, data, mime_type)}
         return files
