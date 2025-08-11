@@ -2634,7 +2634,7 @@ class Client:
             if isinstance(source, Path):
                 if mime_type == MEDIA_TYPE_TEXT_PLAIN:
                     with source.open("r", encoding=ENCODING_UTF_8) as text_file:
-                        data = BytesIO(text_file.read().encode(ENCODING_UTF_8))
+                        data: IOBase = BytesIO(text_file.read().encode(ENCODING_UTF_8))
                 else:
                     with source.open("rb") as binary_file:
                         data = BytesIO(binary_file.read())
@@ -2645,6 +2645,8 @@ class Client:
                     data = BytesIO(source.encode(ENCODING_UTF_8) if isinstance(source, str) else source)
                 elif isinstance(source, dict):
                     data = BytesIO(json.dumps(source).encode(ENCODING_UTF_8))
+                elif isinstance(source, IOBase):
+                    data = source
                 else:
                     raise TypeError(f"Unsupported type for source: {type(source)}")
 
