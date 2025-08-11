@@ -1347,7 +1347,7 @@ class DocumentCollection:
         typesystem: Optional["TypeSystem"] = None,
     ) -> List[dict]:
         """
-        Imports documents from a given file, from a given string or from a dictionary (reprsentaing the json-format). 
+        Imports documents from a given file, from a given string or from a dictionary (representing the json-format). 
         Supported file content types are plain text (text/plain),
         json, containing the text in field 'content', the document name in field 'documentName' and 
         optional key-value pair metadata (application/json),
