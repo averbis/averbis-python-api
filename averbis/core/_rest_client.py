@@ -2550,7 +2550,7 @@ class Client:
         Use DocumentCollection.import_document() instead.
         """
 
-        def fetch_filename(src: Union[Path, IO, str], filename: str) -> str:
+        def fetch_filename(src: Union[Path, IO, str], filename: Optional[str] = None) -> str:
             if filename is not None and not isinstance(src, dict):
                 return filename
             
