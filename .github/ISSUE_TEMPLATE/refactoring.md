@@ -1,7 +1,7 @@
 ---
-name: Refactoring (for developers)
+name: "⚙️ Refactoring (for maintainers)" 
 about: Refactor the application
-
+type: "⚙️ Refactoring"
 ---
 
 **Describe the refactoring action**
