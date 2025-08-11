@@ -1884,6 +1884,7 @@ class Client:
 
         if self._api_token is None:
             if username is not None and password is not None:
+                self.ensure_available()
                 self.regenerate_api_token(username, password)
             else:
                 raise Exception(
