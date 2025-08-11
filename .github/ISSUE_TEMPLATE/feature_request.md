@@ -1,6 +1,7 @@
 ---
-name: Feature request
-about: Suggest an idea for this project
+name: "⭐️ Enhancement (feature request)"
+about: Suggest a feature or improvement
+type: "⭐️ Enhancement"
 ---
 
 **Is your feature request related to a problem? Please describe.**
