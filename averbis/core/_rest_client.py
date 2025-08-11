@@ -1507,13 +1507,16 @@ class DocumentCollection:
 
     def import_documents(
         self,
-        source: Union[Cas, Path, IO, str],
+        source: Union[Cas, Path, IO, str, dict],
         mime_type: Optional[str] = None,
         filename: Optional[str] = None,
         typesystem: Optional["TypeSystem"] = None,
     ) -> List[dict]:
         """
-        Imports documents from a given file or from a given string. Supported file content types are plain text (text/plain),
+        Imports documents from a given file, from a given string or from a dictionary (representing the json-format). 
+        Supported file content types are plain text (text/plain),
+        json, containing the text in field 'content', the document name in field 'documentName' and 
+        optional key-value pair metadata (application/json),
         Averbis Solr XML (application/vnd.averbis.solr+xml) and the :ref:`UIMA types`.
 
         If a document is provided as a CAS object, the type system information can be automatically picked from the CAS
@@ -2050,6 +2053,7 @@ class Client:
 
         if self._api_token is None:
             if username is not None and password is not None:
+                self.ensure_available()
                 self.regenerate_api_token(username, password)
             else:
                 raise Exception(
@@ -2706,7 +2710,7 @@ class Client:
         self,
         project: str,
         collection_name: str,
-        source: Union[Cas, Path, IO, str],
+        source: Union[Cas, Path, IO, str, dict],
         mime_type: Optional[str] = None,
         filename: Optional[str] = None,
         typesystem: Optional["TypeSystem"] = None,
@@ -2715,29 +2719,44 @@ class Client:
         Use DocumentCollection.import_document() instead.
         """
 
-        def fetch_filename(src: Union[Path, IO, str], default_filename: str) -> str:
+        def fetch_filename(src: Union[Cas, Path, IO, str], filename: Optional[str] = None) -> str:
+            if filename is not None and not isinstance(src, dict):
+                return filename
+            
             if isinstance(src, Path):
                 return Path(src).name
 
             if isinstance(src, IOBase) and hasattr(src, "name"):
                 return src.name
+            
+            if isinstance(src,dict) and "documentName" in src:
+                documentName = src["documentName"]
+                if filename is not None and documentName != filename:
+                    raise ValueError(
+                        f"The `filename` parameter '{filename}' does not match the documentName in the provided dict '{documentName}'."
+                    )
+                return documentName
+
 
             raise ValueError(
                 f"The `filename` parameter can only be automatically inferred for [Path, IO], but received a "
                 f"'{type(src)}' object. The filename is required as it serves as an unique identifier for the document."
             )
 
-        def guess_mime_type(src: Union[Path, IO, str], file_name) -> str:
+        def guess_mime_type(src: Union[Cas, Path, IO, str, dict], file_name) -> str:
             if isinstance(src, str):
                 return MEDIA_TYPE_TEXT_PLAIN
             if isinstance(src, Cas):
                 return MEDIA_TYPE_APPLICATION_XMI
+            if isinstance(src, dict):
+                return MEDIA_TYPE_APPLICATION_JSON
             guessed_mime_type = mimetypes.guess_type(url=file_name)[0]
-            if guessed_mime_type not in [MEDIA_TYPE_TEXT_PLAIN, MEDIA_TYPE_APPLICATION_SOLR_XML]:
+            if guessed_mime_type not in [MEDIA_TYPE_TEXT_PLAIN, MEDIA_TYPE_APPLICATION_SOLR_XML, MEDIA_TYPE_APPLICATION_JSON]:
                 raise ValueError(
                     f"Unable to guess a valid mime_type. Supported file content types are plain text (mime_type = "
                     f"'{MEDIA_TYPE_TEXT_PLAIN}'), Averbis Solr XML (mime_type = "
-                    f"'{MEDIA_TYPE_APPLICATION_SOLR_XML}') and UIMA CAS file types ({','.join(MEDIA_TYPES_CAS)}).\n"
+                    f"'{MEDIA_TYPE_APPLICATION_SOLR_XML}'), '{MEDIA_TYPE_APPLICATION_JSON}' and " +
+                    f"UIMA CAS file types ({','.join(MEDIA_TYPES_CAS)}).\n"
                     f"Please provide the correct mime_type with: `document_collection.import_documents(file, "
                     f"mime_type = ...)`."
                 )
@@ -2753,28 +2772,14 @@ class Client:
                 )
             # For multi-documents, the server still needs a filename with the proper extension, otherwise it refuses
             # to parse the result
-            filename = fetch_filename(source, "data.xml")
+            filename = fetch_filename(source, filename)
         else:
-            filename = filename or fetch_filename(source, "document.txt")
+            filename = fetch_filename(source, filename)
 
         if mime_type is None:
             mime_type = guess_mime_type(source, filename)
-
-        if mime_type in MEDIA_TYPES_CAS:
-            files = self._create_cas_file_request_parts(
-                "documentFile", filename, source, mime_type, typesystem
-            )
-        else:
-            if isinstance(source, Path):
-                if mime_type == MEDIA_TYPE_TEXT_PLAIN:
-                    with source.open("r", encoding=ENCODING_UTF_8) as text_file:
-                        source = text_file.read()
-                else:
-                    with source.open("rb") as binary_file:
-                        source = BytesIO(binary_file.read())
-            data: IO = BytesIO(source.encode(ENCODING_UTF_8)) if isinstance(source, str) else source
-
-            files = {"documentFile": (filename, data, mime_type)}
+        
+        files = self.create_import_files(source, mime_type, filename, typesystem)
 
         response = self.__request_with_json_response(
             "post",
@@ -2788,6 +2793,32 @@ class Client:
             return response["payload"]
         else:
             return [response["payload"]]
+
+    def create_import_files(self, source: Union[Cas, Path, IO, str, dict], mime_type: str, filename: str, typesystem: Optional["TypeSystem"] = None) -> dict:
+        if mime_type in MEDIA_TYPES_CAS:
+            files = self._create_cas_file_request_parts(
+                "documentFile", filename, source, mime_type, typesystem
+            )
+        else:
+            if isinstance(source, Path):
+                if mime_type == MEDIA_TYPE_TEXT_PLAIN:
+                    with source.open("r", encoding=ENCODING_UTF_8) as text_file:
+                        data: IOBase = BytesIO(text_file.read().encode(ENCODING_UTF_8))
+                else:
+                    with source.open("rb") as binary_file:
+                        data = BytesIO(binary_file.read())
+            elif isinstance(source, dict) and mime_type == MEDIA_TYPE_APPLICATION_JSON:
+                data = BytesIO(json.dumps(source).encode(ENCODING_UTF_8))
+            else:
+                if isinstance(source, (str, bytes)):
+                    data = BytesIO(source.encode(ENCODING_UTF_8) if isinstance(source, str) else source)
+                elif isinstance(source, IOBase):
+                    data = source
+                else:
+                    raise TypeError(f"Unsupported type for source: {type(source)}")
+
+            files = {"documentFile": (filename, data, mime_type)}
+        return files
 
     def _list_terminologies(self, project: str) -> dict:
         """
