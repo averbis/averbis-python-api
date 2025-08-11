@@ -2640,6 +2640,13 @@ class Client:
                         data = BytesIO(binary_file.read())
             elif isinstance(source, dict) and mime_type == MEDIA_TYPE_APPLICATION_JSON:
                 data = BytesIO(json.dumps(source).encode(ENCODING_UTF_8))
+            else:
+                if isinstance(source, (str, bytes)):
+                    data = BytesIO(source.encode(ENCODING_UTF_8) if isinstance(source, str) else source)
+                elif isinstance(source, dict):
+                    data = BytesIO(json.dumps(source).encode(ENCODING_UTF_8))
+                else:
+                    raise TypeError(f"Unsupported type for source: {type(source)}")
 
             files = {"documentFile": (filename, data, mime_type)}
         return files
