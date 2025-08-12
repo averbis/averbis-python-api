@@ -516,7 +516,7 @@ class Pipeline:
         annotation_types: Union[None, str, List[str]] = None,
         language: Optional[str] = None,
         timeout: Optional[float] = None
-    ):
+    ) -> dict:
         """
         Analyze the given text or text file using the pipeline and return FHIR.
 
@@ -529,7 +529,7 @@ class Pipeline:
                  representation.
         """
         # noinspection PyProtectedMember
-        return self.project.client._analyse_text(
+        response = self.project.client._analyse_text(
             project=self.project.name,
             pipeline=self.name,
             source=source,
@@ -538,6 +538,10 @@ class Pipeline:
             timeout=timeout,
             accept_type=MEDIA_TYPE_FHIR_JSON
         )
+        if not isinstance(response, dict):
+            raise TypeError(f"Expected response to be a dict, but got {type(response)}. "
+                            "This may indicate that the server did not return a valid JSON response.")
+        return response
 
     def analyse_texts_to_fhir(
         self,
@@ -572,14 +576,14 @@ class Pipeline:
         :return: An iterator over the results produced by the pipeline.
         """
         yield from self._analyse_in_parallel(sources=sources, parallelism=parallelism, annotation_types=annotation_types,
-                                             language=language, timeout=timeout, analyse=self.analyse_text_to_fhir)
+                                             language=language, timeout=timeout, analyse_function=self.analyse_text_to_fhir)
 
     def analyse_fhir_to_cas(
             self,
             source: Union[Path, IO, str, dict],
             annotation_types: Union[None, str, List[str]] = None,
             language: Optional[str] = None,
-            timeout: Optional[float] = None):
+            timeout: Optional[float] = None) -> Cas:
         """
             Analyze the given text or text file in FHIR json format using the pipeline and return Cas.
 
@@ -614,7 +618,7 @@ class Pipeline:
             source: Union[Path, IO, str, dict],
             annotation_types: Union[None, str, List[str]] = None,
             language: Optional[str] = None,
-            timeout: Optional[float] = None):
+            timeout: Optional[float] = None) -> dict:
         """
             Analyze the given text or text file in FHIR json format using the pipeline and return FHIR json.
 
@@ -627,7 +631,7 @@ class Pipeline:
                      representation.
         """
         # noinspection PyProtectedMember
-        return self.project.client._analyse_text(
+        response = self.project.client._analyse_text(
                     project=self.project.name,
                     pipeline=self.name,
                     source=source,
@@ -637,17 +641,21 @@ class Pipeline:
                     content_type=MEDIA_TYPE_FHIR_JSON,
                     accept_type=MEDIA_TYPE_FHIR_JSON
                 )
+        if not isinstance(response, dict):
+            raise TypeError(f"Expected response to be a dict, but got {type(response)}. "
+                            "This may indicate that the server did not return a valid JSON response.")
+        return response
 
     def analyse_fhir(
             self,
             source: Union[Path, IO, str, dict],
             annotation_types: Union[None, str, List[str]] = None,
             language: Optional[str] = None,
-            timeout: Optional[float] = None):
+            timeout: Optional[float] = None) -> List[dict]:
         """
             Analyze the given text or text file in FHIR json format using the pipeline and return json.
 
-            :param source:           The document to be analyzed.
+            :param source:           The document to be analyzed in fhir format. This can be a fhir text, file or a dictionary containing the fhir data.
             :param annotation_types: Optional parameter indicating which types should be returned. Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types with prefix "de.averbis.types"
             :param language:         Optional parameter setting the language of the document, e.g. "en" or "de".
             :param timeout:          Optional timeout (in seconds) specifying how long the request is waiting for a server response.
@@ -656,16 +664,20 @@ class Pipeline:
                      representation.
         """
         # noinspection PyProtectedMember
-        return self.project.client._analyse_text(
-                    project=self.project.name,
-                    pipeline=self.name,
-                    source=source,
-                    language=language,
-                    timeout=timeout,
-                    annotation_types=annotation_types,
-                    content_type=MEDIA_TYPE_FHIR_JSON,
-                    accept_type=MEDIA_TYPE_APPLICATION_JSON
-                )
+        response = self.project.client._analyse_text(
+            project=self.project.name,
+            pipeline=self.name,
+            source=source,
+            language=language,
+            timeout=timeout,
+            annotation_types=annotation_types,
+            content_type=MEDIA_TYPE_FHIR_JSON,
+            accept_type=MEDIA_TYPE_APPLICATION_JSON
+        )
+        if not isinstance(response, list):
+            raise TypeError(f"Expected response to be a list of dict, but got {type(response)}. "
+                            "This may indicate that the server did not return a valid JSON response.")
+        return response
 
     def _analyse_in_parallel(
         self,
@@ -674,7 +686,7 @@ class Pipeline:
         annotation_types: Union[None, str, List[str]] = None,
         language: Optional[str] = None,
         timeout: Optional[float] = None,
-        analyse: Optional[Callable] = None
+        analyse_function: Optional[Callable] = None
     ) -> Iterator[Result]:
         if self.project.client.get_spec_version().startswith("5."):
             pipeline_instances = self.get_configuration()["analysisEnginePoolSize"]
@@ -694,13 +706,13 @@ class Pipeline:
             self.__logger.debug(
                 f"Not performing parallel requests (remote supports max {pipeline_instances} parallel requests)"
             )
-        if analyse is None:
-            analyse = self.analyse_text
+        if analyse_function is None:
+            analyse_function = self.analyse_text
 
         def run_analysis(source):
             try:
                 return Result(
-                    data=analyse(
+                    data=analyse_function(
                         source=source,
                         annotation_types=annotation_types,
                         language=language,
@@ -852,7 +864,7 @@ class Pipeline:
                                              annotation_types=annotation_types,
                                              language=language,
                                              timeout=timeout,
-                                             analyse=self.analyse_text_to_cas)
+                                             analyse_function=self.analyse_text_to_cas)
 
     # Ignoring errors as linter (compiler) cannot resolve dynamically loaded lib
     # (with type:ignore for mypy) and (noinspection PyProtectedMember for pycharm)
@@ -3093,7 +3105,7 @@ class Client:
         if isinstance(response, bytes):
             return response
         if "payload" in response:
-            payload: Dict = response["payload"]
+            payload: Dict = response["payload"]  # this is a list of dict
             return payload
         return response
 

@@ -463,7 +463,7 @@ def test_analyse_fhir_to_cas(client_version_7_3_platform_8_17, requests_mock):
 def test_analyse_fhir_to_json(client_version_7_3_platform_8_17, requests_mock):
     def callback(request, _content):
         request_text = request.json()
-        return {"payload": {"text": request_text}}
+        return {"payload": [request_text]}
 
     requests_mock.post(
         f"{API_BASE}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/analyseText",
@@ -475,7 +475,7 @@ def test_analyse_fhir_to_json(client_version_7_3_platform_8_17, requests_mock):
     text = "The patient has a fever"
     fhir = _create_fhir(text.encode("utf-8"))
     result = pipeline.analyse_fhir(source=fhir)
-    assert result["text"] == fhir
+    assert result[0] == fhir
 
 
 def _create_fhir(text: bytes):
