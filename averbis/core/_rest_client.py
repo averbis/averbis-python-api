@@ -710,11 +710,8 @@ class Pipeline:
         self,
         sources: Iterable[Union[Path, IO, str]],
         parallelism: int = 0,
-        annotation_types: Union[None, str, List[str]] = None,
-        language: Optional[str] = None,
-        timeout: Optional[float] = None,
         analyse_function: Optional[Callable] = None,
-        meta_data: Optional[dict] = None
+        **kwargs
     ) -> Iterator[Result]:
         if self.project.client.get_spec_version().startswith("5."):
             pipeline_instances = self.get_configuration()["analysisEnginePoolSize"]
@@ -742,10 +739,7 @@ class Pipeline:
                 return Result(
                     data=analyse_function(
                         source=source,
-                        annotation_types=annotation_types,
-                        language=language,
-                        timeout=timeout,
-                        meta_data=meta_data
+                        **kwargs
                     ),
                     source=source,
                 )
@@ -860,8 +854,7 @@ class Pipeline:
         parallelism: int = 0,
         language: Optional[str] = None,
         timeout: Optional[float] = None,
-        annotation_types: Union[None, str, List[str]] = None,
-        meta_data: Optional[dict] = None
+        annotation_types: Union[None, str, List[str]] = None
     ) -> Iterator[Result]:
         """
         Analyze the given texts or files using the pipeline. If feasible, multiple documents are processed in parallel.
@@ -886,7 +879,6 @@ class Pipeline:
         :param annotation_types: Optional parameter indicating which types should be returned.
                                  Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types
                                  with prefix "de.averbis.types". Available from Health Discovery 7.3.0 onwards.
-        :param meta_data:        Optional key-value pairs that are used as generic metadata in addition to the document
 
         :return: An iterator over the results produced by the pipeline.
         """
@@ -895,8 +887,8 @@ class Pipeline:
                                              annotation_types=annotation_types,
                                              language=language,
                                              timeout=timeout,
-                                             analyse_function=self.analyse_text_to_cas,
-                                             meta_data=meta_data)
+                                             analyse_function=self.analyse_text_to_cas
+                                             )
 
     # Ignoring errors as linter (compiler) cannot resolve dynamically loaded lib
     # (with type:ignore for mypy) and (noinspection PyProtectedMember for pycharm)
