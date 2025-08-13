@@ -47,6 +47,20 @@ def test_import_plain_text(document_collection, requests_mock):
 
     assert result[0]["document_name"] == "text1.txt"
 
+def test_import_plain_text_with_meta_data(document_collection, requests_mock):
+    requests_mock.post(
+        f"{API_BASE}/importer/projects/{PROJECT_NAME}/documentCollections/test-collection/documents?key=value",
+        json={
+            "payload": {"original_document_name": "text1.txt", "document_name": "text1.txt"},
+            "errorMessages": [],
+        },
+    )
+    file_path = os.path.join(TEST_DIRECTORY, "resources/texts/text1.txt")
+    with open(file_path, "r", encoding="UTF-8") as input_io:
+        result = document_collection.import_documents(input_io, meta_data={"key": "value"})
+
+    assert result[0]["document_name"] == "text1.txt"
+
 def test_import_json(document_collection, requests_mock):
     requests_mock.post(
         f"{API_BASE}/importer/projects/{PROJECT_NAME}/documentCollections/test-collection/documents",
