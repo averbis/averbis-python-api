@@ -383,7 +383,8 @@ class Pipeline:
         source: Union[Path, IO],
         annotation_types: Union[None, str, List[str]] = None,
         language: Optional[str] = None,
-        timeout: Optional[float] = None
+        timeout: Optional[float] = None,
+        meta_data: Optional[dict] = None
     ) -> dict:
         """
         Analyze the given pdf using the pipeline. The returned analysis is in json format.
@@ -392,6 +393,7 @@ class Pipeline:
         :param annotation_types: Optional parameter indicating which types should be returned. Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types with prefix "de.averbis.types"
         :param language:         Optional parameter setting the language of the document, e.g. "en" or "de".
         :param timeout:          Optional timeout (in seconds) specifying how long the request is waiting for a server response.
+        :param meta_data:        Optional key-value pairs that are used as generic metadata in addition to the document
 
         :return: The raw payload of the server response. Future versions of this library may return a better-suited
                  representation.
@@ -405,7 +407,8 @@ class Pipeline:
             annotation_types=annotation_types,
             language=language,
             timeout=timeout,
-            accept_type=MEDIA_TYPE_APPLICATION_JSON
+            accept_type=MEDIA_TYPE_APPLICATION_JSON,
+            meta_data=meta_data
         )
 
     def analyse_pdf_to_pdf(
@@ -413,7 +416,8 @@ class Pipeline:
         source: Union[Path, IO],
         annotation_types: Union[None, str, List[str]] = None,
         language: Optional[str] = None,
-        timeout: Optional[float] = None
+        timeout: Optional[float] = None,
+        meta_data: Optional[dict] = None
     ) -> bytes:
         """
         Analyze the given pdf using the pipeline. The returned analysis is a marked pdf.
@@ -422,6 +426,7 @@ class Pipeline:
         :param annotation_types: Optional parameter indicating which types should be returned. Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types with prefix "de.averbis.types"
         :param language:         Optional parameter setting the language of the document, e.g. "en" or "de".
         :param timeout:          Optional timeout (in seconds) specifying how long the request is waiting for a server response.
+        :param meta_data:        Optional key-value pairs that are used as generic metadata in addition to the document
         """
 
         # noinspection PyProtectedMember
@@ -432,7 +437,8 @@ class Pipeline:
             annotation_types=annotation_types,
             language=language,
             timeout=timeout,
-            accept_type=MEDIA_TYPE_PDF
+            accept_type=MEDIA_TYPE_PDF,
+            meta_data= meta_data
         )
 
     def analyse_text(
@@ -440,7 +446,8 @@ class Pipeline:
         source: Union[Path, IO, str],
         annotation_types: Union[None, str, List[str]] = None,
         language: Optional[str] = None,
-        timeout: Optional[float] = None
+        timeout: Optional[float] = None,
+        meta_data: Optional[dict] = None
     ) -> List[dict]:
         """
         Analyze the given text or text file using the pipeline.
@@ -449,6 +456,7 @@ class Pipeline:
         :param annotation_types: Optional parameter indicating which types should be returned. Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types with prefix "de.averbis.types"
         :param language:         Optional parameter setting the language of the document, e.g. "en" or "de".
         :param timeout:          Optional timeout (in seconds) specifying how long the request is waiting for a server response.
+        :param meta_data:        Optional key-value pairs that are used as generic metadata in addition to the document
 
         :return: The raw payload of the server response. Future versions of this library may return a better-suited
                  representation.
@@ -461,7 +469,8 @@ class Pipeline:
             annotation_types=annotation_types,
             language=language,
             timeout=timeout,
-            accept_type=MEDIA_TYPE_APPLICATION_JSON
+            accept_type=MEDIA_TYPE_APPLICATION_JSON,
+            meta_data=meta_data
         )
         if not isinstance(response, list):
             raise TypeError(
@@ -476,7 +485,8 @@ class Pipeline:
         parallelism: int = 0,
         annotation_types: Union[None, str, List[str]] = None,
         language: Optional[str] = None,
-        timeout: Optional[float] = None
+        timeout: Optional[float] = None,
+        meta_data: Optional[dict] = None
     ) -> Iterator[Result]:
         """
         Analyze the given texts or files using the pipeline. If feasible, multiple documents are processed in parallel.
@@ -499,6 +509,7 @@ class Pipeline:
         :param annotation_types: Optional parameter indicating which types should be returned. Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types with prefix "de.averbis.types"
         :param language:         Optional parameter setting the language of the document, e.g. "en" or "de".
         :param timeout:          Optional timeout (in seconds) specifiying how long the request is waiting for a server response.
+        :param meta_data:        Optional key-value pairs that are used as generic metadata in addition to the document
 
         :return: An iterator over the results produced by the pipeline.
         """
@@ -507,7 +518,8 @@ class Pipeline:
             parallelism=parallelism,
             annotation_types=annotation_types,
             language=language,
-            timeout=timeout
+            timeout=timeout,
+            meta_data=meta_data
         )
 
     def analyse_text_to_fhir(
@@ -515,7 +527,8 @@ class Pipeline:
         source: Union[Path, IO, str],
         annotation_types: Union[None, str, List[str]] = None,
         language: Optional[str] = None,
-        timeout: Optional[float] = None
+        timeout: Optional[float] = None,
+        meta_data: Optional[dict] = None
     ) -> dict:
         """
         Analyze the given text or text file using the pipeline and return FHIR.
@@ -524,6 +537,7 @@ class Pipeline:
         :param annotation_types: Optional parameter indicating which types should be returned. Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types with prefix "de.averbis.types"
         :param language:         Optional parameter setting the language of the document, e.g. "en" or "de".
         :param timeout:          Optional timeout (in seconds) specifying how long the request is waiting for a server response.
+        :param meta_data:        Optional key-value pairs that are used as generic metadata in addition to the document
 
         :return: The raw payload of the server response as a dictionary. Future versions of this library may return a better-suited
                  representation.
@@ -536,7 +550,8 @@ class Pipeline:
             annotation_types=annotation_types,
             language=language,
             timeout=timeout,
-            accept_type=MEDIA_TYPE_FHIR_JSON
+            accept_type=MEDIA_TYPE_FHIR_JSON,
+            meta_data=meta_data
         )
         if not isinstance(response, dict):
             raise TypeError(f"Expected response to be a dict, but got {type(response)}. "
@@ -549,7 +564,8 @@ class Pipeline:
         parallelism: int = 0,
         annotation_types: Union[None, str, List[str]] = None,
         language: Optional[str] = None,
-        timeout: Optional[float] = None
+        timeout: Optional[float] = None,
+        meta_data: Optional[dict] = None
     ) -> Iterator[Result]:
         """
         Analyze the given texts or files using the pipeline. If feasible, multiple documents are processed in parallel.
@@ -572,18 +588,21 @@ class Pipeline:
         :param annotation_types: Optional parameter indicating which types should be returned. Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types with prefix "de.averbis.types"
         :param language:         Optional parameter setting the language of the document, e.g. "en" or "de".
         :param timeout:          Optional timeout (in seconds) specifiying how long the request is waiting for a server response.
+        :param meta_data:        Optional key-value pairs that are used as generic metadata in addition to the document
 
         :return: An iterator over the results produced by the pipeline.
         """
         yield from self._analyse_in_parallel(sources=sources, parallelism=parallelism, annotation_types=annotation_types,
-                                             language=language, timeout=timeout, analyse_function=self.analyse_text_to_fhir)
+                                             language=language, timeout=timeout, analyse_function=self.analyse_text_to_fhir,
+                                             meta_data=meta_data)
 
     def analyse_fhir_to_cas(
             self,
             source: Union[Path, IO, str, dict],
             annotation_types: Union[None, str, List[str]] = None,
             language: Optional[str] = None,
-            timeout: Optional[float] = None) -> Cas:
+            timeout: Optional[float] = None,
+            meta_data: Optional[dict] = None) -> Cas:
         """
             Analyze the given text or text file in FHIR json format using the pipeline and return Cas.
 
@@ -591,6 +610,7 @@ class Pipeline:
             :param annotation_types: Optional parameter indicating which types should be returned. Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types with prefix "de.averbis.types"
             :param language:         Optional parameter setting the language of the document, e.g. "en" or "de".
             :param timeout:          Optional timeout (in seconds) specifying how long the request is waiting for a server response.
+            :param meta_data:        Optional key-value pairs that are used as generic metadata in addition to the document
 
             :return: Analyzed document as a Cas
         """
@@ -603,7 +623,8 @@ class Pipeline:
                     timeout=timeout,
                     annotation_types=annotation_types,
                     content_type=MEDIA_TYPE_FHIR_JSON,
-                    accept_type=MEDIA_TYPE_APPLICATION_XMI
+                    accept_type=MEDIA_TYPE_APPLICATION_XMI,
+                    meta_data=meta_data
                 )
         if not isinstance(cas_xmi, bytes):
             raise TypeError(
@@ -618,7 +639,8 @@ class Pipeline:
             source: Union[Path, IO, str, dict],
             annotation_types: Union[None, str, List[str]] = None,
             language: Optional[str] = None,
-            timeout: Optional[float] = None) -> dict:
+            timeout: Optional[float] = None,
+            meta_data: Optional[dict] = None) -> dict:
         """
             Analyze the given text or text file in FHIR json format using the pipeline and return FHIR json.
 
@@ -626,6 +648,7 @@ class Pipeline:
             :param annotation_types: Optional parameter indicating which types should be returned. Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types with prefix "de.averbis.types"
             :param language:         Optional parameter setting the language of the document, e.g. "en" or "de".
             :param timeout:          Optional timeout (in seconds) specifying how long the request is waiting for a server response.
+            :param meta_data:        Optional key-value pairs that are used as generic metadata in addition to the document
 
             :return: The raw payload of the server response as a dictionary. Future versions of this library may return a better-suited
                      representation.
@@ -639,7 +662,8 @@ class Pipeline:
                     timeout=timeout,
                     annotation_types=annotation_types,
                     content_type=MEDIA_TYPE_FHIR_JSON,
-                    accept_type=MEDIA_TYPE_FHIR_JSON
+                    accept_type=MEDIA_TYPE_FHIR_JSON,
+                    meta_data= meta_data
                 )
         if not isinstance(response, dict):
             raise TypeError(f"Expected response to be a dict, but got {type(response)}. "
@@ -651,7 +675,8 @@ class Pipeline:
             source: Union[Path, IO, str, dict],
             annotation_types: Union[None, str, List[str]] = None,
             language: Optional[str] = None,
-            timeout: Optional[float] = None) -> List[dict]:
+            timeout: Optional[float] = None,
+            meta_data: Optional[dict] = None) -> List[dict]:
         """
             Analyze the given text or text file in FHIR json format using the pipeline and return json.
 
@@ -659,6 +684,7 @@ class Pipeline:
             :param annotation_types: Optional parameter indicating which types should be returned. Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types with prefix "de.averbis.types"
             :param language:         Optional parameter setting the language of the document, e.g. "en" or "de".
             :param timeout:          Optional timeout (in seconds) specifying how long the request is waiting for a server response.
+            :param meta_data:        Optional key-value pairs that are used as generic metadata in addition to the document
 
             :return: The raw payload of the server response. Future versions of this library may return a better-suited
                      representation.
@@ -672,7 +698,8 @@ class Pipeline:
             timeout=timeout,
             annotation_types=annotation_types,
             content_type=MEDIA_TYPE_FHIR_JSON,
-            accept_type=MEDIA_TYPE_APPLICATION_JSON
+            accept_type=MEDIA_TYPE_APPLICATION_JSON,
+            meta_data=meta_data
         )
         if not isinstance(response, list):
             raise TypeError(f"Expected response to be a list of dict, but got {type(response)}. "
@@ -683,10 +710,8 @@ class Pipeline:
         self,
         sources: Iterable[Union[Path, IO, str]],
         parallelism: int = 0,
-        annotation_types: Union[None, str, List[str]] = None,
-        language: Optional[str] = None,
-        timeout: Optional[float] = None,
-        analyse_function: Optional[Callable] = None
+        analyse_function: Optional[Callable] = None,
+        **kwargs
     ) -> Iterator[Result]:
         if self.project.client.get_spec_version().startswith("5."):
             pipeline_instances = self.get_configuration()["analysisEnginePoolSize"]
@@ -714,9 +739,7 @@ class Pipeline:
                 return Result(
                     data=analyse_function(
                         source=source,
-                        annotation_types=annotation_types,
-                        language=language,
-                        timeout=timeout
+                        **kwargs
                     ),
                     source=source,
                 )
@@ -864,7 +887,8 @@ class Pipeline:
                                              annotation_types=annotation_types,
                                              language=language,
                                              timeout=timeout,
-                                             analyse_function=self.analyse_text_to_cas)
+                                             analyse_function=self.analyse_text_to_cas
+                                             )
 
     # Ignoring errors as linter (compiler) cannot resolve dynamically loaded lib
     # (with type:ignore for mypy) and (noinspection PyProtectedMember for pycharm)
@@ -3066,14 +3090,15 @@ class Client:
         annotation_types: Union[None, str, List[str]] = None,
         language: Optional[str] = None,
         timeout: Optional[float] = None,
-        accept_type: Optional[str] = MEDIA_TYPE_APPLICATION_JSON
+        accept_type: Optional[str] = MEDIA_TYPE_APPLICATION_JSON,
+        meta_data: Optional[dict] = None
     ):
         if isinstance(source, Path):
             with source.open("rb") as file:
                 return self._request_analyse_text(project, pipeline, file, annotation_types, language, timeout,
-                                                  MEDIA_TYPE_PDF, accept_type)
+                                                  MEDIA_TYPE_PDF, accept_type, meta_data)
         return self._request_analyse_text(project, pipeline, source, annotation_types, language, timeout,
-                                          MEDIA_TYPE_PDF, accept_type)
+                                          MEDIA_TYPE_PDF, accept_type, meta_data)
 
     def _analyse_text(
         self,
@@ -3084,7 +3109,8 @@ class Client:
         language: Optional[str] = None,
         timeout: Optional[float] = None,
         content_type: Optional[str] = MEDIA_TYPE_TEXT_PLAIN_UTF8,
-        accept_type: Optional[str] = MEDIA_TYPE_APPLICATION_JSON
+        accept_type: Optional[str] = MEDIA_TYPE_APPLICATION_JSON,
+        meta_data: Optional[dict] = None
     ) -> Union[List[dict], dict, bytes]:
 
         if accept_type != MEDIA_TYPE_APPLICATION_JSON or content_type != MEDIA_TYPE_TEXT_PLAIN_UTF8:
@@ -3101,7 +3127,7 @@ class Client:
         else:
             data: IO = self._create_request_data(content_type, source)
             response = self._request_analyse_text(project, pipeline, data, annotation_types, language, timeout,
-                                                  content_type, accept_type)
+                                                  content_type, accept_type, meta_data)
         if isinstance(response, bytes):
             return response
         if "payload" in response:
@@ -3164,9 +3190,11 @@ class Client:
                               language: Optional[str] = None,
                               timeout: Optional[float] = None,
                               content_type: Optional[str] = MEDIA_TYPE_TEXT_PLAIN_UTF8,
-                              accept_type: Optional[str] = MEDIA_TYPE_APPLICATION_JSON):
+                              accept_type: Optional[str] = MEDIA_TYPE_APPLICATION_JSON,
+                              meta_data: Optional[dict] = None):
         url = f"/v1/textanalysis/projects/{project}/pipelines/{pipeline}/analyseText"
         request_params = {"annotationTypes": self._preprocess_annotation_types(annotation_types), "language": language}
+        request_params.update(meta_data or {})
         request_headers = {HEADER_CONTENT_TYPE: content_type, HEADER_ACCEPT: accept_type}
         if accept_type == MEDIA_TYPE_PDF or accept_type == MEDIA_TYPE_APPLICATION_XMI:
             return self.__request_with_bytes_response(
