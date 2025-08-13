@@ -33,7 +33,7 @@ from io import BytesIO, IOBase, BufferedReader
 from json import JSONDecodeError
 
 from time import sleep, time
-from typing import List, Union, IO, Iterable, Dict, Iterator, Optional, Any, Tuple
+from typing import List, Union, IO, Iterable, Dict, Iterator, Optional, Any, Tuple, Callable
 from pathlib import Path
 import requests
 import mimetypes
@@ -54,6 +54,7 @@ MEDIA_TYPE_TEXT_PLAIN = "text/plain"
 MEDIA_TYPE_TEXT_PLAIN_UTF8 = "text/plain; charset=utf-8"
 MEDIA_TYPE_OCTET_STREAM = "application/octet-stream"
 MEDIA_TYPE_PDF = "application/pdf"
+MEDIA_TYPE_FHIR_JSON = "application/fhir+json"
 
 # uima cas formats
 MEDIA_TYPE_APPLICATION_XMI = "application/vnd.uima.cas+xmi"
@@ -439,29 +440,35 @@ class Pipeline:
         source: Union[Path, IO, str],
         annotation_types: Union[None, str, List[str]] = None,
         language: Optional[str] = None,
-        timeout: Optional[float] = None,
-    ) -> dict:
+        timeout: Optional[float] = None
+    ) -> List[dict]:
         """
         Analyze the given text or text file using the pipeline.
 
         :param source:           The document to be analyzed.
         :param annotation_types: Optional parameter indicating which types should be returned. Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types with prefix "de.averbis.types"
         :param language:         Optional parameter setting the language of the document, e.g. "en" or "de".
-        :param timeout:          Optional timeout (in seconds) specifiying how long the request is waiting for a server response.
+        :param timeout:          Optional timeout (in seconds) specifying how long the request is waiting for a server response.
 
         :return: The raw payload of the server response. Future versions of this library may return a better-suited
                  representation.
         """
-
         # noinspection PyProtectedMember
-        return self.project.client._analyse_text(
+        response = self.project.client._analyse_text(
             project=self.project.name,
             pipeline=self.name,
             source=source,
             annotation_types=annotation_types,
             language=language,
             timeout=timeout,
+            accept_type=MEDIA_TYPE_APPLICATION_JSON
         )
+        if not isinstance(response, list):
+            raise TypeError(
+                f"Expected response to be a list of dict, but got {type(response)}. "
+                "This may indicate that the server did not return a valid JSON response."
+            )
+        return response
 
     def analyse_texts(
         self,
@@ -469,7 +476,7 @@ class Pipeline:
         parallelism: int = 0,
         annotation_types: Union[None, str, List[str]] = None,
         language: Optional[str] = None,
-        timeout: Optional[float] = None,
+        timeout: Optional[float] = None
     ) -> Iterator[Result]:
         """
         Analyze the given texts or files using the pipeline. If feasible, multiple documents are processed in parallel.
@@ -495,6 +502,192 @@ class Pipeline:
 
         :return: An iterator over the results produced by the pipeline.
         """
+        yield from self._analyse_in_parallel(
+            sources=sources,
+            parallelism=parallelism,
+            annotation_types=annotation_types,
+            language=language,
+            timeout=timeout
+        )
+
+    def analyse_text_to_fhir(
+        self,
+        source: Union[Path, IO, str],
+        annotation_types: Union[None, str, List[str]] = None,
+        language: Optional[str] = None,
+        timeout: Optional[float] = None
+    ) -> dict:
+        """
+        Analyze the given text or text file using the pipeline and return FHIR.
+
+        :param source:           The document to be analyzed.
+        :param annotation_types: Optional parameter indicating which types should be returned. Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types with prefix "de.averbis.types"
+        :param language:         Optional parameter setting the language of the document, e.g. "en" or "de".
+        :param timeout:          Optional timeout (in seconds) specifying how long the request is waiting for a server response.
+
+        :return: The raw payload of the server response as a dictionary. Future versions of this library may return a better-suited
+                 representation.
+        """
+        # noinspection PyProtectedMember
+        response = self.project.client._analyse_text(
+            project=self.project.name,
+            pipeline=self.name,
+            source=source,
+            annotation_types=annotation_types,
+            language=language,
+            timeout=timeout,
+            accept_type=MEDIA_TYPE_FHIR_JSON
+        )
+        if not isinstance(response, dict):
+            raise TypeError(f"Expected response to be a dict, but got {type(response)}. "
+                            "This may indicate that the server did not return a valid JSON response.")
+        return response
+
+    def analyse_texts_to_fhir(
+        self,
+        sources: Iterable[Union[Path, IO, str]],
+        parallelism: int = 0,
+        annotation_types: Union[None, str, List[str]] = None,
+        language: Optional[str] = None,
+        timeout: Optional[float] = None
+    ) -> Iterator[Result]:
+        """
+        Analyze the given texts or files using the pipeline. If feasible, multiple documents are processed in parallel.
+        Note that this call produces an iterator! It means that you get individual results back as soon as they have
+        been processed. These results may be out-of-order! Also, if you want to hold on to the results while iterating
+        through them, you need to put them into some kind of collection. An easy way to do this is e.g. calling
+        `list(pipeline.analyse_texts(...))`. If you process a large number of documents though, you are better off
+        handling the results one-by-one. This can be done with a simple for loop:
+        ```
+        for result in pipeline.analyse_texts(...):
+            if result.successful():
+                response = result.data
+                # do something with the json response
+            else:
+                print(f"Exception for document with source {result.source}: {result.exception}")
+        ```
+
+        :param sources:          The documents to be analyzed.
+        :param parallelism:      Number of parallel instances in the platform.
+        :param annotation_types: Optional parameter indicating which types should be returned. Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types with prefix "de.averbis.types"
+        :param language:         Optional parameter setting the language of the document, e.g. "en" or "de".
+        :param timeout:          Optional timeout (in seconds) specifiying how long the request is waiting for a server response.
+
+        :return: An iterator over the results produced by the pipeline.
+        """
+        yield from self._analyse_in_parallel(sources=sources, parallelism=parallelism, annotation_types=annotation_types,
+                                             language=language, timeout=timeout, analyse_function=self.analyse_text_to_fhir)
+
+    def analyse_fhir_to_cas(
+            self,
+            source: Union[Path, IO, str, dict],
+            annotation_types: Union[None, str, List[str]] = None,
+            language: Optional[str] = None,
+            timeout: Optional[float] = None) -> Cas:
+        """
+            Analyze the given text or text file in FHIR json format using the pipeline and return Cas.
+
+            :param source:           The document to be analyzed.
+            :param annotation_types: Optional parameter indicating which types should be returned. Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types with prefix "de.averbis.types"
+            :param language:         Optional parameter setting the language of the document, e.g. "en" or "de".
+            :param timeout:          Optional timeout (in seconds) specifying how long the request is waiting for a server response.
+
+            :return: Analyzed document as a Cas
+        """
+        # noinspection PyProtectedMember
+        cas_xmi = self.project.client._analyse_text(
+                    project=self.project.name,
+                    pipeline=self.name,
+                    source=source,
+                    language=language,
+                    timeout=timeout,
+                    annotation_types=annotation_types,
+                    content_type=MEDIA_TYPE_FHIR_JSON,
+                    accept_type=MEDIA_TYPE_APPLICATION_XMI
+                )
+        if not isinstance(cas_xmi, bytes):
+            raise TypeError(
+                f"Expected response to be bytes, but got {type(cas_xmi)}. "
+                "This may indicate that the server did not return a valid XMI response."
+            )
+        cas_xmi_str = str(cas_xmi, ENCODING_UTF_8)
+        return load_cas_from_xmi(cas_xmi_str, typesystem=self.get_type_system())
+
+    def analyse_fhir_to_fhir(
+            self,
+            source: Union[Path, IO, str, dict],
+            annotation_types: Union[None, str, List[str]] = None,
+            language: Optional[str] = None,
+            timeout: Optional[float] = None) -> dict:
+        """
+            Analyze the given text or text file in FHIR json format using the pipeline and return FHIR json.
+
+            :param source:           The document to be analyzed.
+            :param annotation_types: Optional parameter indicating which types should be returned. Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types with prefix "de.averbis.types"
+            :param language:         Optional parameter setting the language of the document, e.g. "en" or "de".
+            :param timeout:          Optional timeout (in seconds) specifying how long the request is waiting for a server response.
+
+            :return: The raw payload of the server response as a dictionary. Future versions of this library may return a better-suited
+                     representation.
+        """
+        # noinspection PyProtectedMember
+        response = self.project.client._analyse_text(
+                    project=self.project.name,
+                    pipeline=self.name,
+                    source=source,
+                    language=language,
+                    timeout=timeout,
+                    annotation_types=annotation_types,
+                    content_type=MEDIA_TYPE_FHIR_JSON,
+                    accept_type=MEDIA_TYPE_FHIR_JSON
+                )
+        if not isinstance(response, dict):
+            raise TypeError(f"Expected response to be a dict, but got {type(response)}. "
+                            "This may indicate that the server did not return a valid JSON response.")
+        return response
+
+    def analyse_fhir(
+            self,
+            source: Union[Path, IO, str, dict],
+            annotation_types: Union[None, str, List[str]] = None,
+            language: Optional[str] = None,
+            timeout: Optional[float] = None) -> List[dict]:
+        """
+            Analyze the given text or text file in FHIR json format using the pipeline and return json.
+
+            :param source:           The document to be analyzed in fhir format. This can be a fhir text, file or a dictionary containing the fhir data.
+            :param annotation_types: Optional parameter indicating which types should be returned. Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types with prefix "de.averbis.types"
+            :param language:         Optional parameter setting the language of the document, e.g. "en" or "de".
+            :param timeout:          Optional timeout (in seconds) specifying how long the request is waiting for a server response.
+
+            :return: The raw payload of the server response. Future versions of this library may return a better-suited
+                     representation.
+        """
+        # noinspection PyProtectedMember
+        response = self.project.client._analyse_text(
+            project=self.project.name,
+            pipeline=self.name,
+            source=source,
+            language=language,
+            timeout=timeout,
+            annotation_types=annotation_types,
+            content_type=MEDIA_TYPE_FHIR_JSON,
+            accept_type=MEDIA_TYPE_APPLICATION_JSON
+        )
+        if not isinstance(response, list):
+            raise TypeError(f"Expected response to be a list of dict, but got {type(response)}. "
+                            "This may indicate that the server did not return a valid JSON response.")
+        return response
+
+    def _analyse_in_parallel(
+        self,
+        sources: Iterable[Union[Path, IO, str]],
+        parallelism: int = 0,
+        annotation_types: Union[None, str, List[str]] = None,
+        language: Optional[str] = None,
+        timeout: Optional[float] = None,
+        analyse_function: Optional[Callable] = None
+    ) -> Iterator[Result]:
         if self.project.client.get_spec_version().startswith("5."):
             pipeline_instances = self.get_configuration()["analysisEnginePoolSize"]
         else:
@@ -513,15 +706,17 @@ class Pipeline:
             self.__logger.debug(
                 f"Not performing parallel requests (remote supports max {pipeline_instances} parallel requests)"
             )
+        if analyse_function is None:
+            analyse_function = self.analyse_text
 
         def run_analysis(source):
             try:
                 return Result(
-                    data=self.analyse_text(
+                    data=analyse_function(
                         source=source,
                         annotation_types=annotation_types,
                         language=language,
-                        timeout=timeout,
+                        timeout=timeout
                     ),
                     source=source,
                 )
@@ -543,7 +738,9 @@ class Pipeline:
         Analyze the given HTML string or HTML file using the pipeline.
 
         :param source:           The document to be analyzed.
-        :param annotation_types: Optional parameter indicating which types should be returned. Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types with prefix "de.averbis.types"
+        :param annotation_types: Optional parameter indicating which types should be returned.
+                                 Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types
+                                 with prefix "de.averbis.types"
         :param language:         Optional parameter setting the language of the document, e.g. "en" or "de".
         :param timeout:          Optional timeout (in seconds) specifiying how long the request is waiting for a server response.
 
@@ -598,6 +795,7 @@ class Pipeline:
         source: Union[Path, IO, str],
         language: Optional[str] = None,
         timeout: Optional[float] = None,
+        annotation_types: Union[None, str, List[str]] = None
     ) -> Cas:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear. Processes text using a pipeline and returns the result
@@ -605,10 +803,14 @@ class Pipeline:
 
         :param source:           The document to be analyzed.
         :param language:         Optional parameter setting the language of the document, e.g. "en" or "de".
-        :param timeout:          Optional timeout (in seconds) specifiying how long the request is waiting for a server response.
+        :param timeout:          Optional timeout (in seconds) specifying how long the request is waiting for a server response.
+        :param annotation_types: Optional parameter indicating which types should be returned.
+                                 Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types
+                                 with prefix "de.averbis.types". Available from Health Discovery 7.3.0 onwards.
 
         :return: A cassis.Cas object
         """
+
         # noinspection PyProtectedMember
         return load_cas_from_xmi(
             self.project.client._analyse_text_xmi(
@@ -617,6 +819,7 @@ class Pipeline:
                 source=source,
                 language=language,
                 timeout=timeout,
+                annotation_types=annotation_types
             ),
             typesystem=self.get_type_system(),
         )
@@ -628,6 +831,7 @@ class Pipeline:
         parallelism: int = 0,
         language: Optional[str] = None,
         timeout: Optional[float] = None,
+        annotation_types: Union[None, str, List[str]] = None
     ) -> Iterator[Result]:
         """
         Analyze the given texts or files using the pipeline. If feasible, multiple documents are processed in parallel.
@@ -648,45 +852,19 @@ class Pipeline:
         :param sources:          The documents to be analyzed.
         :param parallelism:      Number of parallel instances in the platform.
         :param language:         Optional parameter setting the language of the document, e.g. "en" or "de".
-        :param timeout:          Optional timeout (in seconds) specifiying how long the request is waiting for a server response.
+        :param timeout:          Optional timeout (in seconds) specifying how long the request is waiting for a server response.
+        :param annotation_types: Optional parameter indicating which types should be returned.
+                                 Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types
+                                 with prefix "de.averbis.types". Available from Health Discovery 7.3.0 onwards.
 
         :return: An iterator over the results produced by the pipeline.
         """
-        if self.project.client.get_spec_version().startswith("5."):
-            pipeline_instances = self.get_configuration()["analysisEnginePoolSize"]
-        else:
-            pipeline_instances = self.get_configuration()["numberOfInstances"]
-
-        if parallelism < 0:
-            parallel_request_count = max(pipeline_instances + parallelism, 1)
-        elif parallelism > 0:
-            parallel_request_count = parallelism
-        else:
-            parallel_request_count = pipeline_instances
-
-        if parallel_request_count > 1:
-            self.__logger.debug(f"Triggering {parallel_request_count} requests in parallel")
-        else:
-            self.__logger.debug(
-                f"Not performing parallel requests (remote supports max {pipeline_instances} parallel requests)"
-            )
-
-        def run_analysis(source):
-            try:
-                return Result(
-                    data=self.analyse_text_to_cas(
-                        source=source,
-                        language=language,
-                        timeout=timeout,
-                    ),
-                    source=source,
-                )
-            except Exception as e:
-                return Result(exception=e, source=source)
-
-        with ThreadPoolExecutor(max_workers=parallel_request_count) as executor:
-            for r in executor.map(run_analysis, sources):
-                yield r
+        yield from self._analyse_in_parallel(sources=sources,
+                                             parallelism=parallelism,
+                                             annotation_types=annotation_types,
+                                             language=language,
+                                             timeout=timeout,
+                                             analyse_function=self.analyse_text_to_cas)
 
     # Ignoring errors as linter (compiler) cannot resolve dynamically loaded lib
     # (with type:ignore for mypy) and (noinspection PyProtectedMember for pycharm)
@@ -707,8 +885,8 @@ class Pipeline:
 
         :return: A cassis.Cas object
         """
-        # noinspection PyProtectedMember
         typesystem = merge_typesystems(source.typesystem, self.get_type_system())
+        # noinspection PyProtectedMember
         return load_cas_from_xmi(
             self.project.client._analyse_cas_to_cas(
                 project=self.project.name,
@@ -2023,7 +2201,8 @@ class Client:
             kwargs["headers"] = self._default_headers()
 
         if "json" in kwargs:
-            kwargs["headers"][HEADER_CONTENT_TYPE] = MEDIA_TYPE_APPLICATION_JSON
+            if "headers" not in kwargs or HEADER_CONTENT_TYPE not in kwargs["headers"]:
+                kwargs["headers"][HEADER_CONTENT_TYPE] = MEDIA_TYPE_APPLICATION_JSON
 
         if "params" in kwargs:
             kwargs["params"] = {
@@ -2083,10 +2262,12 @@ class Client:
         if items is None:
             items = {}
 
-        headers = {
-            HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_JSON,
-            **items,
-        }
+        headers = items
+        if HEADER_ACCEPT not in headers:
+            headers = {
+                HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_JSON,
+                **items,
+            }
 
         if self._api_token:
             headers["api-token"] = self._api_token
@@ -2887,13 +3068,6 @@ class Client:
         timeout: Optional[float] = None,
         accept_type: Optional[str] = MEDIA_TYPE_APPLICATION_JSON
     ):
-        build_version = self.get_build_info()
-
-        if accept_type != MEDIA_TYPE_APPLICATION_JSON and not self._is_higher_equal_version(build_version["platformVersion"], 8, 16):
-            raise OperationNotSupported(
-                f"Accept types other than json are only supported for platform versions >= 8.16 (available from Health Discovery version 7.3), "
-                f"but current platform is {build_version['platformVersion']}.")
-
         if isinstance(source, Path):
             with source.open("rb") as file:
                 return self._request_analyse_text(project, pipeline, file, annotation_types, language, timeout,
@@ -2905,22 +3079,82 @@ class Client:
         self,
         project: str,
         pipeline: str,
-        source: Union[Path, IO, str],
+        source: Union[Path, IO, str, dict],
         annotation_types: Union[None, str, List[str]] = None,
         language: Optional[str] = None,
-        timeout: Optional[float] = None
-    ) -> dict:
+        timeout: Optional[float] = None,
+        content_type: Optional[str] = MEDIA_TYPE_TEXT_PLAIN_UTF8,
+        accept_type: Optional[str] = MEDIA_TYPE_APPLICATION_JSON
+    ) -> Union[List[dict], dict, bytes]:
 
+        if accept_type != MEDIA_TYPE_APPLICATION_JSON or content_type != MEDIA_TYPE_TEXT_PLAIN_UTF8:
+            build_version = self.get_build_info()
+            if "platformVersion" not in build_version or not self._is_higher_equal_version(build_version["platformVersion"], 8, 16):
+                raise OperationNotSupported(
+                    f"Accept types other than json and content types other than plain text are only supported "
+                    f"for platform versions >= 8.16 (available from Health Discovery version 7.3).")
+
+        if isinstance(source, dict):
+            response = self._analyse_fhir(project, pipeline, source, annotation_types=annotation_types,
+                                          language=language, timeout=timeout, content_type=content_type,
+                                          accept_type=accept_type)
+        else:
+            data: IO = self._create_request_data(content_type, source)
+            response = self._request_analyse_text(project, pipeline, data, annotation_types, language, timeout,
+                                                  content_type, accept_type)
+        if isinstance(response, bytes):
+            return response
+        if "payload" in response:
+            payload: Dict = response["payload"]  # this is a list of dict
+            return payload
+        return response
+
+    def _analyse_fhir(self, project: str,
+                      pipeline: str,
+                      source: dict,
+                      annotation_types: Union[None, str, List[str]] = None,
+                      language: Optional[str] = None,
+                      timeout: Optional[float] = None,
+                      content_type: Optional[str] = MEDIA_TYPE_FHIR_JSON,
+                      accept_type: Optional[str] = MEDIA_TYPE_APPLICATION_JSON) -> Union[bytes, dict]:
+        url = f"/v1/textanalysis/projects/{project}/pipelines/{pipeline}/analyseText"
+        request_params = {"annotationTypes": self._preprocess_annotation_types(annotation_types), "language": language}
+        request_headers = {HEADER_CONTENT_TYPE: content_type, HEADER_ACCEPT: accept_type}
+        if accept_type == MEDIA_TYPE_APPLICATION_XMI:
+            return self.__request_with_bytes_response(
+                "post",
+                url,
+                json=source,
+                headers=request_headers,
+                params=request_params,
+                timeout=timeout
+            )
+        return self.__request_with_json_response(
+            "post",
+            url,
+            json=source,
+            timeout=timeout,
+            params=request_params,
+            headers=request_headers
+        )
+
+    @staticmethod
+    def _create_request_data(content_type: Optional[str], source: Union[Path, IO, str, dict]):
+        if isinstance(source, str):
+            return BytesIO(source.encode(ENCODING_UTF_8))
+        if isinstance(source, IO) or isinstance(source, IOBase):
+            return source
         if isinstance(source, Path):
-            with source.open("r", encoding=ENCODING_UTF_8) as file:
-                source = file.read()
-
-        data: IO = BytesIO(source.encode(ENCODING_UTF_8)) if isinstance(source, str) else source
-
-        response = self._request_analyse_text(project, pipeline, data, annotation_types, language, timeout,
-                                              MEDIA_TYPE_TEXT_PLAIN_UTF8, MEDIA_TYPE_APPLICATION_JSON)
-        payload: Dict = response["payload"]
-        return payload
+            if content_type != MEDIA_TYPE_TEXT_PLAIN_UTF8:
+                return source.open("rb")
+            if content_type == MEDIA_TYPE_TEXT_PLAIN_UTF8:
+                with source.open("r", encoding=ENCODING_UTF_8) as file:
+                    source = file.read()
+                    return BytesIO(source.encode(ENCODING_UTF_8))
+        if isinstance(source, dict):
+            source = json.dumps(source)
+            return BytesIO(source.encode(ENCODING_UTF_8))
+        raise OperationNotSupported(f"Content-type {content_type} is not supported for this source.")
 
     def _request_analyse_text(self,
                               project: str,
@@ -2934,7 +3168,7 @@ class Client:
         url = f"/v1/textanalysis/projects/{project}/pipelines/{pipeline}/analyseText"
         request_params = {"annotationTypes": self._preprocess_annotation_types(annotation_types), "language": language}
         request_headers = {HEADER_CONTENT_TYPE: content_type, HEADER_ACCEPT: accept_type}
-        if accept_type == MEDIA_TYPE_PDF:
+        if accept_type == MEDIA_TYPE_PDF or accept_type == MEDIA_TYPE_APPLICATION_XMI:
             return self.__request_with_bytes_response(
                 "post",
                 url,
@@ -3115,6 +3349,7 @@ class Client:
         source: Union[IO, str, Path],
         language: Optional[str] = None,
         timeout: Optional[float] = None,
+        annotation_types: Union[None, str, List[str]] = None
     ) -> str:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -3128,20 +3363,46 @@ class Client:
 
         data: IO = BytesIO(source.encode(ENCODING_UTF_8)) if isinstance(source, str) else source
 
-        return str(
-            self.__request_with_bytes_response(
-                "post",
-                f"/experimental/textanalysis/projects/{project}/pipelines/{pipeline}/analyzeTextToCas",
-                data=data,
-                params={"language": language},
-                headers={
-                    HEADER_CONTENT_TYPE: MEDIA_TYPE_TEXT_PLAIN_UTF8,
-                    HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_XMI,
-                },
-                timeout=timeout,
-            ),
-            ENCODING_UTF_8,
-        )
+        build_version = self.get_build_info()
+        if "platformVersion" in build_version and self._is_higher_equal_version(build_version["platformVersion"],
+                                                                                8, 16):
+            return str(
+                self.__request_with_bytes_response(
+                    "post",
+                    f"/v1/textanalysis/projects/{project}/pipelines/{pipeline}/analyseText",
+                    data=data,
+                    params={
+                        "language": language,
+                        "annotationTypes": self._preprocess_annotation_types(annotation_types)
+                    },
+                    headers={
+                        HEADER_CONTENT_TYPE: MEDIA_TYPE_TEXT_PLAIN_UTF8,
+                        HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_XMI,
+                    },
+                    timeout=timeout,
+                ),
+                ENCODING_UTF_8,
+            )
+        elif annotation_types is not None:
+            raise OperationNotSupported(
+                f"Filtering annotation types is only supported "
+                f"for platform versions >= 8.16 (available from Health Discovery version 7.3), "
+                f"but current platform is {build_version['platformVersion']}.")
+        else:
+            return str(
+                self.__request_with_bytes_response(
+                    "post",
+                    f"/experimental/textanalysis/projects/{project}/pipelines/{pipeline}/analyzeTextToCas",
+                    data=data,
+                    params={"language": language},
+                    headers={
+                        HEADER_CONTENT_TYPE: MEDIA_TYPE_TEXT_PLAIN_UTF8,
+                        HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_XMI,
+                    },
+                    timeout=timeout,
+                ),
+                ENCODING_UTF_8,
+            )
 
     @experimental_api
     def _analyse_cas_to_cas(
