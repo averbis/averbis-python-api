@@ -2772,7 +2772,13 @@ class Client:
                         f"The `filename` parameter '{filename}' does not match the documentName in the provided dict '{documentName}'."
                     )
                 return documentName
-
+            
+            if isinstance(src, dict) and "documents" in src:
+                if filename is not None:
+                    raise ValueError(
+                        f"The `filename` parameter cannot be used with a dict containing multiple documents. "
+                    )
+                return "document.json"
 
             raise ValueError(
                 f"The `filename` parameter can only be automatically inferred for [Path, IO], but received a "
@@ -2808,9 +2814,10 @@ class Client:
                 )
             # For multi-documents, the server still needs a filename with the proper extension, otherwise it refuses
             # to parse the result
-            filename = fetch_filename(source, filename)
+            filename = fetch_filename(source, filename) or "data.xml"
+            
         else:
-            filename = fetch_filename(source, filename)
+            filename = fetch_filename(source, filename) or "document.txt"
 
         if mime_type is None:
             mime_type = guess_mime_type(source, filename)
