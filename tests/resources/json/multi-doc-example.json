@@ -1,0 +1,17 @@
+{
+	"documents": [
+		{
+			"documentName": "json_1",
+			"content": "This is the document text for the first document in this multi document json file. Nice, right?",
+			"meta": [
+				"A",
+				"B"
+			]
+		},
+		{
+			"documentName": "json_2",
+			"title": "Best title",
+			"content": "This is the document content for the second json document."
+		}
+	]
+}

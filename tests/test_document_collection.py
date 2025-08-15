@@ -62,6 +62,35 @@ def test_import_json(document_collection, requests_mock):
     assert result[0]["document_name"] == "text1.json"
 
 
+def test_import_multi_document_json(document_collection, requests_mock):
+    requests_mock.post(
+        f"{API_BASE}/importer/projects/{PROJECT_NAME}/documentCollections/test-collection/documents",
+        json={
+            "payload": [
+                {
+                    "original_document_name": "json_1",
+                    "document_name": "json_1",
+                    "process_name": None,
+                    "document_source_name": "test-collection",
+                },
+                {
+                    "original_document_name": "json_2",
+                    "document_name": "json_2",
+                    "process_name": None,
+                    "document_source_name": "test-collection",
+                },
+            ],
+            "errorMessages": [],
+        },
+    )
+    file_path = os.path.join(TEST_DIRECTORY, "resources/json/multi-doc-example.json")
+    with open(file_path, "rb") as input_io:
+        result = document_collection.import_documents(input_io)
+
+    assert result[0]["document_name"] == "json_1"
+    assert result[1]["document_name"] == "json_2"
+
+
 def test_import_cas(document_collection, requests_mock):
     requests_mock.post(
         f"{API_BASE}/importer/projects/{PROJECT_NAME}/documentCollections/test-collection/documents",
