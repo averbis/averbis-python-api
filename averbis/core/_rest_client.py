@@ -1552,7 +1552,7 @@ class DocumentCollection:
         Imports documents from a given file, from a given string or from a dictionary (representing the json-format). 
         Supported file content types are plain text (text/plain),
         json, containing the text in field 'content', the document name in field 'documentName' and 
-        optional key-value pair metadata (application/json),
+        optional key-value pair metadata (application/json) or multiple documents with these fields in a field named "documents",
         Averbis Solr XML (application/vnd.averbis.solr+xml) and the :ref:`UIMA types`.
 
         If a document is provided as a CAS object, the type system information can be automatically picked from the CAS

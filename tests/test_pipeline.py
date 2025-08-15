@@ -378,7 +378,7 @@ def test_analyse_pdf_to_pdf(client, requests_mock):
 
     requests_mock.post(
         f"{API_BASE}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/analyseText",
-        headers={"Content-Type": MEDIA_TYPE_PDF, "Accept": MEDIA_TYPE_PDF},
+        headers={"Content-Type": MEDIA_TYPE_PDF},
         text=callback
     )
 
@@ -397,7 +397,7 @@ def test_analyse_text_to_fhir(client_version_7_3_platform_8_17, requests_mock):
 
     requests_mock.post(
         f"{API_BASE}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/analyseText",
-        headers={"Content-Type": MEDIA_TYPE_TEXT_PLAIN_UTF8, "Accept": MEDIA_TYPE_FHIR_JSON},
+        headers={"Content-Type": MEDIA_TYPE_FHIR_JSON},
         json=callback
     )
 
@@ -422,7 +422,7 @@ def test_analyse_fhir_to_fhir(client_version_7_3_platform_8_17, requests_mock):
 
     requests_mock.post(
         f"{API_BASE}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/analyseText",
-        headers={"Content-Type": MEDIA_TYPE_FHIR_JSON, "Accept": MEDIA_TYPE_FHIR_JSON},
+        headers={"Content-Type": MEDIA_TYPE_FHIR_JSON},
         json=callback
     )
 
@@ -449,7 +449,7 @@ def test_analyse_fhir_to_cas(client_version_7_3_platform_8_17, requests_mock):
 
     requests_mock.post(
         f"{API_BASE}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/analyseText",
-        headers={"Content-Type": MEDIA_TYPE_FHIR_JSON, "Accept": MEDIA_TYPE_APPLICATION_XMI},
+        headers={"Content-Type": MEDIA_TYPE_APPLICATION_XMI},
         text=callback
     )
 
@@ -467,7 +467,7 @@ def test_analyse_fhir_to_json(client_version_7_3_platform_8_17, requests_mock):
 
     requests_mock.post(
         f"{API_BASE}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/analyseText",
-        headers={"Content-Type": MEDIA_TYPE_FHIR_JSON, "Accept": MEDIA_TYPE_APPLICATION_JSON},
+        headers={"Content-Type": MEDIA_TYPE_APPLICATION_JSON},
         json=callback
     )
 
