@@ -1550,10 +1550,11 @@ class DocumentCollection:
     ) -> List[dict]:
         """
         Imports documents from a given file, from a given string or from a dictionary (representing the json-format). 
-        Supported file content types are plain text (text/plain),
-        json, containing the text in field 'content', the document name in field 'documentName' and 
-        optional key-value pair metadata (application/json),
-        Averbis Solr XML (application/vnd.averbis.solr+xml) and the :ref:`UIMA types`.
+        Supported file content types are 
+        - plain text (text/plain),
+        - json, containing the text in field 'content', the document name in field 'documentName' and optional key-value pair metadata (application/json) or multiple documents with these fields in a field named "documents",
+        - Averbis Solr XML (application/vnd.averbis.solr+xml), 
+        - :ref:`UIMA types`.
 
         If a document is provided as a CAS object, the type system information can be automatically picked from the CAS
         object and should not be provided explicitly. If a CAS is provided as a string XML representation, then a type
@@ -2772,7 +2773,13 @@ class Client:
                         f"The `filename` parameter '{filename}' does not match the documentName in the provided dict '{documentName}'."
                     )
                 return documentName
-
+            
+            if isinstance(src, dict) and "documents" in src:
+                if filename is not None:
+                    raise ValueError(
+                        f"The `filename` parameter cannot be used with a dict containing multiple documents. "
+                    )
+                return "document.json"
 
             raise ValueError(
                 f"The `filename` parameter can only be automatically inferred for [Path, IO], but received a "
@@ -2808,9 +2815,10 @@ class Client:
                 )
             # For multi-documents, the server still needs a filename with the proper extension, otherwise it refuses
             # to parse the result
-            filename = fetch_filename(source, filename)
+            filename = fetch_filename(source, filename) or "data.xml"
+            
         else:
-            filename = fetch_filename(source, filename)
+            filename = fetch_filename(source, filename) or "document.txt"
 
         if mime_type is None:
             mime_type = guess_mime_type(source, filename)
