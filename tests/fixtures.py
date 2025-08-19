@@ -122,6 +122,14 @@ def requests_mock_platform_8_17(requests_mock):
         json={"payload": {"specVersion": "7.13.0", "buildNumber": "", "platformVersion": "8.17.0"}, "errorMessages": []},
     )
 
+@pytest.fixture()
+def requests_mock_platform_9(requests_mock):
+    requests_mock.get(
+        f"{URL_BASE_ID + '/rest/v1'}/buildInfo",
+        headers={"Content-Type": "application/json"},
+        json={"payload": {"specVersion": "8.0.0", "buildNumber": "", "platformVersion": "9.0.1"}, "errorMessages": []},
+    )
+
 
 ## Different clients based on the above platforms
 
@@ -182,3 +190,6 @@ def client_version_7_3_platform_8_17(requests_mock_platform_8_17):
     return Client(URL_BASE_ID, api_token=TEST_API_TOKEN)
 
 
+@pytest.fixture()
+def client_version_8(requests_mock_platform_9):
+    return Client(URL_BASE_ID, api_token=TEST_API_TOKEN)

@@ -44,6 +44,22 @@ def test_delete(process, requests_mock):
 
     process.delete()
 
+def test_process_unprocessed_not_supported(process, requests_mock):
+    with pytest.raises(OperationNotSupported):
+        process.process_unprocessed()
+
+def test_process_unprocessed(client_version_8, requests_mock):
+    project = client_version_8.get_project(PROJECT_NAME)
+    process = Process(project, "my_process", "my_doc_source", "my_pipeline")
+    requests_mock.post(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{PROJECT_NAME}/"
+        f"documentSources/{process.document_source_name}/processes/{process.name}/reprocessUnprocessed",
+        headers={"Content-Type": "application/json"},
+        json={"payload": None, "errorMessages": []}
+    )
+    
+    process.process_unprocessed()
+
 
 def test_rerun(process, requests_mock):
     requests_mock.post(
