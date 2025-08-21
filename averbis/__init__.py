@@ -18,7 +18,7 @@
 #
 #
 from .core import Client, Project, Pipeline, Result, Terminology, DocumentCollection, Pear, Process, \
-    EvaluationConfiguration, ResourceContainer
+    EvaluationConfiguration, ResourceContainer, ExtendedRequestException
 
 __all__ = [
     "Client",
@@ -30,5 +30,6 @@ __all__ = [
     "DocumentCollection",
     "Pear",
     "Process",
-    "ResourceContainer"
+    "ResourceContainer",
+    "ExtendedRequestException",
 ]

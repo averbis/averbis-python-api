@@ -114,6 +114,14 @@ def deprecated(reason):
     return decorator_deprecated
 
 
+class ExtendedRequestException(RequestException):
+    def __init__(self, *args, status_code: Optional[int]=None, reason: Optional[str]=None, url: Optional[str]=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.status_code = status_code
+        self.reason = reason
+        self.url = url
+
+
 class OperationNotSupported(Exception):
     """Raised when the REST API does not support a given operation."""
 
@@ -3851,7 +3859,7 @@ class Client:
         except JSONDecodeError:
             pass
 
-        raise RequestException(error_msg)
+        raise ExtendedRequestException(error_msg, status_code=status_code, reason=reason, url=url)
 
     @staticmethod
     def __process_name(process: Union[str, Process]):
