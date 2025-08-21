@@ -3751,7 +3751,7 @@ class Client:
 
         Use Process.process_unprocessed() instead.
         """
-        if not self.get_spec_version().startswith("8."):
+        if not self._is_higher_equal_version(self.get_spec_version(), 8, 0):
             raise OperationNotSupported(
                 "Processing unprocessed documents is only supported for Health Discovery versions >= 8.0."
             )
