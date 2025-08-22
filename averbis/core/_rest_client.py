@@ -1450,12 +1450,17 @@ class Process:
         # noinspection PyProtectedMember
         return self.project.client._rename_process(self, name)
 
+class TextanalysisMode(Enum):
+    """
+    HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
-class DocumentCollection:
-
+    Enum for the text analysis modes used to define process behaviour when importing documents
+    """
     TRIGGER_PROCESSES = "triggerProcesses"
     DO_NOTHING = "doNothing"
     REMOVE_RESULTS = "removeResults"
+
+class DocumentCollection:
 
 
     def __init__(self, project: "Project", name: str):
@@ -1553,7 +1558,7 @@ class DocumentCollection:
         mime_type: Optional[str] = None,
         filename: Optional[str] = None,
         typesystem: Optional["TypeSystem"] = None,
-        textanalysis_mode: Optional[str] = None
+        textanalysis_mode: Optional[TextanalysisMode] = None
     ) -> List[dict]:
         """
         Imports documents from a given file, from a given string or from a dictionary (representing the json-format). 
@@ -2763,7 +2768,7 @@ class Client:
         mime_type: Optional[str] = None,
         filename: Optional[str] = None,
         typesystem: Optional["TypeSystem"] = None,
-        textanalysis_mode: Optional[str] = None
+        textanalysis_mode: Optional[TextanalysisMode] = None
     ) -> List[dict]:
         """
         Use DocumentCollection.import_document() instead.
@@ -2849,7 +2854,7 @@ class Client:
                 "post",
                 f"/v1/importer/projects/{project}/documentCollections/{collection_name}/documents",
                 files=files,
-                params={"textanalysisMode": textanalysis_mode}
+                params={"textanalysisMode": textanalysis_mode.value}
             )
         else:
             response = self.__request_with_json_response(

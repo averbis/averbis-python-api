@@ -22,7 +22,7 @@ from pathlib import Path
 from cassis import Cas, TypeSystem
 
 from averbis import DocumentCollection
-from averbis.core._rest_client import OperationNotSupported
+from averbis.core._rest_client import OperationNotSupported, TextanalysisMode
 from tests.fixtures import *
 from tests.utils import *
 
@@ -60,7 +60,7 @@ def test_import_plain_text_with_textanalysis_mode(client_version_8, requests_moc
     )
     file_path = os.path.join(TEST_DIRECTORY, "resources/texts/text1.txt")
     with open(file_path, "r", encoding="UTF-8") as input_io:
-        result = document_collection.import_documents(input_io, textanalysis_mode=DocumentCollection.DO_NOTHING)
+        result = document_collection.import_documents(input_io, textanalysis_mode=TextanalysisMode.DO_NOTHING)
 
     assert result[0]["document_name"] == "text1.txt"
 
@@ -68,7 +68,7 @@ def test_import_plain_text_with_textanalysis_mode_not_supported(document_collect
     with pytest.raises(OperationNotSupported):
         file_path = os.path.join(TEST_DIRECTORY, "resources/texts/text1.txt")
         with open(file_path, "r", encoding="UTF-8") as input_io:
-            document_collection.import_documents(input_io, textanalysis_mode=DocumentCollection.DO_NOTHING)
+            document_collection.import_documents(input_io, textanalysis_mode=TextanalysisMode.DO_NOTHING)
 
 
 def test_import_json(document_collection, requests_mock):
