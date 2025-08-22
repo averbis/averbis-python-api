@@ -202,7 +202,7 @@ def test_export_text_analysis_export_v6(client_version_6, requests_mock):
                                 "coveredText": "Hello World",
                                 "id": 66753,
                             }
-                        ]
+                        ],
                         # truncated #
                     }
                     # truncated #
@@ -286,7 +286,9 @@ def test_export_text_analysis_to_cas_v5(client_version_5):
         process.export_text_analysis_to_cas(document_name)
 
 
-def test_export_text_analysis_to_cas_v6_full_name_support(client_version_6_17_platform_6_50, requests_mock):
+def test_export_text_analysis_to_cas_v6_full_name_support(
+    client_version_6_17_platform_6_50, requests_mock
+):
     project = client_version_6_17_platform_6_50.get_project(PROJECT_NAME)
     collection = project.get_document_collection(COLLECTION_NAME)
     document_name = "document.txt"
@@ -324,7 +326,9 @@ def test_export_text_analysis_to_cas_v6_full_name_support(client_version_6_17_pl
     assert cas.sofa_string == "Test"
 
 
-def test_export_text_analysis_to_cas_v6_onlycas_export_by_name_support(client_version_6_7, requests_mock):
+def test_export_text_analysis_to_cas_v6_onlycas_export_by_name_support(
+    client_version_6_7, requests_mock
+):
     project = client_version_6_7.get_project(PROJECT_NAME)
     collection = project.get_document_collection(COLLECTION_NAME)
     document_id = "document0001"
@@ -348,7 +352,7 @@ def test_export_text_analysis_to_cas_v6_onlycas_export_by_name_support(client_ve
         f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/documentCollections/{collection.name}"
         f"/documents/{document_id}/processes/{process.name}/exportTextAnalysisResultTypeSystem",
         headers={"Content-Type": "application/xml"},
-        text=empty_typesystem
+        text=empty_typesystem,
     )
 
     requests_mock.get(
@@ -363,7 +367,7 @@ def test_export_text_analysis_to_cas_v6_onlycas_export_by_name_support(client_ve
         f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/documentCollections/{collection.name}"
         f"/processes/{process.name}/textAnalysisResult",
         headers={"Content-Type": "application/vnd.uima.cas+xmi"},
-        text=expected_xmi
+        text=expected_xmi,
     )
 
     cas = process.export_text_analysis_to_cas(document_name)
@@ -396,14 +400,14 @@ def test_export_text_analysis_to_cas_v6_only_id_support(client_version_6, reques
         f"/processes/{process.name}/textAnalysisResultTypeSystem",
         headers={"Content-Type": "application/xml"},
         text=empty_typesystem,
-        status_code=405
+        status_code=405,
     )
 
     requests_mock.get(
         f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/documentCollections/{collection.name}"
         f"/documents/{document_id}/processes/{process.name}/exportTextAnalysisResultTypeSystem",
         headers={"Content-Type": "application/xml"},
-        text=empty_typesystem
+        text=empty_typesystem,
     )
 
     requests_mock.get(
@@ -420,7 +424,7 @@ def test_export_text_analysis_to_cas_v6_only_id_support(client_version_6, reques
         f"/processes/{process.name}/textAnalysisResult",
         headers={"Content-Type": "application/vnd.uima.cas+xmi"},
         text=expected_xmi,
-        status_code=405
+        status_code=405,
     )
 
     requests_mock.get(
@@ -478,8 +482,8 @@ def test_export_text_analysis_to_cas_v6_7_provide_typesystem(client_version_6_7,
 
 
 def test_export_text_analysis_to_cas_annotation_types_not_supported(
-        client_version_6_17_0_platform_6_48_0,
-        requests_mock):
+    client_version_6_17_0_platform_6_48_0, requests_mock
+):
     project = client_version_6_17_0_platform_6_48_0.get_project(PROJECT_NAME)
     collection = project.get_document_collection(COLLECTION_NAME)
     document_id = "document0001"
@@ -519,7 +523,8 @@ def test_export_text_analysis_to_cas_annotation_types_not_supported(
     cas = process.export_text_analysis_to_cas(
         document_name,
         type_system=cas_typesystem,
-        annotation_types="de.averbis.types.health.Diagnosis")
+        annotation_types="de.averbis.types.health.Diagnosis",
+    )
 
     assert cas.sofa_string == "Test"
 
@@ -608,26 +613,29 @@ def test_evaluate(client_version_6, requests_mock):
     requests_mock.post(
         f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/documentCollections/{collection.name}/evaluationProcesses",
         headers={"Content-Type": "application/json"},
-        json={"payload": None, "errorMessages": []}
+        json={"payload": None, "errorMessages": []},
     )
-    list_processes_payload = [{
-        "processName": evaluation_process_name,
-        "documentSourceName": collection.name
-    }]
+    list_processes_payload = [
+        {"processName": evaluation_process_name, "documentSourceName": collection.name}
+    ]
     requests_mock.get(
         f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/processes",
         json={"payload": list_processes_payload, "errorMessages": []},
     )
 
-    clinical_section_keyword_config = EvaluationConfiguration("de.averbis.types.health.ClinicalSectionKeyword",
-                                                                     ["begin", "end"])
-    medication_keyword_config = EvaluationConfiguration("de.averbis.types.health.Medication", ["begin", "end"])\
-        .add_feature("drugs")\
+    clinical_section_keyword_config = EvaluationConfiguration(
+        "de.averbis.types.health.ClinicalSectionKeyword", ["begin", "end"]
+    )
+    medication_keyword_config = (
+        EvaluationConfiguration("de.averbis.types.health.Medication", ["begin", "end"])
+        .add_feature("drugs")
         .use_range_variance_partial_match(3)
+    )
     evaluation_process = comparison_process.evaluate_against(
         reference_process,
         evaluation_process_name,
-        [clinical_section_keyword_config, medication_keyword_config])
+        [clinical_section_keyword_config, medication_keyword_config],
+    )
 
     assert evaluation_process.name == evaluation_process_name
     assert evaluation_process.document_source_name == collection.name

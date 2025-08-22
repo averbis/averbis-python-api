@@ -17,8 +17,18 @@
 # limitations under the License.
 #
 #
-from .core import Client, Project, Pipeline, Result, Terminology, DocumentCollection, Pear, Process, \
-    EvaluationConfiguration, ResourceContainer
+from .core import (
+    Client,
+    Project,
+    Pipeline,
+    Result,
+    Terminology,
+    DocumentCollection,
+    Pear,
+    Process,
+    EvaluationConfiguration,
+    ResourceContainer,
+)
 
 __all__ = [
     "Client",
@@ -30,5 +40,5 @@ __all__ = [
     "DocumentCollection",
     "Pear",
     "Process",
-    "ResourceContainer"
+    "ResourceContainer",
 ]
