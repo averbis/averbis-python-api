@@ -110,7 +110,9 @@ def deprecated(reason):
         def wrapper_deprecated(*args, **kwargs):
             logging.warning(f"Deprecation: {reason}")
             return original_function(*args, **kwargs)
+
         return wrapper_deprecated
+
     return decorator_deprecated
 
 
@@ -134,7 +136,7 @@ class Result:
         self,
         data: Optional[Dict[str, Any]] = None,
         exception: Optional[Exception] = None,
-        source: Optional[Union[Path, IO, str]] = None
+        source: Optional[Union[Path, IO, str]] = None,
     ):
         self.data = data
         self.exception = exception
@@ -153,11 +155,11 @@ class Result:
 class ResourceContainer:
 
     def __init__(
-            self,
-            client: "Client",
-            name: str,
-            scope: str,
-            base_url: str,
+        self,
+        client: "Client",
+        name: str,
+        scope: str,
+        base_url: str,
     ):
         self.client = client
         self.name = name
@@ -338,20 +340,28 @@ class Pipeline:
 
         List the resource containers for the current pipeline.
         """
-        pipeline_url = f"/experimental/textanalysis/projects/{self.project.name}/pipelines/{self.name}"
+        pipeline_url = (
+            f"/experimental/textanalysis/projects/{self.project.name}/pipelines/{self.name}"
+        )
         # noinspection PyProtectedMember
         return self.project.client._list_resource_containers(pipeline_url)
 
     @experimental_api
-    def create_resource_container(self, name: str, resources_zip_path: Optional[Union[Path, str]] = None) -> ResourceContainer:
+    def create_resource_container(
+        self, name: str, resources_zip_path: Optional[Union[Path, str]] = None
+    ) -> ResourceContainer:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
         Create empty resource container with given name for this pipeline or additionally upload zipped resources.
         """
-        pipeline_url = f"/experimental/textanalysis/projects/{self.project.name}/pipelines/{self.name}"
+        pipeline_url = (
+            f"/experimental/textanalysis/projects/{self.project.name}/pipelines/{self.name}"
+        )
         # noinspection PyProtectedMember
-        return self.project.client._create_resource_container(name, pipeline_url, resources_zip_path)
+        return self.project.client._create_resource_container(
+            name, pipeline_url, resources_zip_path
+        )
 
     @experimental_api
     def delete(self) -> dict:
@@ -384,7 +394,7 @@ class Pipeline:
         annotation_types: Union[None, str, List[str]] = None,
         language: Optional[str] = None,
         timeout: Optional[float] = None,
-        meta_data: Optional[dict] = None
+        meta_data: Optional[dict] = None,
     ) -> dict:
         """
         Analyze the given pdf using the pipeline. The returned analysis is in json format.
@@ -408,7 +418,7 @@ class Pipeline:
             language=language,
             timeout=timeout,
             accept_type=MEDIA_TYPE_APPLICATION_JSON,
-            meta_data=meta_data
+            meta_data=meta_data,
         )
 
     def analyse_pdf_to_pdf(
@@ -417,7 +427,7 @@ class Pipeline:
         annotation_types: Union[None, str, List[str]] = None,
         language: Optional[str] = None,
         timeout: Optional[float] = None,
-        meta_data: Optional[dict] = None
+        meta_data: Optional[dict] = None,
     ) -> bytes:
         """
         Analyze the given pdf using the pipeline. The returned analysis is a marked pdf.
@@ -438,7 +448,7 @@ class Pipeline:
             language=language,
             timeout=timeout,
             accept_type=MEDIA_TYPE_PDF,
-            meta_data= meta_data
+            meta_data=meta_data,
         )
 
     def analyse_text(
@@ -447,7 +457,7 @@ class Pipeline:
         annotation_types: Union[None, str, List[str]] = None,
         language: Optional[str] = None,
         timeout: Optional[float] = None,
-        meta_data: Optional[dict] = None
+        meta_data: Optional[dict] = None,
     ) -> List[dict]:
         """
         Analyze the given text or text file using the pipeline.
@@ -470,7 +480,7 @@ class Pipeline:
             language=language,
             timeout=timeout,
             accept_type=MEDIA_TYPE_APPLICATION_JSON,
-            meta_data=meta_data
+            meta_data=meta_data,
         )
         if not isinstance(response, list):
             raise TypeError(
@@ -486,7 +496,7 @@ class Pipeline:
         annotation_types: Union[None, str, List[str]] = None,
         language: Optional[str] = None,
         timeout: Optional[float] = None,
-        meta_data: Optional[dict] = None
+        meta_data: Optional[dict] = None,
     ) -> Iterator[Result]:
         """
         Analyze the given texts or files using the pipeline. If feasible, multiple documents are processed in parallel.
@@ -519,7 +529,7 @@ class Pipeline:
             annotation_types=annotation_types,
             language=language,
             timeout=timeout,
-            meta_data=meta_data
+            meta_data=meta_data,
         )
 
     def analyse_text_to_fhir(
@@ -528,7 +538,7 @@ class Pipeline:
         annotation_types: Union[None, str, List[str]] = None,
         language: Optional[str] = None,
         timeout: Optional[float] = None,
-        meta_data: Optional[dict] = None
+        meta_data: Optional[dict] = None,
     ) -> dict:
         """
         Analyze the given text or text file using the pipeline and return FHIR.
@@ -551,11 +561,13 @@ class Pipeline:
             language=language,
             timeout=timeout,
             accept_type=MEDIA_TYPE_FHIR_JSON,
-            meta_data=meta_data
+            meta_data=meta_data,
         )
         if not isinstance(response, dict):
-            raise TypeError(f"Expected response to be a dict, but got {type(response)}. "
-                            "This may indicate that the server did not return a valid JSON response.")
+            raise TypeError(
+                f"Expected response to be a dict, but got {type(response)}. "
+                "This may indicate that the server did not return a valid JSON response."
+            )
         return response
 
     def analyse_texts_to_fhir(
@@ -565,7 +577,7 @@ class Pipeline:
         annotation_types: Union[None, str, List[str]] = None,
         language: Optional[str] = None,
         timeout: Optional[float] = None,
-        meta_data: Optional[dict] = None
+        meta_data: Optional[dict] = None,
     ) -> Iterator[Result]:
         """
         Analyze the given texts or files using the pipeline. If feasible, multiple documents are processed in parallel.
@@ -592,40 +604,47 @@ class Pipeline:
 
         :return: An iterator over the results produced by the pipeline.
         """
-        yield from self._analyse_in_parallel(sources=sources, parallelism=parallelism, annotation_types=annotation_types,
-                                             language=language, timeout=timeout, analyse_function=self.analyse_text_to_fhir,
-                                             meta_data=meta_data)
+        yield from self._analyse_in_parallel(
+            sources=sources,
+            parallelism=parallelism,
+            annotation_types=annotation_types,
+            language=language,
+            timeout=timeout,
+            analyse_function=self.analyse_text_to_fhir,
+            meta_data=meta_data,
+        )
 
     def analyse_fhir_to_cas(
-            self,
-            source: Union[Path, IO, str, dict],
-            annotation_types: Union[None, str, List[str]] = None,
-            language: Optional[str] = None,
-            timeout: Optional[float] = None,
-            meta_data: Optional[dict] = None) -> Cas:
+        self,
+        source: Union[Path, IO, str, dict],
+        annotation_types: Union[None, str, List[str]] = None,
+        language: Optional[str] = None,
+        timeout: Optional[float] = None,
+        meta_data: Optional[dict] = None,
+    ) -> Cas:
         """
-            Analyze the given text or text file in FHIR json format using the pipeline and return Cas.
+        Analyze the given text or text file in FHIR json format using the pipeline and return Cas.
 
-            :param source:           The document to be analyzed.
-            :param annotation_types: Optional parameter indicating which types should be returned. Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types with prefix "de.averbis.types"
-            :param language:         Optional parameter setting the language of the document, e.g. "en" or "de".
-            :param timeout:          Optional timeout (in seconds) specifying how long the request is waiting for a server response.
-            :param meta_data:        Optional key-value pairs that are used as generic metadata in addition to the document
+        :param source:           The document to be analyzed.
+        :param annotation_types: Optional parameter indicating which types should be returned. Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types with prefix "de.averbis.types"
+        :param language:         Optional parameter setting the language of the document, e.g. "en" or "de".
+        :param timeout:          Optional timeout (in seconds) specifying how long the request is waiting for a server response.
+        :param meta_data:        Optional key-value pairs that are used as generic metadata in addition to the document
 
-            :return: Analyzed document as a Cas
+        :return: Analyzed document as a Cas
         """
         # noinspection PyProtectedMember
         cas_xmi = self.project.client._analyse_text(
-                    project=self.project.name,
-                    pipeline=self.name,
-                    source=source,
-                    language=language,
-                    timeout=timeout,
-                    annotation_types=annotation_types,
-                    content_type=MEDIA_TYPE_FHIR_JSON,
-                    accept_type=MEDIA_TYPE_APPLICATION_XMI,
-                    meta_data=meta_data
-                )
+            project=self.project.name,
+            pipeline=self.name,
+            source=source,
+            language=language,
+            timeout=timeout,
+            annotation_types=annotation_types,
+            content_type=MEDIA_TYPE_FHIR_JSON,
+            accept_type=MEDIA_TYPE_APPLICATION_XMI,
+            meta_data=meta_data,
+        )
         if not isinstance(cas_xmi, bytes):
             raise TypeError(
                 f"Expected response to be bytes, but got {type(cas_xmi)}. "
@@ -635,59 +654,63 @@ class Pipeline:
         return load_cas_from_xmi(cas_xmi_str, typesystem=self.get_type_system())
 
     def analyse_fhir_to_fhir(
-            self,
-            source: Union[Path, IO, str, dict],
-            annotation_types: Union[None, str, List[str]] = None,
-            language: Optional[str] = None,
-            timeout: Optional[float] = None,
-            meta_data: Optional[dict] = None) -> dict:
+        self,
+        source: Union[Path, IO, str, dict],
+        annotation_types: Union[None, str, List[str]] = None,
+        language: Optional[str] = None,
+        timeout: Optional[float] = None,
+        meta_data: Optional[dict] = None,
+    ) -> dict:
         """
-            Analyze the given text or text file in FHIR json format using the pipeline and return FHIR json.
+        Analyze the given text or text file in FHIR json format using the pipeline and return FHIR json.
 
-            :param source:           The document to be analyzed.
-            :param annotation_types: Optional parameter indicating which types should be returned. Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types with prefix "de.averbis.types"
-            :param language:         Optional parameter setting the language of the document, e.g. "en" or "de".
-            :param timeout:          Optional timeout (in seconds) specifying how long the request is waiting for a server response.
-            :param meta_data:        Optional key-value pairs that are used as generic metadata in addition to the document
+        :param source:           The document to be analyzed.
+        :param annotation_types: Optional parameter indicating which types should be returned. Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types with prefix "de.averbis.types"
+        :param language:         Optional parameter setting the language of the document, e.g. "en" or "de".
+        :param timeout:          Optional timeout (in seconds) specifying how long the request is waiting for a server response.
+        :param meta_data:        Optional key-value pairs that are used as generic metadata in addition to the document
 
-            :return: The raw payload of the server response as a dictionary. Future versions of this library may return a better-suited
-                     representation.
+        :return: The raw payload of the server response as a dictionary. Future versions of this library may return a better-suited
+                 representation.
         """
         # noinspection PyProtectedMember
         response = self.project.client._analyse_text(
-                    project=self.project.name,
-                    pipeline=self.name,
-                    source=source,
-                    language=language,
-                    timeout=timeout,
-                    annotation_types=annotation_types,
-                    content_type=MEDIA_TYPE_FHIR_JSON,
-                    accept_type=MEDIA_TYPE_FHIR_JSON,
-                    meta_data= meta_data
-                )
+            project=self.project.name,
+            pipeline=self.name,
+            source=source,
+            language=language,
+            timeout=timeout,
+            annotation_types=annotation_types,
+            content_type=MEDIA_TYPE_FHIR_JSON,
+            accept_type=MEDIA_TYPE_FHIR_JSON,
+            meta_data=meta_data,
+        )
         if not isinstance(response, dict):
-            raise TypeError(f"Expected response to be a dict, but got {type(response)}. "
-                            "This may indicate that the server did not return a valid JSON response.")
+            raise TypeError(
+                f"Expected response to be a dict, but got {type(response)}. "
+                "This may indicate that the server did not return a valid JSON response."
+            )
         return response
 
     def analyse_fhir(
-            self,
-            source: Union[Path, IO, str, dict],
-            annotation_types: Union[None, str, List[str]] = None,
-            language: Optional[str] = None,
-            timeout: Optional[float] = None,
-            meta_data: Optional[dict] = None) -> List[dict]:
+        self,
+        source: Union[Path, IO, str, dict],
+        annotation_types: Union[None, str, List[str]] = None,
+        language: Optional[str] = None,
+        timeout: Optional[float] = None,
+        meta_data: Optional[dict] = None,
+    ) -> List[dict]:
         """
-            Analyze the given text or text file in FHIR json format using the pipeline and return json.
+        Analyze the given text or text file in FHIR json format using the pipeline and return json.
 
-            :param source:           The document to be analyzed in fhir format. This can be a fhir text, file or a dictionary containing the fhir data.
-            :param annotation_types: Optional parameter indicating which types should be returned. Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types with prefix "de.averbis.types"
-            :param language:         Optional parameter setting the language of the document, e.g. "en" or "de".
-            :param timeout:          Optional timeout (in seconds) specifying how long the request is waiting for a server response.
-            :param meta_data:        Optional key-value pairs that are used as generic metadata in addition to the document
+        :param source:           The document to be analyzed in fhir format. This can be a fhir text, file or a dictionary containing the fhir data.
+        :param annotation_types: Optional parameter indicating which types should be returned. Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types with prefix "de.averbis.types"
+        :param language:         Optional parameter setting the language of the document, e.g. "en" or "de".
+        :param timeout:          Optional timeout (in seconds) specifying how long the request is waiting for a server response.
+        :param meta_data:        Optional key-value pairs that are used as generic metadata in addition to the document
 
-            :return: The raw payload of the server response. Future versions of this library may return a better-suited
-                     representation.
+        :return: The raw payload of the server response. Future versions of this library may return a better-suited
+                 representation.
         """
         # noinspection PyProtectedMember
         response = self.project.client._analyse_text(
@@ -699,11 +722,13 @@ class Pipeline:
             annotation_types=annotation_types,
             content_type=MEDIA_TYPE_FHIR_JSON,
             accept_type=MEDIA_TYPE_APPLICATION_JSON,
-            meta_data=meta_data
+            meta_data=meta_data,
         )
         if not isinstance(response, list):
-            raise TypeError(f"Expected response to be a list of dict, but got {type(response)}. "
-                            "This may indicate that the server did not return a valid JSON response.")
+            raise TypeError(
+                f"Expected response to be a list of dict, but got {type(response)}. "
+                "This may indicate that the server did not return a valid JSON response."
+            )
         return response
 
     def _analyse_in_parallel(
@@ -711,7 +736,7 @@ class Pipeline:
         sources: Iterable[Union[Path, IO, str]],
         parallelism: int = 0,
         analyse_function: Optional[Callable] = None,
-        **kwargs
+        **kwargs,
     ) -> Iterator[Result]:
         if self.project.client.get_spec_version().startswith("5."):
             pipeline_instances = self.get_configuration()["analysisEnginePoolSize"]
@@ -737,10 +762,7 @@ class Pipeline:
         def run_analysis(source):
             try:
                 return Result(
-                    data=analyse_function(
-                        source=source,
-                        **kwargs
-                    ),
+                    data=analyse_function(source=source, **kwargs),
                     source=source,
                 )
             except Exception as e:
@@ -818,7 +840,7 @@ class Pipeline:
         source: Union[Path, IO, str],
         language: Optional[str] = None,
         timeout: Optional[float] = None,
-        annotation_types: Union[None, str, List[str]] = None
+        annotation_types: Union[None, str, List[str]] = None,
     ) -> Cas:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear. Processes text using a pipeline and returns the result
@@ -842,7 +864,7 @@ class Pipeline:
                 source=source,
                 language=language,
                 timeout=timeout,
-                annotation_types=annotation_types
+                annotation_types=annotation_types,
             ),
             typesystem=self.get_type_system(),
         )
@@ -854,7 +876,7 @@ class Pipeline:
         parallelism: int = 0,
         language: Optional[str] = None,
         timeout: Optional[float] = None,
-        annotation_types: Union[None, str, List[str]] = None
+        annotation_types: Union[None, str, List[str]] = None,
     ) -> Iterator[Result]:
         """
         Analyze the given texts or files using the pipeline. If feasible, multiple documents are processed in parallel.
@@ -882,13 +904,14 @@ class Pipeline:
 
         :return: An iterator over the results produced by the pipeline.
         """
-        yield from self._analyse_in_parallel(sources=sources,
-                                             parallelism=parallelism,
-                                             annotation_types=annotation_types,
-                                             language=language,
-                                             timeout=timeout,
-                                             analyse_function=self.analyse_text_to_cas
-                                             )
+        yield from self._analyse_in_parallel(
+            sources=sources,
+            parallelism=parallelism,
+            annotation_types=annotation_types,
+            language=language,
+            timeout=timeout,
+            analyse_function=self.analyse_text_to_cas,
+        )
 
     # Ignoring errors as linter (compiler) cannot resolve dynamically loaded lib
     # (with type:ignore for mypy) and (noinspection PyProtectedMember for pycharm)
@@ -1130,7 +1153,10 @@ class Terminology:
 
     @experimental_api
     def concept_autosuggest(
-        self, query: str, include_concept_identifier: bool=True, max_suggestions: int = 5,
+        self,
+        query: str,
+        include_concept_identifier: bool = True,
+        max_suggestions: int = 5,
     ) -> dict:
         """
         Trigger the concept autosuggest for this terminology.
@@ -1156,7 +1182,7 @@ class Process:
         name: str,
         document_source_name: str,
         pipeline_name: Optional[str] = None,
-        preceding_process_name: Optional[str] = None
+        preceding_process_name: Optional[str] = None,
     ):
         self.__logger = logging.getLogger(self.__class__.__module__ + "." + self.__class__.__name__)
         self.project = project
@@ -1325,10 +1351,10 @@ class Process:
 
     @experimental_api
     def export_text_analysis_to_cas(
-            self,
-            document_name: str,
-            type_system: Optional[TypeSystem] = None,
-            annotation_types: Union[None, str, List[str]] = None
+        self,
+        document_name: str,
+        type_system: Optional[TypeSystem] = None,
+        annotation_types: Union[None, str, List[str]] = None,
     ) -> Cas:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -1346,19 +1372,29 @@ class Process:
             )
 
         # noinspection PyProtectedMember
-        if annotation_types is not None and \
-                "platformVersion" in build_info and \
-                not self.project.client._is_higher_equal_version(build_info["platformVersion"], 6, 49):
-            self.__logger.warning("Filtering by annotation types is not supported in this product version.")
+        if (
+            annotation_types is not None
+            and "platformVersion" in build_info
+            and not self.project.client._is_higher_equal_version(
+                build_info["platformVersion"], 6, 49
+            )
+        ):
+            self.__logger.warning(
+                "Filtering by annotation types is not supported in this product version."
+            )
 
         if type_system is None and self._export_text_analysis_to_cas_has_been_called is False:
-            self.__logger.info("Providing the typesystem that the CAS will be set up with to the export may speed up "
-                               "the process.")
+            self.__logger.info(
+                "Providing the typesystem that the CAS will be set up with to the export may speed up "
+                "the process."
+            )
         self._export_text_analysis_to_cas_has_been_called = True
 
         document_collection = self.project.get_document_collection(self.document_source_name)
 
-        cas_type_system, document_identifier = self._load_typesystem(type_system, document_collection, document_name)
+        cas_type_system, document_identifier = self._load_typesystem(
+            type_system, document_collection, document_name
+        )
 
         # noinspection PyProtectedMember
         return load_cas_from_xmi(
@@ -1368,23 +1404,22 @@ class Process:
                 document_name,
                 document_identifier,
                 self,
-                annotation_types
+                annotation_types,
             ),
             typesystem=cas_type_system,
         )
 
     def _load_typesystem(
-            self,
-            type_system: TypeSystem,
-            document_collection: "DocumentCollection",
-            document_name: str
+        self, type_system: TypeSystem, document_collection: "DocumentCollection", document_name: str
     ) -> Tuple[TypeSystem, Optional[str]]:
         document_identifier = None
         cas_type_system = type_system
         if cas_type_system is None:
             build_info = self.project.client.get_build_info()
             # noinspection PyProtectedMember
-            if "platformVersion" in build_info and self.project.client._is_higher_equal_version(build_info["platformVersion"], 6, 50):
+            if "platformVersion" in build_info and self.project.client._is_higher_equal_version(
+                build_info["platformVersion"], 6, 50
+            ):
                 # noinspection PyProtectedMember
                 cas_type_system = load_typesystem(
                     self.project.client._export_analysis_result_typesystem(
@@ -1397,7 +1432,11 @@ class Process:
                 # noinspection PyProtectedMember
                 cas_type_system = load_typesystem(
                     self.project.client._export_analysis_result_typesystem(
-                        self.project.name, self.document_source_name, document_name, self, document_identifier
+                        self.project.name,
+                        self.document_source_name,
+                        document_name,
+                        self,
+                        document_identifier,
                     )
                 )
         return cas_type_system, document_identifier
@@ -1485,7 +1524,7 @@ class DocumentCollection:
         self,
         process_name: str,
         pipeline: Union[str, Pipeline],
-        annotation_types: Union[None, str, List[str]] = None
+        annotation_types: Union[None, str, List[str]] = None,
     ) -> Process:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -1499,12 +1538,19 @@ class DocumentCollection:
         :return: The created process
         """
         # noinspection PyProtectedMember
-        self.project.client._create_and_run_process(self, process_name, pipeline, annotation_types=annotation_types)
+        self.project.client._create_and_run_process(
+            self, process_name, pipeline, annotation_types=annotation_types
+        )
 
         return self.get_process(process_name)
 
     @experimental_api
-    def create_process(self, process_name: str, is_manual_annotation: bool = False, annotation_types: Union[None, str, List[str]] = None) -> Process:
+    def create_process(
+        self,
+        process_name: str,
+        is_manual_annotation: bool = False,
+        annotation_types: Union[None, str, List[str]] = None,
+    ) -> Process:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
@@ -1521,7 +1567,11 @@ class DocumentCollection:
             process_type = self._map_process_type(Process._ProcessType.INIT)
         # noinspection PyProtectedMember
         self.project.client._create_and_run_process(
-            self, process_name, pipeline=None, process_type=process_type, annotation_types=annotation_types,
+            self,
+            process_name,
+            pipeline=None,
+            process_type=process_type,
+            annotation_types=annotation_types,
         )
 
         return self.get_process(process_name)
@@ -1550,11 +1600,11 @@ class DocumentCollection:
         typesystem: Optional["TypeSystem"] = None,
     ) -> List[dict]:
         """
-        Imports documents from a given file, from a given string or from a dictionary (representing the json-format). 
-        Supported file content types are 
+        Imports documents from a given file, from a given string or from a dictionary (representing the json-format).
+        Supported file content types are
         - plain text (text/plain),
         - json, containing the text in field 'content', the document name in field 'documentName' and optional key-value pair metadata (application/json) or multiple documents with these fields in a field named "documents",
-        - Averbis Solr XML (application/vnd.averbis.solr+xml), 
+        - Averbis Solr XML (application/vnd.averbis.solr+xml),
         - :ref:`UIMA types`.
 
         If a document is provided as a CAS object, the type system information can be automatically picked from the CAS
@@ -1735,7 +1785,9 @@ class Project:
         return self.client._list_resource_containers(project_url)
 
     @experimental_api
-    def create_resource_container(self, name: str, resources_zip_path: Optional[Union[Path, str]] = None) -> ResourceContainer:
+    def create_resource_container(
+        self, name: str, resources_zip_path: Optional[Union[Path, str]] = None
+    ) -> ResourceContainer:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
@@ -1963,7 +2015,7 @@ class EvaluationConfiguration:
         comparison_annotation_type_name: str,
         features_to_compare: List[str],
         reference_annotation_type_name: Optional[str] = None,
-        **kwargs
+        **kwargs,
     ):
         """
         Configuration for the evaluation of one annotation type
@@ -2011,9 +2063,7 @@ class EvaluationConfiguration:
         self.partialMatchCriteria = "OVERLAP_MATCH"
         return self
 
-    def use_range_variance_partial_match(
-        self, range_variance: int
-    ) -> "EvaluationConfiguration":
+    def use_range_variance_partial_match(self, range_variance: int) -> "EvaluationConfiguration":
         """
         Annotations that are offset by the given variance are used to calculate partial positives.
         Normally, these will replace a FalsePositive or FalseNegative if a partial match is identified.
@@ -2110,18 +2160,20 @@ class Client:
             license_path = Path(license_path)
 
         # We cannot check directly for build information here because this is not allowed without active license file
-        try: 
+        try:
             license_content = license_path.read_text(encoding=ENCODING_UTF_8)
             data: IO = BytesIO(license_content.encode(ENCODING_UTF_8))
             files = {"licenseFile": (license_path.name, data, MEDIA_TYPE_TEXT_PLAIN)}
             response = self.__request_with_json_response(
-                'put',
+                "put",
                 f"/v1/license",
                 files=files,
             )
-            return response['payload']
+            return response["payload"]
         except RequestException as e:
-            raise RequestException(f"A problem occurred while uploading the license file. Please note that the function 'client.upload_license(license_path)' is only supported for Health Discovery version 7.4.0 and newer. The full error was:\n{e}")
+            raise RequestException(
+                f"A problem occurred while uploading the license file. Please note that the function 'client.upload_license(license_path)' is only supported for Health Discovery version 7.4.0 and newer. The full error was:\n{e}"
+            )
 
     def _exists_profile(self, profile: str):
         return (
@@ -2432,7 +2484,8 @@ class Client:
         build_version = self.get_build_info()
         if not self._is_higher_equal_version(build_version["platformVersion"], 8, 23):
             raise OperationNotSupported(
-                f"The container resource API is only supported for platform versions >= 8.23, but current platform is {build_version['platformVersion']}.")
+                f"The container resource API is only supported for platform versions >= 8.23, but current platform is {build_version['platformVersion']}."
+            )
         container_url = f"{base_url}/{name}"
         self.__request_with_json_response("delete", container_url)
 
@@ -2445,9 +2498,13 @@ class Client:
         build_version = self.get_build_info()
         if not self._is_higher_equal_version(build_version["platformVersion"], 8, 23):
             raise OperationNotSupported(
-                f"The container resource API is only supported for platform versions >= 8.23, but current platform is {build_version['platformVersion']}.")
-        self.__request_with_json_response("delete", f"{base_url}/{container_name}/resources",
-                                          params={"relativePath": resource_path})
+                f"The container resource API is only supported for platform versions >= 8.23, but current platform is {build_version['platformVersion']}."
+            )
+        self.__request_with_json_response(
+            "delete",
+            f"{base_url}/{container_name}/resources",
+            params={"relativePath": resource_path},
+        )
 
     @experimental_api
     def list_resource_containers(self) -> List[ResourceContainer]:
@@ -2467,20 +2524,23 @@ class Client:
         build_version = self.get_build_info()
         if not self._is_higher_equal_version(build_version["platformVersion"], 8, 23):
             raise OperationNotSupported(
-                f"The container resource API is only supported for platform versions >= 8.23, but current platform is {build_version['platformVersion']}.")
+                f"The container resource API is only supported for platform versions >= 8.23, but current platform is {build_version['platformVersion']}."
+            )
         container_url = f"{base_url}/containers"
         response = self.__request_with_json_response("get", container_url)
         if response["errorMessages"]:
-            raise Exception(
-                f"Error while listing resource containers: {response['errorMessages']}"
-            )
+            raise Exception(f"Error while listing resource containers: {response['errorMessages']}")
         payload = response["payload"]
         containers = payload["containers"]
-        return [ResourceContainer(self, container["name"], container["scope"], container_url) for container in
-                containers]
+        return [
+            ResourceContainer(self, container["name"], container["scope"], container_url)
+            for container in containers
+        ]
 
     @experimental_api
-    def create_resource_container(self, name: str, resources_zip_path: Optional[Union[Path, str]] = None) -> ResourceContainer:
+    def create_resource_container(
+        self, name: str, resources_zip_path: Optional[Union[Path, str]] = None
+    ) -> ResourceContainer:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
         Create global empty resource container or additionally upload provided resources to the new container.
@@ -2489,7 +2549,9 @@ class Client:
         return self._create_resource_container(name, client_base_url, resources_zip_path)
 
     @experimental_api
-    def _create_resource_container(self, name: str, base_url: str, resources_zip_path: Optional[Union[Path, str]] = None) -> ResourceContainer:
+    def _create_resource_container(
+        self, name: str, base_url: str, resources_zip_path: Optional[Union[Path, str]] = None
+    ) -> ResourceContainer:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
         Use respective public create_resource_container() method instead.
@@ -2497,27 +2559,33 @@ class Client:
         build_version = self.get_build_info()
         if not self._is_higher_equal_version(build_version["platformVersion"], 8, 23):
             raise OperationNotSupported(
-                f"The container resource API is only supported for platform versions >= 8.23, but current platform is {build_version['platformVersion']}.")
+                f"The container resource API is only supported for platform versions >= 8.23, but current platform is {build_version['platformVersion']}."
+            )
         container_url = f"{base_url}/containers"
         request_params = {"containerName": name}
         if resources_zip_path is None:
-            response = self.__request_with_json_response("post", container_url, params=request_params)
+            response = self.__request_with_json_response(
+                "post", container_url, params=request_params
+            )
         else:
             if isinstance(resources_zip_path, str):
                 resources_zip_path = Path(resources_zip_path)
-            with open(resources_zip_path, 'rb') as data:
+            with open(resources_zip_path, "rb") as data:
                 response = self.__request_with_json_response(
                     "post",
                     container_url,
                     params=request_params,
-                    files={"zippedResourceContainer": ("zippedResourceContainer", data)}
+                    files={"zippedResourceContainer": ("zippedResourceContainer", data)},
                 )
         if response["errorMessages"]:
-            raise Exception(
-                f"Error during resource container creation {response['errorMessages']}"
-            )
+            raise Exception(f"Error during resource container creation {response['errorMessages']}")
         resource_container = response["payload"]
-        return ResourceContainer(self, name=resource_container["containerName"], scope=resource_container["scope"], base_url=container_url)
+        return ResourceContainer(
+            self,
+            name=resource_container["containerName"],
+            scope=resource_container["scope"],
+            base_url=container_url,
+        )
 
     @experimental_api
     def _list_container_resources(self, container_name: str, base_url: str) -> List[str]:
@@ -2528,7 +2596,8 @@ class Client:
         build_version = self.get_build_info()
         if not self._is_higher_equal_version(build_version["platformVersion"], 8, 23):
             raise OperationNotSupported(
-                f"The container resource API is only supported for platform versions >= 8.23, but current platform is {build_version['platformVersion']}.")
+                f"The container resource API is only supported for platform versions >= 8.23, but current platform is {build_version['platformVersion']}."
+            )
         response = self.__request_with_json_response("get", f"{base_url}/{container_name}")
         if response["errorMessages"]:
             raise Exception(
@@ -2539,7 +2608,9 @@ class Client:
         return [resource["relativePath"] for resource in resources]
 
     @experimental_api
-    def _export_resource(self, target_path: Union[str, Path], container_name: str, base_url: str, resource_path: str) -> None:
+    def _export_resource(
+        self, target_path: Union[str, Path], container_name: str, base_url: str, resource_path: str
+    ) -> None:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
         Use ResourceContainer.export_resource() instead.
@@ -2547,17 +2618,27 @@ class Client:
         build_version = self.get_build_info()
         if not self._is_higher_equal_version(build_version["platformVersion"], 8, 23):
             raise OperationNotSupported(
-                f"The container resource API is only supported for platform versions >= 8.23, but current platform is {build_version['platformVersion']}.")
+                f"The container resource API is only supported for platform versions >= 8.23, but current platform is {build_version['platformVersion']}."
+            )
         if isinstance(target_path, str):
             target_path = Path(target_path)
         target_path.parent.mkdir(parents=True, exist_ok=True)
         with open(target_path, "wb") as resource_file:
-            resource = self.__request_with_bytes_response("get", f"{base_url}/{container_name}/resources",
-                                                          params={"relativePath": resource_path})
+            resource = self.__request_with_bytes_response(
+                "get",
+                f"{base_url}/{container_name}/resources",
+                params={"relativePath": resource_path},
+            )
             resource_file.write(resource)
 
     @experimental_api
-    def _upsert_resource(self, resource_file_path: Union[str, Path], container_name: str, base_url: str, resource_path: str) -> None:
+    def _upsert_resource(
+        self,
+        resource_file_path: Union[str, Path],
+        container_name: str,
+        base_url: str,
+        resource_path: str,
+    ) -> None:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
         Use ResourceContainer.upsert_resource() instead.
@@ -2565,25 +2646,23 @@ class Client:
         build_version = self.get_build_info()
         if not self._is_higher_equal_version(build_version["platformVersion"], 8, 23):
             raise OperationNotSupported(
-                f"The container resource API is only supported for platform versions >= 8.23, but current platform is {build_version['platformVersion']}.")
+                f"The container resource API is only supported for platform versions >= 8.23, but current platform is {build_version['platformVersion']}."
+            )
         request_params = {"relativePath": resource_path}
         request_url = f"{base_url}/{container_name}/resources"
         if isinstance(resource_file_path, str):
             resource_file_path = Path(resource_file_path)
         with resource_file_path.open("rb") as data:
             response = self.__request_with_json_response(
-                "post",
-                request_url,
-                params=request_params,
-                files={"resource": ("resource", data)}
+                "post", request_url, params=request_params, files={"resource": ("resource", data)}
             )
             if response["errorMessages"]:
-                raise Exception(
-                    f"Error during resource upload {response['errorMessages']}"
-                )
+                raise Exception(f"Error during resource upload {response['errorMessages']}")
 
     @experimental_api
-    def _export_container_resources(self, target_zip_path: Union[Path, str], container_name: str, base_url: str) -> None:
+    def _export_container_resources(
+        self, target_zip_path: Union[Path, str], container_name: str, base_url: str
+    ) -> None:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
         Use ResourceContainer.export_resources() instead.
@@ -2591,14 +2670,20 @@ class Client:
         build_version = self.get_build_info()
         if not self._is_higher_equal_version(build_version["platformVersion"], 8, 23):
             raise OperationNotSupported(
-                f"The container resource API is only supported for platform versions >= 8.23, but current platform is {build_version['platformVersion']}.")
+                f"The container resource API is only supported for platform versions >= 8.23, but current platform is {build_version['platformVersion']}."
+            )
         if isinstance(target_zip_path, str):
             target_zip_path = Path(target_zip_path)
 
         target_zip_path.parent.mkdir(parents=True, exist_ok=True)
-        request_headers = {HEADER_CONTENT_TYPE: MEDIA_TYPE_APPLICATION_JSON, HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_ZIP}
+        request_headers = {
+            HEADER_CONTENT_TYPE: MEDIA_TYPE_APPLICATION_JSON,
+            HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_ZIP,
+        }
         with open(target_zip_path, "wb") as zip_file:
-            resources = self.__request_with_bytes_response("get", f"{base_url}/{container_name}", headers=request_headers)
+            resources = self.__request_with_bytes_response(
+                "get", f"{base_url}/{container_name}", headers=request_headers
+            )
             zip_file.write(resources)
 
     @experimental_api
@@ -2659,7 +2744,7 @@ class Client:
             response = self.__request_with_json_response("get", f"/v1/projects")
         except RequestException as e:
             # in HD 6 below 6.11.0 the following url is used
-            if '405' not in e.args[0]:
+            if "405" not in e.args[0]:
                 raise e
             response = self.__request_with_json_response("get", f"/experimental/projects")
         return response["payload"]
@@ -2760,21 +2845,21 @@ class Client:
         def fetch_filename(src: Union[Cas, Path, IO, str], filename: Optional[str] = None) -> str:
             if filename is not None and not isinstance(src, dict):
                 return filename
-            
+
             if isinstance(src, Path):
                 return Path(src).name
 
             if isinstance(src, IOBase) and hasattr(src, "name"):
                 return src.name
-            
-            if isinstance(src,dict) and "documentName" in src:
+
+            if isinstance(src, dict) and "documentName" in src:
                 documentName = src["documentName"]
                 if filename is not None and documentName != filename:
                     raise ValueError(
                         f"The `filename` parameter '{filename}' does not match the documentName in the provided dict '{documentName}'."
                     )
                 return documentName
-            
+
             if isinstance(src, dict) and "documents" in src:
                 if filename is not None:
                     raise ValueError(
@@ -2795,12 +2880,16 @@ class Client:
             if isinstance(src, dict):
                 return MEDIA_TYPE_APPLICATION_JSON
             guessed_mime_type = mimetypes.guess_type(url=file_name)[0]
-            if guessed_mime_type not in [MEDIA_TYPE_TEXT_PLAIN, MEDIA_TYPE_APPLICATION_SOLR_XML, MEDIA_TYPE_APPLICATION_JSON]:
+            if guessed_mime_type not in [
+                MEDIA_TYPE_TEXT_PLAIN,
+                MEDIA_TYPE_APPLICATION_SOLR_XML,
+                MEDIA_TYPE_APPLICATION_JSON,
+            ]:
                 raise ValueError(
                     f"Unable to guess a valid mime_type. Supported file content types are plain text (mime_type = "
                     f"'{MEDIA_TYPE_TEXT_PLAIN}'), Averbis Solr XML (mime_type = "
-                    f"'{MEDIA_TYPE_APPLICATION_SOLR_XML}'), '{MEDIA_TYPE_APPLICATION_JSON}' and " +
-                    f"UIMA CAS file types ({','.join(MEDIA_TYPES_CAS)}).\n"
+                    f"'{MEDIA_TYPE_APPLICATION_SOLR_XML}'), '{MEDIA_TYPE_APPLICATION_JSON}' and "
+                    + f"UIMA CAS file types ({','.join(MEDIA_TYPES_CAS)}).\n"
                     f"Please provide the correct mime_type with: `document_collection.import_documents(file, "
                     f"mime_type = ...)`."
                 )
@@ -2817,13 +2906,13 @@ class Client:
             # For multi-documents, the server still needs a filename with the proper extension, otherwise it refuses
             # to parse the result
             filename = fetch_filename(source, filename) or "data.xml"
-            
+
         else:
             filename = fetch_filename(source, filename) or "document.txt"
 
         if mime_type is None:
             mime_type = guess_mime_type(source, filename)
-        
+
         files = self.create_import_files(source, mime_type, filename, typesystem)
 
         response = self.__request_with_json_response(
@@ -2839,7 +2928,13 @@ class Client:
         else:
             return [response["payload"]]
 
-    def create_import_files(self, source: Union[Cas, Path, IO, str, dict], mime_type: str, filename: str, typesystem: Optional["TypeSystem"] = None) -> dict:
+    def create_import_files(
+        self,
+        source: Union[Cas, Path, IO, str, dict],
+        mime_type: str,
+        filename: str,
+        typesystem: Optional["TypeSystem"] = None,
+    ) -> dict:
         if mime_type in MEDIA_TYPES_CAS:
             files = self._create_cas_file_request_parts(
                 "documentFile", filename, source, mime_type, typesystem
@@ -2856,7 +2951,9 @@ class Client:
                 data = BytesIO(json.dumps(source).encode(ENCODING_UTF_8))
             else:
                 if isinstance(source, (str, bytes)):
-                    data = BytesIO(source.encode(ENCODING_UTF_8) if isinstance(source, str) else source)
+                    data = BytesIO(
+                        source.encode(ENCODING_UTF_8) if isinstance(source, str) else source
+                    )
                 elif isinstance(source, IOBase):
                     data = source
                 else:
@@ -2963,12 +3060,14 @@ class Client:
         )
         return response["payload"]
 
-    def _get_terminology_concept_autosuggest(self, 
-                                             project: str,
-                                             terminology: str,
-                                             query: str, 
-                                             include_concept_identifier: bool,
-                                             max_suggestions: int) -> dict:
+    def _get_terminology_concept_autosuggest(
+        self,
+        project: str,
+        terminology: str,
+        query: str,
+        include_concept_identifier: bool,
+        max_suggestions: int,
+    ) -> dict:
         """
         Use Terminology.concept_autosuggest() instead.
         """
@@ -2978,9 +3077,7 @@ class Client:
             "maxSuggestions": max_suggestions,
         }
         endpoint = f"/experimental/terminology/projects/{project}/terminologies/{terminology}/conceptAutosuggest"
-        response = self.__request_with_json_response(
-            "post", endpoint, json=request_json
-        )
+        response = self.__request_with_json_response("post", endpoint, json=request_json)
         return response["payload"]
 
     def _create_pipeline(self, project: str, configuration: dict) -> Pipeline:
@@ -3100,14 +3197,32 @@ class Client:
         language: Optional[str] = None,
         timeout: Optional[float] = None,
         accept_type: Optional[str] = MEDIA_TYPE_APPLICATION_JSON,
-        meta_data: Optional[dict] = None
+        meta_data: Optional[dict] = None,
     ):
         if isinstance(source, Path):
             with source.open("rb") as file:
-                return self._request_analyse_text(project, pipeline, file, annotation_types, language, timeout,
-                                                  MEDIA_TYPE_PDF, accept_type, meta_data)
-        return self._request_analyse_text(project, pipeline, source, annotation_types, language, timeout,
-                                          MEDIA_TYPE_PDF, accept_type, meta_data)
+                return self._request_analyse_text(
+                    project,
+                    pipeline,
+                    file,
+                    annotation_types,
+                    language,
+                    timeout,
+                    MEDIA_TYPE_PDF,
+                    accept_type,
+                    meta_data,
+                )
+        return self._request_analyse_text(
+            project,
+            pipeline,
+            source,
+            annotation_types,
+            language,
+            timeout,
+            MEDIA_TYPE_PDF,
+            accept_type,
+            meta_data,
+        )
 
     def _analyse_text(
         self,
@@ -3119,24 +3234,43 @@ class Client:
         timeout: Optional[float] = None,
         content_type: Optional[str] = MEDIA_TYPE_TEXT_PLAIN_UTF8,
         accept_type: Optional[str] = MEDIA_TYPE_APPLICATION_JSON,
-        meta_data: Optional[dict] = None
+        meta_data: Optional[dict] = None,
     ) -> Union[List[dict], dict, bytes]:
 
         if accept_type != MEDIA_TYPE_APPLICATION_JSON or content_type != MEDIA_TYPE_TEXT_PLAIN_UTF8:
             build_version = self.get_build_info()
-            if "platformVersion" not in build_version or not self._is_higher_equal_version(build_version["platformVersion"], 8, 16):
+            if "platformVersion" not in build_version or not self._is_higher_equal_version(
+                build_version["platformVersion"], 8, 16
+            ):
                 raise OperationNotSupported(
                     f"Accept types other than json and content types other than plain text are only supported "
-                    f"for platform versions >= 8.16 (available from Health Discovery version 7.3).")
+                    f"for platform versions >= 8.16 (available from Health Discovery version 7.3)."
+                )
 
         if isinstance(source, dict):
-            response = self._analyse_fhir(project, pipeline, source, annotation_types=annotation_types,
-                                          language=language, timeout=timeout, content_type=content_type,
-                                          accept_type=accept_type)
+            response = self._analyse_fhir(
+                project,
+                pipeline,
+                source,
+                annotation_types=annotation_types,
+                language=language,
+                timeout=timeout,
+                content_type=content_type,
+                accept_type=accept_type,
+            )
         else:
             data: IO = self._create_request_data(content_type, source)
-            response = self._request_analyse_text(project, pipeline, data, annotation_types, language, timeout,
-                                                  content_type, accept_type, meta_data)
+            response = self._request_analyse_text(
+                project,
+                pipeline,
+                data,
+                annotation_types,
+                language,
+                timeout,
+                content_type,
+                accept_type,
+                meta_data,
+            )
         if isinstance(response, bytes):
             return response
         if "payload" in response:
@@ -3144,16 +3278,22 @@ class Client:
             return payload
         return response
 
-    def _analyse_fhir(self, project: str,
-                      pipeline: str,
-                      source: dict,
-                      annotation_types: Union[None, str, List[str]] = None,
-                      language: Optional[str] = None,
-                      timeout: Optional[float] = None,
-                      content_type: Optional[str] = MEDIA_TYPE_FHIR_JSON,
-                      accept_type: Optional[str] = MEDIA_TYPE_APPLICATION_JSON) -> Union[bytes, dict]:
+    def _analyse_fhir(
+        self,
+        project: str,
+        pipeline: str,
+        source: dict,
+        annotation_types: Union[None, str, List[str]] = None,
+        language: Optional[str] = None,
+        timeout: Optional[float] = None,
+        content_type: Optional[str] = MEDIA_TYPE_FHIR_JSON,
+        accept_type: Optional[str] = MEDIA_TYPE_APPLICATION_JSON,
+    ) -> Union[bytes, dict]:
         url = f"/v1/textanalysis/projects/{project}/pipelines/{pipeline}/analyseText"
-        request_params = {"annotationTypes": self._preprocess_annotation_types(annotation_types), "language": language}
+        request_params = {
+            "annotationTypes": self._preprocess_annotation_types(annotation_types),
+            "language": language,
+        }
         request_headers = {HEADER_CONTENT_TYPE: content_type, HEADER_ACCEPT: accept_type}
         if accept_type == MEDIA_TYPE_APPLICATION_XMI:
             return self.__request_with_bytes_response(
@@ -3162,7 +3302,7 @@ class Client:
                 json=source,
                 headers=request_headers,
                 params=request_params,
-                timeout=timeout
+                timeout=timeout,
             )
         return self.__request_with_json_response(
             "post",
@@ -3170,7 +3310,7 @@ class Client:
             json=source,
             timeout=timeout,
             params=request_params,
-            headers=request_headers
+            headers=request_headers,
         )
 
     @staticmethod
@@ -3189,20 +3329,27 @@ class Client:
         if isinstance(source, dict):
             source = json.dumps(source)
             return BytesIO(source.encode(ENCODING_UTF_8))
-        raise OperationNotSupported(f"Content-type {content_type} is not supported for this source.")
+        raise OperationNotSupported(
+            f"Content-type {content_type} is not supported for this source."
+        )
 
-    def _request_analyse_text(self,
-                              project: str,
-                              pipeline: str,
-                              data: IO,
-                              annotation_types: Union[None, str, List[str]] = None,
-                              language: Optional[str] = None,
-                              timeout: Optional[float] = None,
-                              content_type: Optional[str] = MEDIA_TYPE_TEXT_PLAIN_UTF8,
-                              accept_type: Optional[str] = MEDIA_TYPE_APPLICATION_JSON,
-                              meta_data: Optional[dict] = None):
+    def _request_analyse_text(
+        self,
+        project: str,
+        pipeline: str,
+        data: IO,
+        annotation_types: Union[None, str, List[str]] = None,
+        language: Optional[str] = None,
+        timeout: Optional[float] = None,
+        content_type: Optional[str] = MEDIA_TYPE_TEXT_PLAIN_UTF8,
+        accept_type: Optional[str] = MEDIA_TYPE_APPLICATION_JSON,
+        meta_data: Optional[dict] = None,
+    ):
         url = f"/v1/textanalysis/projects/{project}/pipelines/{pipeline}/analyseText"
-        request_params = {"annotationTypes": self._preprocess_annotation_types(annotation_types), "language": language}
+        request_params = {
+            "annotationTypes": self._preprocess_annotation_types(annotation_types),
+            "language": language,
+        }
         request_params.update(meta_data or {})
         request_headers = {HEADER_CONTENT_TYPE: content_type, HEADER_ACCEPT: accept_type}
         if accept_type == MEDIA_TYPE_PDF or accept_type == MEDIA_TYPE_APPLICATION_XMI:
@@ -3242,7 +3389,10 @@ class Client:
             "post",
             f"/v1/textanalysis/projects/{project}/pipelines/{pipeline}/analyseHtml",
             data=data,
-            params={"annotationTypes": self._preprocess_annotation_types(annotation_types), "language": language},
+            params={
+                "annotationTypes": self._preprocess_annotation_types(annotation_types),
+                "language": language,
+            },
             headers={HEADER_CONTENT_TYPE: MEDIA_TYPE_TEXT_PLAIN_UTF8},
             timeout=timeout,
         )
@@ -3272,7 +3422,11 @@ class Client:
         response = self.__request_with_json_response(
             "get",
             f"/v1/textanalysis/projects/{project}/documentSources/{document_source}/processes/{process}/export",
-            params={"annotationTypes": self._preprocess_annotation_types(annotation_types), "page": page, "pageSize": page_size},
+            params={
+                "annotationTypes": self._preprocess_annotation_types(annotation_types),
+                "page": page,
+                "pageSize": page_size,
+            },
             headers={HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_JSON},
         )
         return response["payload"]
@@ -3285,7 +3439,7 @@ class Client:
         document_name: str,
         document_id: str,
         process: Union[Process, str],
-        annotation_types: Union[None, str, List[str]]
+        annotation_types: Union[None, str, List[str]],
     ) -> str:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -3338,12 +3492,12 @@ class Client:
 
     @experimental_api
     def _export_analysis_result_typesystem(
-            self,
-            project: str,
-            collection_name: str,
-            document_name: str,
-            process: Union[Process, str],
-            document_id: Optional[str] = None
+        self,
+        project: str,
+        collection_name: str,
+        document_name: str,
+        process: Union[Process, str],
+        document_id: Optional[str] = None,
     ) -> str:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -3363,7 +3517,7 @@ class Client:
                     f"/experimental/textanalysis/projects/{project}/documentCollections/{collection_name}"
                     f"/processes/{process_name}/textAnalysisResultTypeSystem",
                     headers={HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_XML},
-                    params={"documentName": document_name}
+                    params={"documentName": document_name},
                 ),
                 ENCODING_UTF_8,
             )
@@ -3386,7 +3540,7 @@ class Client:
         source: Union[IO, str, Path],
         language: Optional[str] = None,
         timeout: Optional[float] = None,
-        annotation_types: Union[None, str, List[str]] = None
+        annotation_types: Union[None, str, List[str]] = None,
     ) -> str:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -3401,8 +3555,9 @@ class Client:
         data: IO = BytesIO(source.encode(ENCODING_UTF_8)) if isinstance(source, str) else source
 
         build_version = self.get_build_info()
-        if "platformVersion" in build_version and self._is_higher_equal_version(build_version["platformVersion"],
-                                                                                8, 16):
+        if "platformVersion" in build_version and self._is_higher_equal_version(
+            build_version["platformVersion"], 8, 16
+        ):
             return str(
                 self.__request_with_bytes_response(
                     "post",
@@ -3410,7 +3565,7 @@ class Client:
                     data=data,
                     params={
                         "language": language,
-                        "annotationTypes": self._preprocess_annotation_types(annotation_types)
+                        "annotationTypes": self._preprocess_annotation_types(annotation_types),
                     },
                     headers={
                         HEADER_CONTENT_TYPE: MEDIA_TYPE_TEXT_PLAIN_UTF8,
@@ -3424,7 +3579,8 @@ class Client:
             raise OperationNotSupported(
                 f"Filtering annotation types is only supported "
                 f"for platform versions >= 8.16 (available from Health Discovery version 7.3), "
-                f"but current platform is {build_version['platformVersion']}.")
+                f"but current platform is {build_version['platformVersion']}."
+            )
         else:
             return str(
                 self.__request_with_bytes_response(
@@ -3589,14 +3745,18 @@ class Client:
             processes.append(document_collection.get_process(item["processName"]))
         return processes
 
-    def _delete_document(self, project_name: str, document_collection_name: str, document_name: str) -> dict:
+    def _delete_document(
+        self, project_name: str, document_collection_name: str, document_name: str
+    ) -> dict:
         build_version = self.get_build_info()
         if not self._is_higher_equal_version(build_version["platformVersion"], 8, 20):
             raise OperationNotSupported(
-                f"The method 'delete_documents' is only supported for platform versions >= 8.20.0 (available from Health Discovery version 7.5.0), but current platform is {build_version['platformVersion']}.")
+                f"The method 'delete_documents' is only supported for platform versions >= 8.20.0 (available from Health Discovery version 7.5.0), but current platform is {build_version['platformVersion']}."
+            )
 
         response = self.__request_with_json_response(
-            "delete", f"/v1/projects/{project_name}/documentCollections/{document_collection_name}/documents/{document_name}"
+            "delete",
+            f"/v1/projects/{project_name}/documentCollections/{document_collection_name}/documents/{document_name}",
         )
         return response["payload"]
 
@@ -3608,7 +3768,7 @@ class Client:
         pipeline: Union[str, Pipeline],
         process_type: Optional[str] = None,
         preceding_process_name: Optional[str] = None,
-        annotation_types: Union[None, str, List[str]] = None
+        annotation_types: Union[None, str, List[str]] = None,
     ) -> dict:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -3636,8 +3796,12 @@ class Client:
         if annotation_types:
             build_version = self.get_build_info()
             if not self._is_higher_equal_version(build_version["platformVersion"], 8, 11):
-                raise OperationNotSupported(f"The parameter 'annotation_types' is only supported for platform versions >= 8.11 (available from Health Discovery version 7.1), but current platform is {build_version['platformVersion']}.")
-            request_json["annotationTypesToBeSaved"] = self._preprocess_annotation_types(annotation_types)
+                raise OperationNotSupported(
+                    f"The parameter 'annotation_types' is only supported for platform versions >= 8.11 (available from Health Discovery version 7.1), but current platform is {build_version['platformVersion']}."
+                )
+            request_json["annotationTypesToBeSaved"] = self._preprocess_annotation_types(
+                annotation_types
+            )
 
         response = self.__request_with_json_response(
             "post",
@@ -4015,7 +4179,10 @@ class Client:
                 "numberOfPipelineInstances": number_of_pipeline_instances,
                 "referenceDocumentCollectionName": reference_process.document_source_name,
             },
-            json=[vars(evaluation_configuration) for evaluation_configuration in evaluation_configurations],
+            json=[
+                vars(evaluation_configuration)
+                for evaluation_configuration in evaluation_configurations
+            ],
             headers={
                 HEADER_CONTENT_TYPE: MEDIA_TYPE_APPLICATION_JSON,
                 HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_JSON,
@@ -4050,10 +4217,7 @@ class Client:
             total_time_slept += self._poll_delay
 
     @experimental_api
-    def _rename_process(
-            self,
-            process: Process,
-            new_name: str) -> Process:
+    def _rename_process(self, process: Process, new_name: str) -> Process:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
@@ -4066,8 +4230,8 @@ class Client:
             data=new_name,
             headers={
                 HEADER_CONTENT_TYPE: MEDIA_TYPE_TEXT_PLAIN_UTF8,
-                HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_JSON
-            }
+                HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_JSON,
+            },
         )
         process.name = new_name
         return process
@@ -4076,14 +4240,16 @@ class Client:
     def _is_higher_equal_version(version: str, compare_major: int, compare_minor: int) -> bool:
         version_parts = version.split(".")
         major = int(version_parts[0])
-        return major > compare_major or (major == compare_major and int(version_parts[1]) >= compare_minor)
+        return major > compare_major or (
+            major == compare_major and int(version_parts[1]) >= compare_minor
+        )
 
     @staticmethod
     def _preprocess_annotation_types(annotation_types: Union[None, str, List[str]]):
         if annotation_types is None:
             return None
         if isinstance(annotation_types, list):
-            annotation_types = list(set(annotation_types)) # deduplication
+            annotation_types = list(set(annotation_types))  # deduplication
             annotation_types = ",".join(annotation_types)
 
         # Remove whitespaces
