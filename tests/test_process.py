@@ -55,6 +55,32 @@ def test_rerun(process, requests_mock):
 
     process.rerun()
 
+def test_rerun_document_names_not_supported(process):
+    with pytest.raises(OperationNotSupported):
+        process.rerun(document_names=["doc1.txt", "doc2.txt"])
+
+
+def test_rerun_document_names(client_version_8, requests_mock):
+    project = client_version_8.get_project(PROJECT_NAME)
+    process = Process(project, "my_process", "my_doc_source", "my_pipeline")
+    
+    expected_document_names = ["doc1.txt", "doc2.txt"]
+
+    captured_document_names = []
+    def callback(request, _content):
+        captured_document_names.extend(request.json()["documentNames"])
+        return {"payload": None, "errorMessages": []}
+    
+    requests_mock.post(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{PROJECT_NAME}/"
+        f"documentSources/{process.document_source_name}/processes/{process.name}/reprocess",
+        headers={"Content-Type": "application/json"},
+        json=callback,
+    )
+
+    process.rerun(document_names=expected_document_names)
+    assert captured_document_names == expected_document_names
+
 
 def test_create_and_run_process(process, requests_mock):
     process_name = "process-on-process"
