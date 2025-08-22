@@ -2822,7 +2822,7 @@ class Client:
             return guessed_mime_type
 
         # textanalysis_mode is only supported for HD version 8
-        if textanalysis_mode is not None and not self.get_build_info()["specVersion"].startswith("8."):
+        if textanalysis_mode is not None and not self._is_higher_equal_version(self.get_spec_version(), 8, 0):
             raise OperationNotSupported(
                 "The textanalysis_mode parameter is only supported for Health Discovery versions >= 8.0."
             )
