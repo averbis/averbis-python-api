@@ -48,6 +48,7 @@ def test_import_plain_text(document_collection, requests_mock):
 
     assert result[0]["document_name"] == "text1.txt"
 
+
 def test_import_plain_text_with_textanalysis_mode(client_version_8, requests_mock):
     project = client_version_8.get_project(PROJECT_NAME)
     document_collection = DocumentCollection(project, "test-collection")
@@ -63,6 +64,7 @@ def test_import_plain_text_with_textanalysis_mode(client_version_8, requests_moc
         result = document_collection.import_documents(input_io, textanalysis_mode=TextanalysisMode.DO_NOTHING)
 
     assert result[0]["document_name"] == "text1.txt"
+
 
 def test_import_plain_text_with_textanalysis_mode_not_supported(document_collection):
     with pytest.raises(OperationNotSupported):
@@ -327,9 +329,9 @@ def test_delete_document(document_collection, requests_mock):
             "payload": {
                 "specVersion": "7.5.0",
                 "buildNumber": "branch: main f2731e315ee137cf94c48e5f2fa431777fe49cef",
-                "platformVersion": "8.20.0"
+                "platformVersion": "8.20.0",
             },
-            "errorMessages": []
+            "errorMessages": [],
         },
     )
 

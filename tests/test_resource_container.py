@@ -37,9 +37,9 @@ def test_list_resources(client, requests_mock):
             "payload": {
                 "specVersion": "7.7.0",
                 "buildNumber": "branch: main f2731e315ee137cf94c48e5f2fa431777fe49cef",
-                "platformVersion": "8.23.0"
+                "platformVersion": "8.23.0",
             },
-            "errorMessages": []
+            "errorMessages": [],
         },
     )
 
@@ -51,25 +51,19 @@ def test_list_resources(client, requests_mock):
                 "containerName": "container",
                 "scope": "GLOBAL",
                 "resources": [
-                    {
-                        "relativePath": "text3.txt"
-                    },
-                    {
-                        "relativePath": "text2.txt"
-                    },
-                    {
-                        "relativePath": "text1.txt"
-                    },
-                    {
-                        "relativePath": "sub/text4.txt"
-                    }
-                ]
+                    {"relativePath": "text3.txt"},
+                    {"relativePath": "text2.txt"},
+                    {"relativePath": "text1.txt"},
+                    {"relativePath": "sub/text4.txt"},
+                ],
             },
-            "errorMessages": []
-        }
+            "errorMessages": [],
+        },
     )
 
-    resource_container = ResourceContainer(client, "container", "GLOBAL", "experimental/textanalysis/containers")
+    resource_container = ResourceContainer(
+        client, "container", "GLOBAL", "experimental/textanalysis/containers"
+    )
     actual_resources = resource_container.list_resources()
     assert len(actual_resources) == 4
     assert "text3.txt" in actual_resources
@@ -86,9 +80,9 @@ def test_export_resources(tmp_path, client, requests_mock):
             "payload": {
                 "specVersion": "7.7.0",
                 "buildNumber": "branch: main f2731e315ee137cf94c48e5f2fa431777fe49cef",
-                "platformVersion": "8.23.0"
+                "platformVersion": "8.23.0",
             },
-            "errorMessages": []
+            "errorMessages": [],
         },
     )
 
@@ -100,7 +94,9 @@ def test_export_resources(tmp_path, client, requests_mock):
     )
 
     target_zip_file = tmp_path / "target_zip.zip"
-    resource_container = ResourceContainer(client, "container", "GLOBAL", "experimental/textanalysis/containers")
+    resource_container = ResourceContainer(
+        client, "container", "GLOBAL", "experimental/textanalysis/containers"
+    )
     resource_container.export_resources(target_zip_file)
 
     assert target_zip_file.exists()
@@ -115,9 +111,9 @@ def test_export_resource(tmp_path, client, requests_mock):
             "payload": {
                 "specVersion": "7.7.0",
                 "buildNumber": "branch: main f2731e315ee137cf94c48e5f2fa431777fe49cef",
-                "platformVersion": "8.23.0"
+                "platformVersion": "8.23.0",
             },
-            "errorMessages": []
+            "errorMessages": [],
         },
     )
 
@@ -128,7 +124,9 @@ def test_export_resource(tmp_path, client, requests_mock):
     )
 
     target_file = tmp_path / "target.txt"
-    resource_container = ResourceContainer(client, "container", "GLOBAL", "experimental/textanalysis/containers")
+    resource_container = ResourceContainer(
+        client, "container", "GLOBAL", "experimental/textanalysis/containers"
+    )
     resource_container.export_resource(target_file, "test/target.txt")
 
     assert target_file.exists()
@@ -143,9 +141,9 @@ def test_upsert_resource(client, requests_mock):
             "payload": {
                 "specVersion": "7.7.0",
                 "buildNumber": "branch: main f2731e315ee137cf94c48e5f2fa431777fe49cef",
-                "platformVersion": "8.23.0"
+                "platformVersion": "8.23.0",
             },
-            "errorMessages": []
+            "errorMessages": [],
         },
     )
 
@@ -155,11 +153,13 @@ def test_upsert_resource(client, requests_mock):
         json={
             "payload": {},
             "errorMessages": [],
-        }
+        },
     )
 
     resource_file = Path(TEST_DIRECTORY) / "resources" / "texts" / "text1.txt"
-    resource_container = ResourceContainer(client, "container", "GLOBAL", "experimental/textanalysis/containers")
+    resource_container = ResourceContainer(
+        client, "container", "GLOBAL", "experimental/textanalysis/containers"
+    )
     resource_container.upsert_resource(resource_file, "test/text1.txt")
 
 
@@ -171,9 +171,9 @@ def test_delete_resource(client, requests_mock):
             "payload": {
                 "specVersion": "7.7.0",
                 "buildNumber": "branch: main f2731e315ee137cf94c48e5f2fa431777fe49cef",
-                "platformVersion": "8.23.0"
+                "platformVersion": "8.23.0",
             },
-            "errorMessages": []
+            "errorMessages": [],
         },
     )
 
@@ -183,10 +183,12 @@ def test_delete_resource(client, requests_mock):
         json={
             "payload": {},
             "errorMessages": [],
-        }
+        },
     )
 
-    resource_container = ResourceContainer(client, "container", "GLOBAL", "experimental/textanalysis/containers")
+    resource_container = ResourceContainer(
+        client, "container", "GLOBAL", "experimental/textanalysis/containers"
+    )
     resource_container.delete_resource("test/text1.txt")
 
 
@@ -198,9 +200,9 @@ def test_delete_resource_container(client, requests_mock):
             "payload": {
                 "specVersion": "7.7.0",
                 "buildNumber": "branch: main f2731e315ee137cf94c48e5f2fa431777fe49cef",
-                "platformVersion": "8.23.0"
+                "platformVersion": "8.23.0",
             },
-            "errorMessages": []
+            "errorMessages": [],
         },
     )
 
@@ -210,8 +212,10 @@ def test_delete_resource_container(client, requests_mock):
         json={
             "payload": {},
             "errorMessages": [],
-        }
+        },
     )
 
-    resource_container = ResourceContainer(client, "container", "GLOBAL", "experimental/textanalysis/containers")
+    resource_container = ResourceContainer(
+        client, "container", "GLOBAL", "experimental/textanalysis/containers"
+    )
     resource_container.delete()
