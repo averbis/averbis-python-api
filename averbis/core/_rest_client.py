@@ -1452,8 +1452,6 @@ class Process:
 
 class TextanalysisMode(Enum):
     """
-    HIGHLY EXPERIMENTAL API - may soon change or disappear.
-
     Enum for the text analysis modes used to define process behaviour when importing documents
     """
     TRIGGER_PROCESSES = "triggerProcesses"
