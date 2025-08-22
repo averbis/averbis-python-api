@@ -131,7 +131,7 @@ def test_list_annotators(client_version_7, requests_mock):
                     "displayName": "DummyAnnotator2",
                     "bundle": "my.cool.bundle",
                     "version": "1.2.3",
-                }
+                },
             ],
             "errorMessages": [],
         },
@@ -150,9 +150,9 @@ def test_list_resource_containers(client, requests_mock):
             "payload": {
                 "specVersion": "7.7.0",
                 "buildNumber": "branch: main f2731e315ee137cf94c48e5f2fa431777fe49cef",
-                "platformVersion": "8.23.0"
+                "platformVersion": "8.23.0",
             },
-            "errorMessages": []
+            "errorMessages": [],
         },
     )
 
@@ -160,16 +160,9 @@ def test_list_resource_containers(client, requests_mock):
         f"{API_EXPERIMENTAL}/textanalysis/projects/test/containers",
         headers={"Content-Type": "application/json"},
         json={
-            "payload": {
-                "containers": [
-                    {
-                        "name": "container",
-                        "scope": "GLOBAL"
-                    }
-                ]
-            },
-            "errorMessages": []
-        }
+            "payload": {"containers": [{"name": "container", "scope": "GLOBAL"}]},
+            "errorMessages": [],
+        },
     )
 
     project = client.get_project("test")
@@ -187,9 +180,9 @@ def test_create_resource_container(client, requests_mock):
             "payload": {
                 "specVersion": "7.7.0",
                 "buildNumber": "branch: main f2731e315ee137cf94c48e5f2fa431777fe49cef",
-                "platformVersion": "8.23.0"
+                "platformVersion": "8.23.0",
             },
-            "errorMessages": []
+            "errorMessages": [],
         },
     )
 
@@ -201,22 +194,14 @@ def test_create_resource_container(client, requests_mock):
                 "containerName": "container",
                 "scope": "GLOBAL",
                 "resources": [
-                    {
-                        "relativePath": "text3.txt"
-                    },
-                    {
-                        "relativePath": "text2.txt"
-                    },
-                    {
-                        "relativePath": "text1.txt"
-                    },
-                    {
-                        "relativePath": "sub/text4.txt"
-                    }
-                ]
+                    {"relativePath": "text3.txt"},
+                    {"relativePath": "text2.txt"},
+                    {"relativePath": "text1.txt"},
+                    {"relativePath": "sub/text4.txt"},
+                ],
             },
-            "errorMessages": []
-        }
+            "errorMessages": [],
+        },
     )
 
     resource_zip_file = Path(TEST_DIRECTORY) / "resources" / "zip_test" / "zip_test.zip"

@@ -47,6 +47,7 @@ def test_import_plain_text(document_collection, requests_mock):
 
     assert result[0]["document_name"] == "text1.txt"
 
+
 def test_import_json(document_collection, requests_mock):
     requests_mock.post(
         f"{API_BASE}/importer/projects/{PROJECT_NAME}/documentCollections/test-collection/documents",
@@ -303,9 +304,9 @@ def test_delete_document(document_collection, requests_mock):
             "payload": {
                 "specVersion": "7.5.0",
                 "buildNumber": "branch: main f2731e315ee137cf94c48e5f2fa431777fe49cef",
-                "platformVersion": "8.20.0"
+                "platformVersion": "8.20.0",
             },
-            "errorMessages": []
+            "errorMessages": [],
         },
     )
 

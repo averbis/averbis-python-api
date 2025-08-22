@@ -45,7 +45,7 @@ def test_default_headers(client):
 
 
 def test_normalize_url_remove_angular_extension_in_client():
-    """ Tests if the url extension '#/' is removed when initializing the Client """
+    """Tests if the url extension '#/' is removed when initializing the Client"""
     client = Client("http://some-machine/health-discovery/#/", api_token=TEST_API_TOKEN)
     assert client._url == "http://some-machine/health-discovery/"
 
@@ -53,16 +53,16 @@ def test_normalize_url_remove_angular_extension_in_client():
 def test_build_url():
     client = Client("http://some-machine/health-discovery/", api_token=TEST_API_TOKEN)
     assert (
-            client._build_url("v1/some-endpoint/")
-            == "http://some-machine/health-discovery/rest/v1/some-endpoint/"
+        client._build_url("v1/some-endpoint/")
+        == "http://some-machine/health-discovery/rest/v1/some-endpoint/"
     )
 
 
 def test_build_url_encode_url():
     client = Client("http://some-machine/health-discovery/", api_token=TEST_API_TOKEN)
     assert (
-            client._build_url("v1/some-endpoint/Special URL ä ö # ! ? ³")
-            == "http://some-machine/health-discovery/rest/v1/some-endpoint/Special%20URL%20%C3%A4%20%C3%B6%20%23%20%21%20%3F%20%C2%B3"
+        client._build_url("v1/some-endpoint/Special URL ä ö # ! ? ³")
+        == "http://some-machine/health-discovery/rest/v1/some-endpoint/Special%20URL%20%C3%A4%20%C3%B6%20%23%20%21%20%3F%20%C2%B3"
     )
 
 
@@ -87,7 +87,7 @@ def test_upload_license(client, requests_mock):
     payload = {
         "valid": True,
         "expirationDateInMillis": 1753962034965,
-        "expirationDate": "Thu Jul 31 13:40:34 CEST 2025"
+        "expirationDate": "Thu Jul 31 13:40:34 CEST 2025",
     }
 
     requests_mock.get(
@@ -97,9 +97,9 @@ def test_upload_license(client, requests_mock):
             "payload": {
                 "specVersion": "7.5.0",
                 "buildNumber": "branch: main f2731e315ee137cf94c48e5f2fa431777fe49cef",
-                "platformVersion": "8.21.0"
+                "platformVersion": "8.21.0",
             },
-            "errorMessages": []
+            "errorMessages": [],
         },
     )
 
@@ -121,9 +121,9 @@ def test_list_resource_containers_not_supported(client, requests_mock):
             "payload": {
                 "specVersion": "7.6.0",
                 "buildNumber": "branch: main f2731e315ee137cf94c48e5f2fa431777fe49cef",
-                "platformVersion": "8.22.0"
+                "platformVersion": "8.22.0",
             },
-            "errorMessages": []
+            "errorMessages": [],
         },
     )
     with pytest.raises(OperationNotSupported):
@@ -138,9 +138,9 @@ def test_list_resource_containers(client, requests_mock):
             "payload": {
                 "specVersion": "7.7.0",
                 "buildNumber": "branch: main f2731e315ee137cf94c48e5f2fa431777fe49cef",
-                "platformVersion": "8.23.0"
+                "platformVersion": "8.23.0",
             },
-            "errorMessages": []
+            "errorMessages": [],
         },
     )
 
@@ -148,16 +148,9 @@ def test_list_resource_containers(client, requests_mock):
         f"{API_EXPERIMENTAL}/textanalysis/containers",
         headers={"Content-Type": "application/json"},
         json={
-            "payload": {
-                "containers": [
-                    {
-                        "name": "container",
-                        "scope": "GLOBAL"
-                    }
-                ]
-            },
-            "errorMessages": []
-        }
+            "payload": {"containers": [{"name": "container", "scope": "GLOBAL"}]},
+            "errorMessages": [],
+        },
     )
 
     actual_containers = client.list_resource_containers()
@@ -174,9 +167,9 @@ def test_create_resource_container(client, requests_mock):
             "payload": {
                 "specVersion": "7.7.0",
                 "buildNumber": "branch: main f2731e315ee137cf94c48e5f2fa431777fe49cef",
-                "platformVersion": "8.23.0"
+                "platformVersion": "8.23.0",
             },
-            "errorMessages": []
+            "errorMessages": [],
         },
     )
 
@@ -188,22 +181,14 @@ def test_create_resource_container(client, requests_mock):
                 "containerName": "container",
                 "scope": "GLOBAL",
                 "resources": [
-                    {
-                        "relativePath": "text3.txt"
-                    },
-                    {
-                        "relativePath": "text2.txt"
-                    },
-                    {
-                        "relativePath": "text1.txt"
-                    },
-                    {
-                        "relativePath": "sub/text4.txt"
-                    }
-                ]
+                    {"relativePath": "text3.txt"},
+                    {"relativePath": "text2.txt"},
+                    {"relativePath": "text1.txt"},
+                    {"relativePath": "sub/text4.txt"},
+                ],
             },
-            "errorMessages": []
-        }
+            "errorMessages": [],
+        },
     )
 
     resource_zip_file = Path(TEST_DIRECTORY) / "resources" / "zip_test" / "zip_test.zip"
@@ -849,7 +834,9 @@ def test_concept_autosuggest(client, requests_mock):
         },
         "errorMessages": [],
     }
-    endpoint = f"terminology/projects/{project_name}/terminologies/{terminology_name}/conceptAutosuggest"
+    endpoint = (
+        f"terminology/projects/{project_name}/terminologies/{terminology_name}/conceptAutosuggest"
+    )
     full_url = f"{API_EXPERIMENTAL}/{endpoint}"
     requests_mock.post(full_url, json=response_json)
 
@@ -873,14 +860,14 @@ def test_analyse_text(client, requests_mock):
                     "begin": 28,
                     "end": 40,
                     "type": "de.averbis.types.health.Diagnosis",
-                    "coveredText": "Appendizitis"
+                    "coveredText": "Appendizitis",
                     # ... truncated ...
                 },
                 {
                     "begin": 28,
                     "end": 40,
                     "type": "de.averbis.textanalysis.types.health.Diagnosis",
-                    "coveredText": "Appendizitis"
+                    "coveredText": "Appendizitis",
                     # ... truncated ...
                 },
             ],
@@ -915,7 +902,7 @@ def test_analyse_texts_with_some_working_and_some_failing(client_version_5, requ
                         "begin": 0,
                         "end": len(doc_text),
                         "type": "uima.tcas.DocumentAnnotation",
-                        "coveredText": doc_text
+                        "coveredText": doc_text,
                         # ... truncated ...
                     },
                 ],
@@ -1253,13 +1240,23 @@ def test_create_zip_io__folder(client):
 
 def test_annotation_types_normalization(client):
     normalized = client._preprocess_annotation_types(["custom.Diagnosis", "custom.Medication"])
-    assert normalized == "custom.Diagnosis,custom.Medication" or normalized == "custom.Medication,custom.Diagnosis"  # order is not fixed
-    assert client._preprocess_annotation_types("custom.Diagnosis, custom.Medication") == "custom.Diagnosis,custom.Medication"
+    assert (
+        normalized == "custom.Diagnosis,custom.Medication"
+        or normalized == "custom.Medication,custom.Diagnosis"
+    )  # order is not fixed
+    assert (
+        client._preprocess_annotation_types("custom.Diagnosis, custom.Medication")
+        == "custom.Diagnosis,custom.Medication"
+    )
     assert client._preprocess_annotation_types(None) is None
 
 
 def test_evaluation_configuration_constructor_handles_kwargs():
-    eval_config = EvaluationConfiguration("de.averbis.types.health.diagnosis", features_to_compare=["begin", "end"], projectAnnotationsTo="de.averbis.extraction.types.Token")
+    eval_config = EvaluationConfiguration(
+        "de.averbis.types.health.diagnosis",
+        features_to_compare=["begin", "end"],
+        projectAnnotationsTo="de.averbis.extraction.types.Token",
+    )
     assert eval_config.projectAnnotationsTo == "de.averbis.extraction.types.Token"
 
 
