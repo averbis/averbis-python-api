@@ -113,6 +113,32 @@ def test_upload_license(client, requests_mock):
     assert license_info == payload
 
 
+def test_is_token_valid(client, requests_mock):
+    requests_mock.get(
+        f"{API_BASE}/license",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": {"valid": True},
+            "errorMessages": [],
+        },
+    )
+
+    is_valid = client.is_token_valid(TEST_API_TOKEN)
+    assert is_valid is True
+
+
+def test_is_token_valid_false(client, requests_mock):
+    requests_mock.get(
+        f"{API_BASE}/license",
+        headers={"Content-Type": "application/json"},
+        status_code=401,
+        json={},
+    )
+
+    is_valid = client.is_token_valid(TEST_API_TOKEN)
+    assert is_valid is False
+
+
 def test_list_resource_containers_not_supported(client, requests_mock):
     requests_mock.get(
         f"{API_BASE}/buildInfo",

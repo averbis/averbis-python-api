@@ -2405,6 +2405,19 @@ class Client:
         )
         return None
 
+    def is_token_valid(self, api_token: str) -> bool:
+        """
+        Checks if the given API token is valid.
+
+        :return: True if the token is valid, False otherwise.
+        """
+
+        try:
+            self.__request_with_json_response("get", "/v1/license")
+            return True
+        except RequestException:
+            return False
+
     def get_api_token_status(self, user: str, password: str) -> str:
         """
         Obtains the status of the given API token.
