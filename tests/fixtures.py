@@ -144,8 +144,8 @@ def requests_mock_platform_9(requests_mock):
         json={"payload": {"specVersion": "8.0.0", "buildNumber": "", "platformVersion": "9.0.1"}, "errorMessages": []},
     )
 
-## Different clients based on the above platforms
 
+## Different clients based on the above platforms
 
 # Tests that should work for all platform versions
 @pytest.fixture(params=["5.33.0", "6.0.0"])
@@ -196,6 +196,10 @@ def client_version_6_17_platform_6_50(requests_mock_platform_6_50):
 
 @pytest.fixture()
 def client_version_7(requests_mock_platform_7):
+    return Client(URL_BASE_ID, api_token=TEST_API_TOKEN)
+
+@pytest.fixture()
+def client_version_8(requests_mock_platform_9):
     return Client(URL_BASE_ID, api_token=TEST_API_TOKEN)
 
 
