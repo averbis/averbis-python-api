@@ -198,10 +198,6 @@ def client_version_6_17_platform_6_50(requests_mock_platform_6_50):
 def client_version_7(requests_mock_platform_7):
     return Client(URL_BASE_ID, api_token=TEST_API_TOKEN)
 
-@pytest.fixture()
-def client_version_8(requests_mock_platform_9):
-    return Client(URL_BASE_ID, api_token=TEST_API_TOKEN)
-
 
 @pytest.fixture()
 def client_version_7_3_platform_8_17(requests_mock_platform_8_17):
