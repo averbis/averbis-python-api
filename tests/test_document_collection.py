@@ -22,6 +22,7 @@ from pathlib import Path
 from cassis import Cas, TypeSystem
 
 from averbis import DocumentCollection
+from averbis.core._rest_client import OperationNotSupported, TextanalysisMode
 from tests.fixtures import *
 from tests.utils import *
 
@@ -46,6 +47,30 @@ def test_import_plain_text(document_collection, requests_mock):
         result = document_collection.import_documents(input_io)
 
     assert result[0]["document_name"] == "text1.txt"
+
+
+def test_import_plain_text_with_textanalysis_mode(client_version_8, requests_mock):
+    project = client_version_8.get_project(PROJECT_NAME)
+    document_collection = DocumentCollection(project, "test-collection")
+    requests_mock.post(
+        f"{API_BASE}/importer/projects/{PROJECT_NAME}/documentCollections/test-collection/documents",
+        json={
+            "payload": {"original_document_name": "text1.txt", "document_name": "text1.txt"},
+            "errorMessages": [],
+        },
+    )
+    file_path = os.path.join(TEST_DIRECTORY, "resources/texts/text1.txt")
+    with open(file_path, "r", encoding="UTF-8") as input_io:
+        result = document_collection.import_documents(input_io, textanalysis_mode=TextanalysisMode.DO_NOTHING)
+
+    assert result[0]["document_name"] == "text1.txt"
+
+
+def test_import_plain_text_with_textanalysis_mode_not_supported(document_collection):
+    with pytest.raises(OperationNotSupported):
+        file_path = os.path.join(TEST_DIRECTORY, "resources/texts/text1.txt")
+        with open(file_path, "r", encoding="UTF-8") as input_io:
+            document_collection.import_documents(input_io, textanalysis_mode=TextanalysisMode.DO_NOTHING)
 
 
 def test_import_json(document_collection, requests_mock):

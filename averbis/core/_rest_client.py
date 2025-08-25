@@ -1305,15 +1305,27 @@ class Process:
         )
 
     @experimental_api
-    def rerun(self):
+    def rerun(self, document_names: Optional[List[str]] = None):
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
         Triggers a rerun if the process is IDLE.
         All current results will be deleted and the documents will be reprocessed.
+        :param document_names: only rerun the textanalysis process on these documents
         """
         # noinspection PyProtectedMember
-        self.project.client._reprocess(self.project.name, self.name, self.document_source_name)
+        self.project.client._reprocess(self.project.name, self.name, self.document_source_name, document_names=document_names)
+    
+    @experimental_api
+    def process_unprocessed(self):
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Triggers a processing of all unprocessed documents in this process.
+        """
+        # noinspection PyProtectedMember
+        self.project.client._reprocess_unprocessed(self.project.name, self.name, self.document_source_name)
+
 
     @experimental_api
     def get_process_state(self) -> ProcessState:
@@ -1506,8 +1518,17 @@ class Process:
         # noinspection PyProtectedMember
         return self.project.client._rename_process(self, name)
 
+class TextanalysisMode(Enum):
+    """
+    Enum for the text analysis modes used to define process behaviour when importing documents
+    """
+    TRIGGER_PROCESSES = "triggerProcesses"
+    DO_NOTHING = "doNothing"
+    REMOVE_RESULTS = "removeResults"
 
 class DocumentCollection:
+
+
     def __init__(self, project: "Project", name: str):
         self.project = project
         self.name = name
@@ -1614,6 +1635,7 @@ class DocumentCollection:
         mime_type: Optional[str] = None,
         filename: Optional[str] = None,
         typesystem: Optional["TypeSystem"] = None,
+        textanalysis_mode: Optional[TextanalysisMode] = None
     ) -> List[dict]:
         """
         Imports documents from a given file, from a given string or from a dictionary (representing the json-format).
@@ -1634,11 +1656,16 @@ class DocumentCollection:
         source is a string or a CAS object), the filename should explicitly be provided. Note that a file in the
         Averbis Solr XML format can contain multiple documents and each of these has its name encoded within the XML.
         In this case, the setting filename parameter is not permitted at all.
+
+        :param textanalysis_mode: Optional text analysis mode, controls how the imported document is analysed.
+                                  TextanalysisMode.TRIGGER_PROCESSES (default): trigger a reprocess in all processes of the document
+                                  TextanalysisMode.DO_NOTHING: no processes are triggered, textanalysis results of the document are kept
+                                  TextanalysisMode.REMOVE_RESULTS: remove the textanalysis results of all processes for this document
         """
 
         # noinspection PyProtectedMember
         return self.project.client._import_documents(
-            self.project.name, self.name, source, mime_type, filename, typesystem
+            self.project.name, self.name, source, mime_type, filename, typesystem, textanalysis_mode
         )
 
     @experimental_api
@@ -2857,6 +2884,7 @@ class Client:
         mime_type: Optional[str] = None,
         filename: Optional[str] = None,
         typesystem: Optional["TypeSystem"] = None,
+        textanalysis_mode: Optional[TextanalysisMode] = None
     ) -> List[dict]:
         """
         Use DocumentCollection.import_document() instead.
@@ -2915,6 +2943,12 @@ class Client:
                 )
             return guessed_mime_type
 
+        # textanalysis_mode is only supported for HD version 8
+        if textanalysis_mode is not None and not self._is_higher_equal_version(self.get_spec_version(), 8, 0):
+            raise OperationNotSupported(
+                "The textanalysis_mode parameter is only supported for Health Discovery versions >= 8.0."
+            )
+
         # If the format is not a multi-document format, we need to have a filename. If it is a multi-document
         # format, then the server is using the filenames stored within the multi-document
         if mime_type in [MEDIA_TYPE_APPLICATION_SOLR_XML]:
@@ -2935,11 +2969,19 @@ class Client:
 
         files = self.create_import_files(source, mime_type, filename, typesystem)
 
-        response = self.__request_with_json_response(
-            "post",
-            f"/v1/importer/projects/{project}/documentCollections/{collection_name}/documents",
-            files=files,
-        )
+        if textanalysis_mode is not None:
+            response = self.__request_with_json_response(
+                "post",
+                f"/v1/importer/projects/{project}/documentCollections/{collection_name}/documents",
+                files=files,
+                params={"textanalysisMode": textanalysis_mode.value}
+            )
+        else:
+            response = self.__request_with_json_response(
+                "post",
+                f"/v1/importer/projects/{project}/documentCollections/{collection_name}/documents",
+                files=files,
+            )
 
         # When a multi-document file format is uploaded (e.g. SolrXML), we get an array as a result, otherwise we get
         # an object. To have a uniform API we wrap the object in an array so we always get an array as a result.
@@ -3917,18 +3959,40 @@ class Client:
             f"documentSources/{document_source_name}/processes/{process_name}",
         )
         return None
+    
+    @experimental_api
+    def _reprocess_unprocessed(self, project_name: str, process_name: str, document_source_name: str) -> None:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Use Process.process_unprocessed() instead.
+        """
+        if not self._is_higher_equal_version(self.get_spec_version(), 8, 0):
+            raise OperationNotSupported(
+                "Processing unprocessed documents is only supported for Health Discovery versions >= 8.0."
+            )
+        self.__request_with_json_response(
+            "post",
+            f"/experimental/textanalysis/projects/{project_name}/"
+            f"documentSources/{document_source_name}/processes/{process_name}/reprocessUnprocessed",
+        )
+        return None
 
     @experimental_api
-    def _reprocess(self, project_name: str, process_name: str, document_source_name: str) -> None:
+    def _reprocess(self, project_name: str, process_name: str, document_source_name: str, document_names: Optional[List[str]] = None) -> None:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
         Use Process.rerun() instead.
         """
+        if document_names and not self._is_higher_equal_version(self.get_spec_version(), 8, 0):
+            raise OperationNotSupported(f"The parameter 'document_names' is only supported for health-discovery versions >= 8.0")
+        
         self.__request_with_json_response(
             "post",
             f"/experimental/textanalysis/projects/{project_name}/"
             f"documentSources/{document_source_name}/processes/{process_name}/reprocess",
+            json={"documentNames": document_names} if document_names else None
         )
         return None
 
