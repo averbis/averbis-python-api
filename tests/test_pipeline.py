@@ -33,9 +33,13 @@ from averbis.core import (
     OperationNotSupported,
     MEDIA_TYPE_APPLICATION_XMI,
     MEDIA_TYPE_APPLICATION_XML,
-    MEDIA_TYPE_PDF
+    MEDIA_TYPE_PDF,
 )
-from averbis.core._rest_client import MEDIA_TYPE_FHIR_JSON, MEDIA_TYPE_TEXT_PLAIN_UTF8, MEDIA_TYPE_APPLICATION_JSON
+from averbis.core._rest_client import (
+    MEDIA_TYPE_FHIR_JSON,
+    MEDIA_TYPE_TEXT_PLAIN_UTF8,
+    MEDIA_TYPE_APPLICATION_JSON,
+)
 from tests.fixtures import *
 
 logging.basicConfig(level=logging.INFO)
@@ -98,7 +102,7 @@ def pipeline_analyse_text_mock(client, requests_mock):
                     "begin": 0,
                     "end": len(doc_text),
                     "type": "uima.tcas.DocumentAnnotation",
-                    "coveredText": doc_text
+                    "coveredText": doc_text,
                     # ... truncated ...
                 },
             ],
@@ -184,8 +188,8 @@ def pipeline_analyse_cas_to_cas_mock(client, requests_mock):
     )
 
     def callback(request, _content):
-        content_type = request._request.headers['content-type']
-        multipart_string = request.text.encode('utf-8')
+        content_type = request._request.headers["content-type"]
+        multipart_string = request.text.encode("utf-8")
         decoder = MultipartDecoder(multipart_string, content_type)
         return decoder.parts[0].text
 
@@ -367,19 +371,19 @@ def test_analyse_pdf_to_pdf(client, requests_mock):
         f"{API_BASE}/buildInfo",
         headers={"Content-Type": "application/json"},
         json={
-              "payload": {
+            "payload": {
                 "specVersion": "7.4.0-SNAPSHOT",
                 "buildNumber": "branch: main f2731e315ee137cf94c48e5f2fa431777fe49cef",
-                "platformVersion": "8.17.0"
-              },
-              "errorMessages": []
+                "platformVersion": "8.17.0",
             },
+            "errorMessages": [],
+        },
     )
 
     requests_mock.post(
         f"{API_BASE}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/analyseText",
         headers={"Content-Type": MEDIA_TYPE_PDF},
-        text=callback
+        text=callback,
     )
 
     pdf1_path = Path(TEST_DIRECTORY) / "resources" / "texts" / "text1.txt"
@@ -398,18 +402,18 @@ def test_analyse_text_to_fhir(client_version_7_3_platform_8_17, requests_mock):
     requests_mock.post(
         f"{API_BASE}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/analyseText",
         headers={"Content-Type": MEDIA_TYPE_FHIR_JSON},
-        json=callback
+        json=callback,
     )
 
     pipeline = Pipeline(Project(client_version_7_3_platform_8_17, PROJECT_NAME), "discharge")
-    text = 'The patient has a fever'
+    text = "The patient has a fever"
     result = pipeline.analyse_text_to_fhir(source=text)
     assert result["text"] == text
 
 
 def test_analyse_text_to_fhir_not_supported(client_version_6):
     pipeline = Pipeline(Project(client_version_6, PROJECT_NAME), "discharge")
-    text = 'The patient has a fever'
+    text = "The patient has a fever"
     with pytest.raises(OperationNotSupported):
         pipeline.analyse_text_to_fhir(source=text)
 
@@ -423,11 +427,11 @@ def test_analyse_fhir_to_fhir(client_version_7_3_platform_8_17, requests_mock):
     requests_mock.post(
         f"{API_BASE}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/analyseText",
         headers={"Content-Type": MEDIA_TYPE_FHIR_JSON},
-        json=callback
+        json=callback,
     )
 
     pipeline = Pipeline(Project(client_version_7_3_platform_8_17, PROJECT_NAME), "discharge")
-    fhir = _create_fhir(b'The patient has a fever')
+    fhir = _create_fhir(b"The patient has a fever")
     result = pipeline.analyse_fhir_to_fhir(source=str(fhir))
     assert result["text"] == str(fhir)
 
@@ -450,7 +454,7 @@ def test_analyse_fhir_to_cas(client_version_7_3_platform_8_17, requests_mock):
     requests_mock.post(
         f"{API_BASE}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/analyseText",
         headers={"Content-Type": MEDIA_TYPE_APPLICATION_XMI},
-        text=callback
+        text=callback,
     )
 
     pipeline = Pipeline(Project(client_version_7_3_platform_8_17, PROJECT_NAME), "discharge")
@@ -468,7 +472,7 @@ def test_analyse_fhir_to_json(client_version_7_3_platform_8_17, requests_mock):
     requests_mock.post(
         f"{API_BASE}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/analyseText",
         headers={"Content-Type": MEDIA_TYPE_APPLICATION_JSON},
-        json=callback
+        json=callback,
     )
 
     pipeline = Pipeline(Project(client_version_7_3_platform_8_17, PROJECT_NAME), "discharge")
@@ -483,16 +487,15 @@ def _create_fhir(text: bytes):
         "resourceType": "Bundle",
         "id": "bundleId",
         "type": "collection",
-        "entry":
-            {
-                "fullUrl": "entryId",
-                "resource": {
-                    "id": "Logical id of this artifact",
-                    "resourceType": "Binary",
-                    "contentType": "text/plain",
-                    "data": base64.b64encode(text).decode("utf-8")
-                }
-            }
+        "entry": {
+            "fullUrl": "entryId",
+            "resource": {
+                "id": "Logical id of this artifact",
+                "resourceType": "Binary",
+                "contentType": "text/plain",
+                "data": base64.b64encode(text).decode("utf-8"),
+            },
+        },
     }
     return fhir
 
@@ -505,9 +508,9 @@ def test_list_resource_containers(client, requests_mock):
             "payload": {
                 "specVersion": "7.7.0",
                 "buildNumber": "branch: main f2731e315ee137cf94c48e5f2fa431777fe49cef",
-                "platformVersion": "8.23.0"
+                "platformVersion": "8.23.0",
             },
-            "errorMessages": []
+            "errorMessages": [],
         },
     )
 
@@ -515,16 +518,9 @@ def test_list_resource_containers(client, requests_mock):
         f"{API_EXPERIMENTAL}/textanalysis/projects/test/pipelines/pipeline/containers",
         headers={"Content-Type": "application/json"},
         json={
-            "payload": {
-                "containers": [
-                    {
-                        "name": "container",
-                        "scope": "GLOBAL"
-                    }
-                ]
-            },
-            "errorMessages": []
-        }
+            "payload": {"containers": [{"name": "container", "scope": "GLOBAL"}]},
+            "errorMessages": [],
+        },
     )
 
     project = client.get_project("test")
@@ -543,9 +539,9 @@ def test_create_resource_container(client, requests_mock):
             "payload": {
                 "specVersion": "7.7.0",
                 "buildNumber": "branch: main f2731e315ee137cf94c48e5f2fa431777fe49cef",
-                "platformVersion": "8.23.0"
+                "platformVersion": "8.23.0",
             },
-            "errorMessages": []
+            "errorMessages": [],
         },
     )
 
@@ -557,22 +553,14 @@ def test_create_resource_container(client, requests_mock):
                 "containerName": "container",
                 "scope": "GLOBAL",
                 "resources": [
-                    {
-                        "relativePath": "text3.txt"
-                    },
-                    {
-                        "relativePath": "text2.txt"
-                    },
-                    {
-                        "relativePath": "text1.txt"
-                    },
-                    {
-                        "relativePath": "sub/text4.txt"
-                    }
-                ]
+                    {"relativePath": "text3.txt"},
+                    {"relativePath": "text2.txt"},
+                    {"relativePath": "text1.txt"},
+                    {"relativePath": "sub/text4.txt"},
+                ],
             },
-            "errorMessages": []
-        }
+            "errorMessages": [],
+        },
     )
 
     resource_zip_file = Path(TEST_DIRECTORY) / "resources" / "zip_test" / "zip_test.zip"
