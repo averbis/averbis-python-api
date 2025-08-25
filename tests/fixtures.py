@@ -147,7 +147,6 @@ def requests_mock_platform_9(requests_mock):
 
 ## Different clients based on the above platforms
 
-
 # Tests that should work for all platform versions
 @pytest.fixture(params=["5.33.0", "6.0.0"])
 def client(request, requests_mock):

@@ -1288,15 +1288,16 @@ class Process:
         )
 
     @experimental_api
-    def rerun(self):
+    def rerun(self, document_names: Optional[List[str]] = None):
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
         Triggers a rerun if the process is IDLE.
         All current results will be deleted and the documents will be reprocessed.
+        :param document_names: only rerun the textanalysis process on these documents
         """
         # noinspection PyProtectedMember
-        self.project.client._reprocess(self.project.name, self.name, self.document_source_name)
+        self.project.client._reprocess(self.project.name, self.name, self.document_source_name, document_names=document_names)
     
     @experimental_api
     def process_unprocessed(self):
@@ -3957,16 +3958,20 @@ class Client:
         return None
 
     @experimental_api
-    def _reprocess(self, project_name: str, process_name: str, document_source_name: str) -> None:
+    def _reprocess(self, project_name: str, process_name: str, document_source_name: str, document_names: Optional[List[str]] = None) -> None:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
         Use Process.rerun() instead.
         """
+        if document_names and not self._is_higher_equal_version(self.get_spec_version(), 8, 0):
+            raise OperationNotSupported(f"The parameter 'document_names' is only supported for health-discovery versions >= 8.0")
+        
         self.__request_with_json_response(
             "post",
             f"/experimental/textanalysis/projects/{project_name}/"
             f"documentSources/{document_source_name}/processes/{process_name}/reprocess",
+            json={"documentNames": document_names} if document_names else None
         )
         return None
 
