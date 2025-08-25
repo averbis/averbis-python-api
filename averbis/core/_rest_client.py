@@ -1640,9 +1640,9 @@ class DocumentCollection:
         In this case, the setting filename parameter is not permitted at all.
 
         :param textanalysis_mode: Optional text analysis mode, controls how the imported document is analysed.
-                                  'triggerProcesses' (default): trigger a reprocess in all processes of the document
-                                  'doNothing': no processes are triggered, textanalysis results of the document are kept
-                                  'removeResults': remove the textanalysis results of all processes for this document
+                                  TextanalysisMode.TRIGGER_PROCESSES (default): trigger a reprocess in all processes of the document
+                                  TextanalysisMode.DO_NOTHING: no processes are triggered, textanalysis results of the document are kept
+                                  TextanalysisMode.REMOVE_RESULTS: remove the textanalysis results of all processes for this document
         """
 
         # noinspection PyProtectedMember
