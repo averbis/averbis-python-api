@@ -1297,6 +1297,17 @@ class Process:
         """
         # noinspection PyProtectedMember
         self.project.client._reprocess(self.project.name, self.name, self.document_source_name)
+    
+    @experimental_api
+    def process_unprocessed(self):
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Triggers a processing of all unprocessed documents in this process.
+        """
+        # noinspection PyProtectedMember
+        self.project.client._reprocess_unprocessed(self.project.name, self.name, self.document_source_name)
+
 
     @experimental_api
     def get_process_state(self) -> ProcessState:
@@ -3894,6 +3905,24 @@ class Client:
             "delete",
             f"/experimental/textanalysis/projects/{project_name}/"
             f"documentSources/{document_source_name}/processes/{process_name}",
+        )
+        return None
+    
+    @experimental_api
+    def _reprocess_unprocessed(self, project_name: str, process_name: str, document_source_name: str) -> None:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Use Process.process_unprocessed() instead.
+        """
+        if not self._is_higher_equal_version(self.get_spec_version(), 8, 0):
+            raise OperationNotSupported(
+                "Processing unprocessed documents is only supported for Health Discovery versions >= 8.0."
+            )
+        self.__request_with_json_response(
+            "post",
+            f"/experimental/textanalysis/projects/{project_name}/"
+            f"documentSources/{document_source_name}/processes/{process_name}/reprocessUnprocessed",
         )
         return None
 
