@@ -156,7 +156,7 @@ In contrast to the simple text analysis endpoint above, one can also upload the 
     print(results)
 
 Pear Management
-~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~
 
 A `PEAR <https://uima.apache.org/doc-uima-pears.html/>`_ (Processing Engine ARchive) file is the UIMA standard packaging format for UIMA components like analysis engines (annotators) or CAS consumers. We provdie some (experimental - may change soon) endpoints to upload, delete and list PEARs.
 
@@ -212,16 +212,22 @@ An existing profile can then be loaded with
 
 
 Development
-------------
+-----------
 
-To set up a local development environment, check out the repository, set up a virtual environment
-and install the required dependencies (if :code:`--no-site-packages` does not work on your system, omit it):
+To set up a local development environment, check out the repository, and run uv sync.
+Best follow this by running the tests to see if all is well.
 
 .. code-block:: shell
 
-  virtualenv venv --python=python3 --no-site-packages
-  source venv/bin/activate
-  pip install -e ".[test, dev, doc]"
+  uv sync
+  uv run task test
+
+You can get a list of the typical development tasks (e.g. test, format) using 
+
+.. code-block:: shell
+
+  uv run task -l
+
 
 To install the latest development version of the library directly from GitHub, you can use the following command:
 
