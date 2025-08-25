@@ -117,7 +117,14 @@ def deprecated(reason):
 
 
 class ExtendedRequestException(RequestException):
-    def __init__(self, *args, status_code: Optional[int]=None, reason: Optional[str]=None, url: Optional[str]=None, **kwargs):
+    def __init__(
+        self,
+        *args,
+        status_code: Optional[int] = None,
+        reason: Optional[str] = None,
+        url: Optional[str] = None,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
         self.status_code = status_code
         self.reason = reason
@@ -3990,7 +3997,6 @@ class Client:
         reason = raw_response.reason
         url = raw_response.url
 
-        error_msg = ""
         if isinstance(reason, bytes):
             # We attempt to decode utf-8 first because some servers
             # choose to localize their reason strings. If the string
@@ -4001,29 +4007,24 @@ class Client:
             except UnicodeDecodeError:
                 reason = reason.decode("iso-8859-1")
 
-        if 400 <= status_code < 500:
-            error_msg = f"{status_code} Server Error: '{reason}' for url: '{url}'."
-
-        elif 500 <= status_code < 600:
-            error_msg = f"{status_code} Server Error: '{reason}' for url: '{url}'."
-
+        error_msg = ""
         try:
             response = raw_response.json()
 
             # Accessing an endpoint that is in the subdomain of the platform, but which does not exist,
             # returns a general servlet with a field "message"
             if "message" in response and response["message"] is not None:
-                error_msg += f"\nPlatform error message is: '{response['message']}'"
+                error_msg = f"Platform error: {response['message']}"
 
             # Accessing an existing endpoint that has an error, returns its error in "errorMessages"
             if "errorMessages" in response and response["errorMessages"] is not None:
-                error_msg += (
-                    f"\nEndpoint error message is: '{', '.join(response['errorMessages'])}'"
-                )
+                error_msg = f"Endpoint error: {', '.join(response['errorMessages'])}"
         except JSONDecodeError:
             pass
 
-        raise ExtendedRequestException(error_msg, status_code=status_code, reason=reason, url=url)
+        raise ExtendedRequestException(
+            error_msg, status_code=status_code, reason=reason, url=url
+        )
 
     @staticmethod
     def __process_name(process: Union[str, Process]):
