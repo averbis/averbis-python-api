@@ -1,0 +1,75 @@
+[project]
+name = "averbis-python-api"
+version = "0.15.0.dev0"
+description = "Averbis REST API client for Python."
+readme = "README.rst"
+requires-python = ">=3.8.0"
+dependencies = [
+  "requests",
+  "types-requests",
+  "dkpro-cassis>=0.7.1"
+]
+authors = [
+  { name = "Averbis GmbH" }
+]
+license = { text = "Apache License, Version 2.0. Copyright Averbis GmbH" }
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "License :: OSI Approved :: Apache Software License"
+]
+
+[project.urls]
+"Issues" = "https://github.com/averbis/averbis-python-api/issues"
+"Repository" = "https://github.com/averbis/averbis-python-api"
+"Documentation" = "https://averbis-python-api.readthedocs.io/en/latest/?badge=latest"
+
+[dependency-groups]
+dev = [
+  "ruff",
+  "pytest",
+  "taskipy",
+  "junit-xml",
+  "requests-toolbelt>=0.9.1",
+  "pytest>=5.2.1",
+  "codecov",
+  "pytest-cov",
+  "requests-mock",
+  "mypy",
+  "twine",
+  "pygments",
+  "licenseheaders",
+  "sphinx",
+  "sphinx-autodoc-typehints",
+  "sphinx-rtd-theme"
+]
+
+[tool.taskipy.tasks.format]
+cmd = "ruff format averbis tests"
+help = "formats the code with ruff"
+
+[tool.taskipy.tasks.test]
+cmd = "python -m pytest -v --doctest-modules -s --junitxml=results.xml --cov=./ --cov-report=xml"
+help = "runs all tests with pytest"
+
+[tool.taskipy.tasks.lint]
+cmd = "python -m mypy averbis"
+help = "runs linter"
+
+[tool.taskipy.tasks.doc]
+cmd = """
+cd docs && \
+sphinx-build -M html . _build
+"""
+help = "builds the documentation with Sphinx"
+
+[tool.taskipy.tasks.license]
+cmd = """
+licenseheaders -t build/apache-2.tmpl -n "Averbis Python API" -y "2024" -o "Averbis GmbH" -u "https://www.averbis.com" -x ".*" "venv/*"
+"""
+help = "adds license headers to all files"
