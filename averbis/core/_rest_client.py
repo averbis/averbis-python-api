@@ -123,12 +123,14 @@ class ExtendedRequestException(RequestException):
         status_code: Optional[int] = None,
         reason: Optional[str] = None,
         url: Optional[str] = None,
+        error_message: Optional[str] = None,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
         self.status_code = status_code
         self.reason = reason
         self.url = url
+        self.error_message = error_message
 
 
 class OperationNotSupported(Exception):
@@ -4007,23 +4009,26 @@ class Client:
             except UnicodeDecodeError:
                 reason = reason.decode("iso-8859-1")
 
-        error_msg = ""
+        full_msg = f"{status_code} Server Error: '{reason}' for url: '{url}'."
+        error_message = None
         try:
             response = raw_response.json()
 
             # Accessing an endpoint that is in the subdomain of the platform, but which does not exist,
             # returns a general servlet with a field "message"
             if "message" in response and response["message"] is not None:
-                error_msg = f"Platform error: {response['message']}"
+                error_message = f"Platform error message is: '{response['message']}'"
+                full_msg += f"\n{error_message}"
 
             # Accessing an existing endpoint that has an error, returns its error in "errorMessages"
             if "errorMessages" in response and response["errorMessages"] is not None:
-                error_msg = f"Endpoint error: {', '.join(response['errorMessages'])}"
+                error_message = f"Endpoint error message is: '{', '.join(response['errorMessages'])}'"
+                full_msg += f"\n{error_message}"
         except JSONDecodeError:
             pass
 
         raise ExtendedRequestException(
-            error_msg, status_code=status_code, reason=reason, url=url
+            full_msg, status_code=status_code, reason=reason, url=url, error_message=error_message
         )
 
     @staticmethod
