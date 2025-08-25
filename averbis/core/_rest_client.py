@@ -116,6 +116,23 @@ def deprecated(reason):
     return decorator_deprecated
 
 
+class ExtendedRequestException(RequestException):
+    def __init__(
+        self,
+        *args,
+        status_code: Optional[int] = None,
+        reason: Optional[str] = None,
+        url: Optional[str] = None,
+        error_message: Optional[str] = None,
+        **kwargs,
+    ):
+        super().__init__(*args, **kwargs)
+        self.status_code = status_code
+        self.reason = reason
+        self.url = url
+        self.error_message = error_message
+
+
 class OperationNotSupported(Exception):
     """Raised when the REST API does not support a given operation."""
 
@@ -2197,8 +2214,12 @@ class Client:
             )
             return response["payload"]
         except RequestException as e:
-            raise RequestException(
-                f"A problem occurred while uploading the license file. Please note that the function 'client.upload_license(license_path)' is only supported for Health Discovery version 7.4.0 and newer. The full error was:\n{e}"
+            raise ExtendedRequestException(
+                f"A problem occurred while uploading the license file. Please note that the function 'client.upload_license(license_path)' is only supported for Health Discovery version 7.4.0 and newer. The full error was:\n{e}",
+                status_code=getattr(e, "status_code", None),
+                reason=getattr(e, "reason", None),
+                url=getattr(e, "url", None),
+                error_message=getattr(e, "error_message", None),
             )
 
     def _exists_profile(self, profile: str):
@@ -4046,7 +4067,6 @@ class Client:
         reason = raw_response.reason
         url = raw_response.url
 
-        error_msg = ""
         if isinstance(reason, bytes):
             # We attempt to decode utf-8 first because some servers
             # choose to localize their reason strings. If the string
@@ -4057,29 +4077,27 @@ class Client:
             except UnicodeDecodeError:
                 reason = reason.decode("iso-8859-1")
 
-        if 400 <= status_code < 500:
-            error_msg = f"{status_code} Server Error: '{reason}' for url: '{url}'."
-
-        elif 500 <= status_code < 600:
-            error_msg = f"{status_code} Server Error: '{reason}' for url: '{url}'."
-
+        full_msg = f"{status_code} Server Error: '{reason}' for url: '{url}'."
+        error_message = None
         try:
             response = raw_response.json()
 
             # Accessing an endpoint that is in the subdomain of the platform, but which does not exist,
             # returns a general servlet with a field "message"
             if "message" in response and response["message"] is not None:
-                error_msg += f"\nPlatform error message is: '{response['message']}'"
+                error_message = f"Platform error message is: '{response['message']}'"
+                full_msg += f"\n{error_message}"
 
             # Accessing an existing endpoint that has an error, returns its error in "errorMessages"
             if "errorMessages" in response and response["errorMessages"] is not None:
-                error_msg += (
-                    f"\nEndpoint error message is: '{', '.join(response['errorMessages'])}'"
-                )
+                error_message = f"Endpoint error message is: '{', '.join(response['errorMessages'])}'"
+                full_msg += f"\n{error_message}"
         except JSONDecodeError:
             pass
 
-        raise RequestException(error_msg)
+        raise ExtendedRequestException(
+            full_msg, status_code=status_code, reason=reason, url=url, error_message=error_message
+        )
 
     @staticmethod
     def __process_name(process: Union[str, Process]):

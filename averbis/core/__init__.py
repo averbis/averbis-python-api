@@ -33,6 +33,7 @@ from ._rest_client import (
     Pear,
     Process,
     EvaluationConfiguration,
+    ExtendedRequestException,
     DOCUMENT_IMPORTER_CAS,
     DOCUMENT_IMPORTER_SOLR,
     DOCUMENT_IMPORTER_TEXT,
@@ -57,6 +58,7 @@ from ._rest_client import (
 __all__ = [
     "OperationNotSupported",
     "OperationTimeoutError",
+    "ExtendedRequestException",
     "ResourceContainer",
     "Terminology",
     "Client",

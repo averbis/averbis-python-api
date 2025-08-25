@@ -28,6 +28,7 @@ from .core import (
     Process,
     EvaluationConfiguration,
     ResourceContainer,
+    ExtendedRequestException,
 )
 
 __all__ = [
@@ -41,4 +42,5 @@ __all__ = [
     "Pear",
     "Process",
     "ResourceContainer",
+    "ExtendedRequestException",
 ]

@@ -1111,6 +1111,10 @@ def test_handle_error_outside_platform(client, requests_mock):
         client._Client__request_with_json_response(method="get", endpoint=f"v1/invalid_url")
     expected_error_message = "404 Server Error: 'Not found' for url: 'https://localhost:8080/information-discovery/rest/v1/invalid_url'."
     assert str(ex.value) == expected_error_message
+    assert ex.value.reason == "Not found"
+    assert ex.value.status_code == 404
+    assert ex.value.url == "https://localhost:8080/information-discovery/rest/v1/invalid_url"
+    assert ex.value.error_message is None
 
 
 def test_handle_error_in_non_existing_endpoint(client, requests_mock):
@@ -1129,6 +1133,10 @@ def test_handle_error_in_non_existing_endpoint(client, requests_mock):
         client._Client__request_with_json_response(method="get", endpoint="v1/invalid_url")
     expected_error_message = "404 Server Error: 'None' for url: 'https://localhost:8080/information-discovery/rest/v1/invalid_url'.\nPlatform error message is: 'Not Found'"
     assert str(ex.value) == expected_error_message
+    assert ex.value.reason is None
+    assert ex.value.status_code == 404
+    assert ex.value.url == "https://localhost:8080/information-discovery/rest/v1/invalid_url"
+    assert ex.value.error_message == "Platform error message is: 'Not Found'"
 
 
 def test_handle_error_bad_request(client, requests_mock):
@@ -1146,6 +1154,10 @@ def test_handle_error_bad_request(client, requests_mock):
         "Endpoint error message is: 'A project with name 'test' already exists.'"
     )
     assert str(ex.value) == expected_error_message
+    assert ex.value.reason is None
+    assert ex.value.status_code == 400
+    assert ex.value.url == "https://localhost:8080/information-discovery/rest/v1/invalid_url"
+    assert ex.value.error_message == "Endpoint error message is: 'A project with name 'test' already exists.'"
 
 
 def test_handle_error_no_access(client, requests_mock):
@@ -1157,6 +1169,10 @@ def test_handle_error_no_access(client, requests_mock):
         )
     expected_error_message = "401 Server Error: 'None' for url: 'https://localhost:8080/information-discovery/rest/v1/url/that/cannot/be/accessed'."
     assert str(ex.value) == expected_error_message
+    assert ex.value.reason is None
+    assert ex.value.status_code == 401
+    assert ex.value.url == "https://localhost:8080/information-discovery/rest/v1/url/that/cannot/be/accessed"
+    assert ex.value.error_message is None
 
 
 def test_upload_resources(client_version_6, requests_mock):
