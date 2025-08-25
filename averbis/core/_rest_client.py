@@ -2187,8 +2187,12 @@ class Client:
             )
             return response["payload"]
         except RequestException as e:
-            raise RequestException(
-                f"A problem occurred while uploading the license file. Please note that the function 'client.upload_license(license_path)' is only supported for Health Discovery version 7.4.0 and newer. The full error was:\n{e}"
+            raise ExtendedRequestException(
+                f"A problem occurred while uploading the license file. Please note that the function 'client.upload_license(license_path)' is only supported for Health Discovery version 7.4.0 and newer. The full error was:\n{e}",
+                status_code=getattr(e, "status_code", None),
+                reason=getattr(e, "reason", None),
+                url=getattr(e, "url", None),
+                error_message=getattr(e, "error_message", None),
             )
 
     def _exists_profile(self, profile: str):
