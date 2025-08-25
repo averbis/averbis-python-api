@@ -9,7 +9,7 @@ This document describes briefly how to contribute code to the Averbis Python API
   * `feature/142-Ability-to-cook-hard-boiled-eggs` (use `feature` prefix for features and refactorings)
   * `bugfix/132-Unable-to-retrieve-salt-from-the-cupboard` (use `bugfix` for bugs)
 * Submit your contribution as one or more commits on your branch
-  * Before committing run `make black` to auto-format the code.
+  * Before committing run `uv run task format` to auto-format the code.
   * Commit messages should include the issue number and full title in the first line, then a blank line and then 
     bulleted list explaining the details. Here is an example:
     ```
