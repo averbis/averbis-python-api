@@ -29,6 +29,7 @@ from .core import (
     EvaluationConfiguration,
     ResourceContainer,
     ExtendedRequestException,
+    TextanalysisMode
 )
 
 __all__ = [
@@ -43,4 +44,5 @@ __all__ = [
     "Process",
     "ResourceContainer",
     "ExtendedRequestException",
+    "TextanalysisMode"
 ]

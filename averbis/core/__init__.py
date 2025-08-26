@@ -34,6 +34,7 @@ from ._rest_client import (
     Process,
     EvaluationConfiguration,
     ExtendedRequestException,
+    TextanalysisMode,
     DOCUMENT_IMPORTER_CAS,
     DOCUMENT_IMPORTER_SOLR,
     DOCUMENT_IMPORTER_TEXT,
@@ -69,6 +70,7 @@ __all__ = [
     "Pear",
     "Process",
     "EvaluationConfiguration",
+    "TextanalysisMode"
     "DOCUMENT_IMPORTER_CAS",
     "DOCUMENT_IMPORTER_SOLR",
     "DOCUMENT_IMPORTER_TEXT",
