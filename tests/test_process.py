@@ -314,6 +314,77 @@ def test_export_text_analysis_with_page_and_pagsize(client_version_6, requests_m
     assert len(export3["textAnalysisResultDtos"]) == 100
     assert export3["textAnalysisResultDtos"][-1]["documentName"] == "Document (200).txt"
 
+def test_export_text_analysis_document_selection(client_version_8, requests_mock):
+    project = Project(client_version_8, PROJECT_NAME)
+    collection = project.get_document_collection(COLLECTION_NAME)
+    process_name = "my-process"
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/"
+        f"documentSources/{collection.name}/processes/{process_name}",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": {
+                "processName": process_name,
+                "pipelineName": "my-pipeline",
+                "documentSourceName": collection.name,
+                "state": "IDLE",
+                # Truncated
+            },
+            "errorMessages": [],
+        },
+    )
+    process = collection.get_process(process_name)
+    actual_document_names = []
+    def callback(request, _content):
+        actual_document_names.extend(request.json()["documentNames"])
+        return {
+            "payload": {
+                "textAnalysisResultDtos": [
+                    {"documentName": name, "annotationDtos": []} for name in actual_document_names
+                ],
+                "projectName": project.name,
+                # Truncated
+            },
+            "errorMessages": [],
+        }
+
+    requests_mock.post(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/"
+        f"documentCollections/{process.document_source_name}/processes/{process.name}/export",
+        headers={"Content-Type": "application/json"},
+        json=callback,
+    )
+    expected_document_names = ["text1.txt", "text2.txt"]
+    export = process.export_text_analysis(document_names=expected_document_names)
+    textanalysis_results = export["textAnalysisResultDtos"]
+    assert len(textanalysis_results) == len(expected_document_names)
+    assert all(result["documentName"] in expected_document_names for result in textanalysis_results)
+
+def test_export_text_analysis_document_selection_not_supported(client_version_7, requests_mock):
+    project = Project(client_version_7, PROJECT_NAME)
+    collection = project.get_document_collection(COLLECTION_NAME)
+    process_name = "my-process"
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/"
+        f"documentSources/{collection.name}/processes/{process_name}",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": {
+                "processName": process_name,
+                "pipelineName": "my-pipeline",
+                "documentSourceName": collection.name,
+                "state": "IDLE",
+                # Truncated
+            },
+            "errorMessages": [],
+        },
+    )
+    process = collection.get_process(process_name)
+
+    with pytest.raises(OperationNotSupported):
+        process.export_text_analysis(document_names=["text1.txt", "text2.txt"])
+
 
 def test_export_text_analysis_to_cas_v5(client_version_5):
     document_name = "document0001.txt"

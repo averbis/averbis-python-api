@@ -1342,6 +1342,7 @@ class Process:
         annotation_types: Union[None, str, List[str]] = None,
         page: Optional[int] = None,
         page_size: Optional[int] = 100,
+        document_names: Optional[List[str]] = None
     ) -> dict:
         """
         Exports a given text analysis process as a json.
@@ -1352,8 +1353,10 @@ class Process:
         Documents are currently sorted by their internal ID and not by the filename.
 
         :param annotation_types: Optional parameter indicating which types should be returned. Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types with prefix "de.averbis.types"
-        :param page: Optional parameter indicating which batch of pages should be export.
+        :param page: Optional parameter indicating which batch of pages should be export. This can only be used if document_names are not used.
         :param page_size: Optional parameter defining how many documents are exported at once (default=100). Only restricts the number of documents to that number if the parameter `page` is given.
+                          This can only be used if document_names are not used.
+        :param document_names: Optional parameter indicating which documents should be exported. If this is set, the `page` and `page_size` parameters cannot be used.
 
         :return: The raw payload of the server response. Future versions of this library may return a better-suited
          representation.
@@ -1375,6 +1378,7 @@ class Process:
             annotation_types=annotation_types,
             page=page,
             page_size=page_size,
+            document_names=document_names
         )
 
     @experimental_api
@@ -3477,20 +3481,40 @@ class Client:
         annotation_types: Union[None, str, List[str]] = None,
         page: Optional[int] = None,
         page_size: Optional[int] = None,
+        document_names: Optional[List[str]] = None
     ):
         """
         Use Process.export_text_analysis() instead.
         """
-        response = self.__request_with_json_response(
-            "get",
-            f"/v1/textanalysis/projects/{project}/documentSources/{document_source}/processes/{process}/export",
-            params={
-                "annotationTypes": self._preprocess_annotation_types(annotation_types),
-                "page": page,
-                "pageSize": page_size,
-            },
-            headers={HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_JSON},
-        )
+        if document_names is not None and not self._is_higher_equal_version(self.get_build_info()["platformVersion"], 8, 22):
+            raise OperationNotSupported(
+                "Filtering by document names is only supported for platform versions >= 8.22 (starting with health discovery version 7.6.0)"
+            )
+        
+        if document_names is not None and page is not None:
+            raise ValueError("The page parameter cannot be used in conjunction with document names filtering.")
+        
+        if document_names is not None:
+            response = self.__request_with_json_response(
+                "post",
+                f"/experimental/textanalysis/projects/{project}/documentCollections/{document_source}/processes/{process}/export",
+                params={
+                    "annotationTypes": self._preprocess_annotation_types(annotation_types),
+                },
+                json={"documentNames": document_names},
+                headers={HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_JSON},
+            )
+        else:
+            response = self.__request_with_json_response(
+                "get",
+                f"/v1/textanalysis/projects/{project}/documentSources/{document_source}/processes/{process}/export",
+                params={
+                    "annotationTypes": self._preprocess_annotation_types(annotation_types),
+                    "page": page,
+                    "pageSize": page_size,
+                },
+                headers={HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_JSON},
+            )
         return response["payload"]
 
     @experimental_api
