@@ -17,4 +17,4 @@
 # limitations under the License.
 #
 #
-__version__ = "0.15.0dev"
+__version__ = "0.15.0"
