@@ -10,7 +10,7 @@ about: Release checklist
 - [ ] Create milestone for the next release
 
 **Code**
-- [ ] On the `main` branch, bump version in `averbis/__version__.py` to the release version, commit and wait until the build completed
+- [ ] On the `main` branch, bump version in `averbis/__version__.py` and `pyproject.toml` to the release version, commit and wait until the build completed
 - [ ] Create the release tag on the `main` branch
 
 **GitHub**
@@ -18,4 +18,4 @@ about: Release checklist
 - [ ] Publish the release (this also triggers the "publish" GitHub action)
 
 **Code**
-- [ ] On the `main` branch, bump version in `averbis/__version__.py` to the next dev version, commit and wait until the build completed
+- [ ] On the `main` branch, bump version in `averbis/__version__.py` and `pyproject.toml`to the next dev version, commit and wait until the build completed
