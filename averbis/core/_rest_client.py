@@ -3915,9 +3915,9 @@ class Client:
                     raise OperationNotSupported(
                         f"The parameter 'annotation_types' is only supported for platform versions >= 8.11 (available from Health Discovery version 7.1), but current platform is {build_version['platformVersion']}."
                     )
-            request_json["annotationTypesToBeSaved"] = self._preprocess_annotation_types(
-                annotation_types
-            )
+                request_json["annotationTypesToBeSaved"] = self._preprocess_annotation_types(
+                    annotation_types
+                )
             if send_to_search:
                 if not self._is_higher_equal_version(platform_version, 9, 0):
                     raise OperationNotSupported(

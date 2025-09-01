@@ -208,6 +208,19 @@ def test_create_process(document_collection, requests_mock):
     state = "IDLE"
     number_of_documents = 12
 
+    requests_mock.get(
+        f"{API_BASE}/buildInfo",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": {
+                "specVersion": "7.5.0",
+                "buildNumber": "branch: main f2731e315ee137cf94c48e5f2fa431777fe49cef",
+                "platformVersion": "8.20.0",
+            },
+            "errorMessages": [],
+        },
+    )
+
     requests_mock.post(
         f"{API_EXPERIMENTAL}/textanalysis/projects/{PROJECT_NAME}/processes",
         headers={"Content-Type": "application/json"},
@@ -236,6 +249,41 @@ def test_create_process(document_collection, requests_mock):
     expected_process = Process(document_collection.project, process_name, document_collection.name)
     assert_process_equal(expected_process, actual_process)
 
+def test_create_searchable_process(client_version_8, requests_mock):
+    project = client_version_8.get_project(PROJECT_NAME)
+    document_collection = DocumentCollection(project, "test-collection")
+
+    process_name = "test-process"
+    state = "IDLE"
+    number_of_documents = 12
+
+    requests_mock.post(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{PROJECT_NAME}/processes",
+        headers={"Content-Type": "application/json"},
+        json={"payload": None, "errorMessages": []},
+    )
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{PROJECT_NAME}/"
+        f"documentSources/{document_collection.name}/processes/{process_name}",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": {
+                "processName": process_name,
+                "documentSourceName": document_collection.name,
+                "state": state,
+                "processedDocuments": number_of_documents,
+            },
+            "errorMessages": [],
+        },
+    )
+
+    actual_process = document_collection.create_process(
+        process_name=process_name, send_to_search=True
+    )
+
+    expected_process = Process(document_collection.project, process_name, document_collection.name)
+    assert_process_equal(expected_process, actual_process)
 
 def test_list_processes(client_version_6, requests_mock):
     project = client_version_6.get_project(PROJECT_NAME)
