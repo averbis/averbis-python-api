@@ -1533,6 +1533,7 @@ class TextanalysisMode(Enum):
 
 class DocumentCollection:
 
+    _MANUAL_PROCESS_TYPE = "MANUAL"
 
     def __init__(self, project: "Project", name: str):
         self.project = project
@@ -1627,7 +1628,7 @@ class DocumentCollection:
         # noinspection PyProtectedMember
         mapping = {
             Process._ProcessType.NO_INIT: "IMPORTED",
-            Process._ProcessType.INIT: "MANUAL",
+            Process._ProcessType.INIT: DocumentCollection._MANUAL_PROCESS_TYPE,
             Process._ProcessType.WITH_PIPELINE: "MACHINE",
         }
         return mapping[process_type]
@@ -3904,10 +3905,10 @@ class Client:
         if preceding_process_name:
             request_json["precedingProcessName"] = preceding_process_name
 
-        if annotation_types or send_to_search or process_type == "MANUAL":
+        if annotation_types or send_to_search or process_type == DocumentCollection._MANUAL_PROCESS_TYPE:
             build_version = self.get_build_info()
             platform_version = build_version["platformVersion"]
-            if process_type == "MANUAL" and self._is_higher_equal_version(platform_version, 9, 0):
+            if process_type == DocumentCollection._MANUAL_PROCESS_TYPE and self._is_higher_equal_version(platform_version, 9, 0):
                 raise OperationNotSupported(f"Manual processes are no longer supported (starting with Health Discovery version 8.0).")
 
             if annotation_types:
