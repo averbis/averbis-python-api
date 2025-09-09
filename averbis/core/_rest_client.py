@@ -437,6 +437,41 @@ class Pipeline:
             accept_type=MEDIA_TYPE_APPLICATION_JSON,
             meta_data=meta_data,
         )
+    
+    def analyse_pdf_to_fhir(
+        self,
+        source: Union[Path, IO],
+        annotation_types: Union[None, str, List[str]] = None,
+        language: Optional[str] = None,
+        timeout: Optional[float] = None,
+        meta_data: Optional[dict] = None,
+    ) -> dict:
+        """
+        Analyze the given pdf using the pipeline. The returned analysis is in fhir format.
+
+        :param source:           The pdf document to be analyzed.
+        :param annotation_types: Optional parameter indicating which types should be returned. Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types with prefix "de.averbis.types"
+        :param language:         Optional parameter setting the language of the document, e.g. "en" or "de".
+        :param timeout:          Optional timeout (in seconds) specifying how long the request is waiting for a server response.
+        :param meta_data:        Optional key-value pairs that are used as generic metadata in addition to the document
+
+        :return: The raw payload of the server response. Future versions of this library may return a better-suited
+                 representation.
+        """
+
+        # noinspection PyProtectedMember
+        return self.project.client._analyse_pdf(
+            project=self.project.name,
+            pipeline=self.name,
+            source=source,
+            annotation_types=annotation_types,
+            language=language,
+            timeout=timeout,
+            accept_type=MEDIA_TYPE_FHIR_JSON,
+            meta_data=meta_data,
+        )
+
+
 
     def analyse_pdf_to_pdf(
         self,
