@@ -393,6 +393,37 @@ def test_analyse_pdf_to_pdf(client, requests_mock):
     assert result == b"This is a test."
 
 
+def test_analyse_pdf_to_fhir(client, requests_mock):
+    def callback(request, _content):
+        doc_text = request.text.read().decode("utf-8")
+        return {"payload": {"text": doc_text}}
+
+    requests_mock.get(
+        f"{API_BASE}/buildInfo",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": {
+                "specVersion": "7.4.0-SNAPSHOT",
+                "buildNumber": "branch: main f2731e315ee137cf94c48e5f2fa431777fe49cef",
+                "platformVersion": "8.17.0",
+            },
+            "errorMessages": [],
+        },
+    )
+
+    requests_mock.post(
+        f"{API_BASE}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/analyseText",
+        headers={"Content-Type": MEDIA_TYPE_FHIR_JSON},
+        json=callback,
+    )
+
+    pdf1_path = Path(TEST_DIRECTORY) / "resources" / "texts" / "text1.txt"
+    pipeline = Pipeline(Project(client, PROJECT_NAME), "discharge")
+
+    result = pipeline.analyse_pdf_to_fhir(pdf1_path)
+    assert result["payload"]["text"] == "This is a test."
+
+
 def test_analyse_text_to_fhir(client_version_7_3_platform_8_17, requests_mock):
 
     def callback(request, _content):
