@@ -2003,6 +2003,22 @@ class Project:
         return self.client._select(self.name, query, **kwargs)
 
     @experimental_api
+    def neural_search(self, neural_search_parameter: dict, **kwargs) -> dict:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Perform a neural (dense vector) search using server-side neural search endpoint.
+
+        :param neural_search_parameter: The request body as a dict representing neural search parameters
+            (e.g. {'text': '...', 'language': 'en', 'pipelineIdentifier': 'my-pipeline', 'topK': 10}).
+        :param kwargs: Additional query parameters forwarded to the server (e.g. fq, sort, start, rows, fl).
+
+        :return: The raw payload of the server response (typically a Solr-like JSON response wrapped in payload).
+        """
+        # noinspection PyProtectedMember
+        return self.client._neural_search(self.name, neural_search_parameter, **kwargs)
+
+    @experimental_api
     def list_pears(self) -> List[str]:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -3512,6 +3528,25 @@ class Client:
             f"/v1/search/projects/{project}/select",
             params={"q": q, **kwargs},
             headers={HEADER_CONTENT_TYPE: MEDIA_TYPE_TEXT_PLAIN_UTF8},
+        )
+        return response["payload"]
+
+    @experimental_api
+    def _neural_search(self, project: str, neural_search_parameter: dict, **kwargs) -> dict:
+        """
+        LOW-LEVEL: Call the experimental neural search endpoint.
+
+        :param project: project identifier
+        :param neural_search_parameter: dict to be sent as JSON body
+        :param kwargs: extra query parameters forwarded as params
+        :return: payload from server response
+        """
+        response = self.__request_with_json_response(
+            "post",
+            f"/experimental/search/projects/{project}/neuralSearch",
+            params={**kwargs},
+            json=neural_search_parameter,
+            headers={HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_JSON},
         )
         return response["payload"]
 

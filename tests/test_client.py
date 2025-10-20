@@ -1062,6 +1062,31 @@ def test_select(client, requests_mock):
     assert "solrResponse" in response
 
 
+def test_neural_search(client, requests_mock):
+    example_payload = {
+        "solrResponse": {
+            "responseHeader": {"status": 0, "QTime": 1},
+            "response": {"numFound": 1, "start": 0, "docs": [{"id": "doc1"}]},
+        }
+    }
+
+    # mock neural search endpoint
+    requests_mock.post(
+        f"{API_EXPERIMENTAL}/search/projects/{PROJECT_NAME}/neuralSearch",
+        headers={"Content-Type": "application/json"},
+        json={"payload": example_payload, "errorMessages": []},
+    )
+
+    # low-level client call
+    response_low = client._neural_search(PROJECT_NAME, {"text": "find me", "topK": 1})
+    assert "solrResponse" in response_low
+
+    # high-level Project API call
+    project = client.get_project(PROJECT_NAME)
+    response_high = project.neural_search({"text": "find me", "topK": 1})
+    assert "solrResponse" in response_high
+
+
 def test_with_settings_file(requests_mock_hd6):
     client = Client(
         "localhost-hd",
