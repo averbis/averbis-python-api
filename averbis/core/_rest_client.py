@@ -2010,7 +2010,7 @@ class Project:
         Perform a neural (dense vector) search using server-side neural search endpoint.
 
         :param neural_search_parameter: The request body as a dict representing neural search parameters
-            (e.g. {'text': '...', 'language': 'en', 'pipelineIdentifier': 'my-pipeline', 'topK': 10}).
+            (e.g. {'text': '...', 'language': 'en', 'pipelineName': 'my-pipeline', 'topK': 10}).
         :param kwargs: Additional query parameters forwarded to the server (e.g. fq, sort, start, rows, fl).
 
         :return: The raw payload of the server response (typically a Solr-like JSON response wrapped in payload).
