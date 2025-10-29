@@ -1293,7 +1293,7 @@ class Process:
 
     @experimental_api
     def create_and_run_process(
-        self, process_name: str, pipeline: Union[str, Pipeline], send_to_search: Optional[bool] = None, send_to_neural_search: Optional[bool] = None
+        self, process_name: str, pipeline: Union[str, Pipeline], send_to_search: Optional[bool] = None, send_chunks_to_search: Optional[bool] = None
     ) -> "Process":
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -1310,7 +1310,7 @@ class Process:
             pipeline=pipeline,
             preceding_process_name=self.name,
             send_to_search=send_to_search,
-            send_to_neural_search=send_to_neural_search
+            send_chunks_to_search=send_chunks_to_search
         )
 
         return document_collection.get_process(process_name=process_name)
@@ -1605,7 +1605,7 @@ class DocumentCollection:
         pipeline: Union[str, Pipeline],
         annotation_types: Union[None, str, List[str]] = None,
         send_to_search: Optional[bool] = None,
-        send_to_neural_search: Optional[bool] = None
+        send_chunks_to_search: Optional[bool] = None
     ) -> Process:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -1616,13 +1616,13 @@ class DocumentCollection:
         :param annotation_types: Optional parameter indicating which types should be saved. Supports wildcard expressions,
                                  - Example 1: "de.averbis.types.*" returns all types with prefix "de.averbis.types".
                                  - Example 2: Can also be a list of type names, e.g. ["de.averbis.types.health.Diagnosis", "de.averbis.types.health.Medication"]
-        :param send_to_search:       Determines if the created process should be searchable. 
-        :param send_to_neural_search: Determines if the created process should be sent to neural search.
+        :param send_to_search:       Determines if the created process should be searchable.
+        :param send_chunks_to_search: Determines if the created process should make the chunks searchable.
         :return: The created process
         """
         # noinspection PyProtectedMember
         self.project.client._create_and_run_process(
-            self, process_name, pipeline, annotation_types=annotation_types, send_to_search=send_to_search, send_to_neural_search=send_to_neural_search
+            self, process_name, pipeline, annotation_types=annotation_types, send_to_search=send_to_search, send_chunks_to_search=send_chunks_to_search
         )
 
         return self.get_process(process_name)
@@ -1634,7 +1634,7 @@ class DocumentCollection:
         is_manual_annotation: bool = False,
         annotation_types: Union[None, str, List[str]] = None,
         send_to_search: Optional[bool] = None,
-        send_to_neural_search: Optional[bool] = None
+        send_chunks_to_search: Optional[bool] = None
     ) -> Process:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -1646,7 +1646,7 @@ class DocumentCollection:
                                       - Example 1: "de.averbis.types.*" returns all types with prefix "de.averbis.types".
                                       - Example 2: Can also be a list of type names, e.g. ["de.averbis.types.health.Diagnosis", "de.averbis.types.health.Medication"]
         :param send_to_search:       Determines if the created process should be searchable. 
-        :param send_to_neural_search: Determines if the created process should be sent to neural search.
+        :param send_chunks_to_search: Determines if the created process should make the chunks searchable.
         :return: The created process
         """
         process_type = self._map_process_type(Process._ProcessType.NO_INIT)
@@ -1660,7 +1660,7 @@ class DocumentCollection:
             process_type=process_type,
             annotation_types=annotation_types,
             send_to_search=send_to_search,
-            send_to_neural_search=send_to_neural_search
+            send_chunks_to_search=send_chunks_to_search
         )
 
         return self.get_process(process_name)
@@ -3939,7 +3939,7 @@ class Client:
         preceding_process_name: Optional[str] = None,
         annotation_types: Union[None, str, List[str]] = None,
         send_to_search: Optional[bool] = None,
-        send_to_neural_search: Optional[bool] = None
+        send_chunks_to_search: Optional[bool] = None
     ) -> dict:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -3955,7 +3955,7 @@ class Client:
             "documentCollectionName": document_collection.name
         }
 
-        self._add_optional_parameters_for_process_creation(process_type, preceding_process_name, annotation_types, send_to_search, send_to_neural_search, pipeline_name, request_json)
+        self._add_optional_parameters_for_process_creation(process_type, preceding_process_name, annotation_types, send_to_search, send_chunks_to_search, pipeline_name, request_json)
 
         response = self.__request_with_json_response(
            "post",
@@ -3971,7 +3971,7 @@ class Client:
             preceding_process_name: Optional[str], 
             annotation_types: Union[None, str, List[str]], 
             send_to_search: Optional[bool], 
-            send_to_neural_search: Optional[bool],
+            send_chunks_to_search: Optional[bool],
             pipeline_name: Optional[str], 
             request_json: dict) -> dict:
         if process_type:
@@ -3983,7 +3983,7 @@ class Client:
         if preceding_process_name:
             request_json["precedingProcessName"] = preceding_process_name
 
-        if annotation_types or send_to_search or send_to_neural_search or process_type == DocumentCollection._MANUAL_PROCESS_TYPE:
+        if annotation_types or send_to_search or send_chunks_to_search or process_type == DocumentCollection._MANUAL_PROCESS_TYPE:
             build_version = self.get_build_info()
             platform_version = build_version["platformVersion"]
             if process_type == DocumentCollection._MANUAL_PROCESS_TYPE and self._is_higher_equal_version(platform_version, 9, 0):
@@ -4003,12 +4003,12 @@ class Client:
                         f"The parameter 'send_to_search' is only supported for platform versions >= 9.0 (available from Health Discovery version 8.0), but current platform is {platform_version}."
                     )
                 request_json["sendToSearch"] = send_to_search
-            if send_to_neural_search:
+            if send_chunks_to_search:
                 if not self._is_higher_equal_version(platform_version, 9, 0):
                     raise OperationNotSupported(
-                        f"The parameter 'send_to_neural_search' is only supported for platform versions >= 9.0 (available from Health Discovery version 8.0), but current platform is {platform_version}."
+                        f"The parameter 'send_chunks_to_search' is only supported for platform versions >= 9.0 (available from Health Discovery version 8.0), but current platform is {platform_version}."
                     )
-                request_json["sendToNeuralSearch"] = send_to_neural_search
+                request_json["sendChunksToSearch"] = send_chunks_to_search
         return request_json
 
     @experimental_api
