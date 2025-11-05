@@ -1077,14 +1077,18 @@ def test_neural_search(client, requests_mock):
         json={"payload": example_payload, "errorMessages": []},
     )
 
-    # low-level client call
+    # low-level client call (still uses dict)
     response_low = client._neural_search(PROJECT_NAME, {"text": "find me", "topK": 1})
     assert "solrResponse" in response_low
 
-    # high-level Project API call
+    # high-level Project API call - use keyword argument for dict
     project = client.get_project(PROJECT_NAME)
-    response_high = project.neural_search({"text": "find me", "topK": 1})
+    response_high = project.neural_search(neural_search_parameter={"text": "find me", "topK": 1})
     assert "solrResponse" in response_high
+
+    # Alternative: test with explicit parameters
+    response_explicit = project.neural_search(text="find me", pipeline_name="test-pipeline", top_k=1)
+    assert "solrResponse" in response_explicit
 
 
 def test_with_settings_file(requests_mock_hd6):
