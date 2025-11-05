@@ -33,7 +33,8 @@ from io import BytesIO, IOBase, BufferedReader
 from json import JSONDecodeError
 
 from time import sleep, time
-from typing import List, Union, IO, Iterable, Dict, Iterator, Optional, Any, Tuple, Callable, overload, TypedDict, Required
+from typing import List, Union, IO, Iterable, Dict, Iterator, Optional, Any, Tuple, Callable, overload, TypedDict
+from typing_extensions import Required
 from pathlib import Path
 import requests
 import mimetypes
