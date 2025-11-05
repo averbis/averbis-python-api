@@ -33,7 +33,7 @@ from io import BytesIO, IOBase, BufferedReader
 from json import JSONDecodeError
 
 from time import sleep, time
-from typing import List, Union, IO, Iterable, Dict, Iterator, Optional, Any, Tuple, Callable, overload
+from typing import List, Union, IO, Iterable, Dict, Iterator, Optional, Any, Tuple, Callable, overload, TypedDict, Required
 from pathlib import Path
 import requests
 import mimetypes
@@ -147,6 +147,12 @@ class OperationTimeoutError(Exception):
 
     pass
 
+class NeuralSearchParams(TypedDict, total=False):
+    text: Required[str]
+    pipelineName: Required[str]
+    language: str
+    topK: int
+    threshold: float
 
 class Result:
     def __init__(
@@ -2008,21 +2014,113 @@ class Project:
         # noinspection PyProtectedMember
         return self.client._select(self.name, query, **kwargs)
 
+    @overload
+    def neural_search(
+        self,
+        text: str,
+        pipeline_name: str,
+        language: Optional[str] = None,
+        top_k: Optional[int] = None,
+        threshold: Optional[float] = None,
+        **query_params
+    ) -> Dict[str, Any]: ...
+
+    @overload
+    def neural_search(
+        self,
+        *,
+        neural_search_parameter: NeuralSearchParams,
+        **query_params: Any
+    ) -> Dict[str, Any]: ...
+
     @experimental_api
-    def neural_search(self, neural_search_parameter: dict, **kwargs) -> dict:
+    def neural_search(
+        self,
+        text: Optional[str] = None,
+        pipeline_name: Optional[str] = None,
+        language: Optional[str] = None,
+        top_k: Optional[int] = None,
+        threshold: Optional[float] = None,
+        *,
+        neural_search_parameter: Optional[NeuralSearchParams] = None,
+        **query_params: Any
+    ) -> Dict[str, Any]:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
         Perform a neural (dense vector) search using server-side neural search endpoint.
 
-        :param neural_search_parameter: The request body as a dict representing neural search parameters
-            (e.g. {'text': '...', 'language': 'en', 'pipelineName': 'my-pipeline', 'topK': 10}).
-        :param kwargs: Additional query parameters forwarded to the server (e.g. fq, sort, start, rows, fl).
+        There are two ways to use this method:
+
+        1. **Explicit parameters (recommended)**:
+           Provide text and pipeline_name as required parameters, with optional parameters.
+
+        2. **Dictionary parameters (advanced)**:
+           Provide all parameters as a dictionary using neural_search_parameter.
+
+        :param text: The text query to search for (required when using explicit parameters)
+        :param pipeline_name: Name of the pipeline to use for embedding generation (required when using explicit parameters)
+        :param language: Language code (e.g., 'en', 'de')
+        :param top_k: Maximum number of results to return
+        :param threshold: Minimum similarity threshold for results
+        :param neural_search_parameter: Alternative: provide all parameters as a dict 
+            (for backward compatibility or advanced usage)
+        :param query_params: Additional query parameters forwarded to the server (e.g. fq, sort, start, rows, fl).
 
         :return: The raw payload of the server response (typically a Solr-like JSON response wrapped in payload).
+
+        Examples:
+            # Using explicit parameters (recommended)
+            results = project.neural_search(
+                text="Wie alt ist der Patient?",
+                pipeline_name="ChunkEmbedder",
+                language="de",
+                top_k=5,
+                threshold=0.1,
+                rows=20,
+                sort="score desc"
+            )
+
+            # Using dict (backward compatibility)
+            params = {
+                'text': 'Wie alt ist der Patient?',
+                'language': 'de',
+                'pipelineName': 'ChunkEmbedder', 
+                'topK': 5,
+                'threshold': 0.1
+            }
+            results = project.neural_search(neural_search_parameter=params, rows=20)
         """
+        # Handle both parameter styles
+        if neural_search_parameter is not None:
+            if any([text is not None, pipeline_name is not None, language is not None, 
+                   top_k is not None, threshold is not None]):
+                raise ValueError(
+                    "Cannot use both explicit parameters and neural_search_parameter dict. "
+                    "Use either explicit parameters OR neural_search_parameter dict, not both."
+                )
+            request_body = neural_search_parameter
+        else:
+            # Validate required parameters when using explicit style
+            if text is None:
+                raise ValueError("Parameter 'text' is required when not using neural_search_parameter")
+            if pipeline_name is None:
+                raise ValueError("Parameter 'pipeline_name' is required when not using neural_search_parameter")
+                
+            # Build request body from explicit parameters  
+            request_body = {
+                'text': text,
+                'pipelineName': pipeline_name
+            }
+            if language is not None:
+                request_body['language'] = language
+            if top_k is not None:
+                request_body['topK'] = top_k
+            if threshold is not None:
+                request_body['threshold'] = threshold
+
         # noinspection PyProtectedMember
-        return self.client._neural_search(self.name, neural_search_parameter, **kwargs)
+        return self.client._neural_search(self.name, request_body, **query_params)
 
     @experimental_api
     def list_pears(self) -> List[str]:
@@ -3538,7 +3636,7 @@ class Client:
         return response["payload"]
 
     @experimental_api
-    def _neural_search(self, project: str, neural_search_parameter: dict, **kwargs) -> dict:
+    def _neural_search(self, project: str, neural_search_parameter: dict, **query_params) -> dict:
         """
         LOW-LEVEL: Call the experimental neural search endpoint.
 
@@ -3550,7 +3648,7 @@ class Client:
         response = self.__request_with_json_response(
             "post",
             f"/experimental/search/projects/{project}/neuralSearch",
-            params={**kwargs},
+            params={**query_params},
             json=neural_search_parameter,
             headers={HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_JSON},
         )
