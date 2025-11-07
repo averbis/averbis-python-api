@@ -40,7 +40,10 @@ def requests_mock_hd5(requests_mock):
     requests_mock.get(
         f"{URL_BASE_HD + '/rest/v1'}/buildInfo",
         headers={"Content-Type": "application/json"},
-        json={"payload": {"specVersion": "5.33.0", "buildNumber": ""}, "errorMessages": []},
+        json={
+            "payload": {"specVersion": "5.33.0", "buildNumber": ""},
+            "errorMessages": [],
+        },
     )
 
 
@@ -49,7 +52,10 @@ def requests_mock_hd6(requests_mock):
     requests_mock.get(
         f"{URL_BASE_HD + '/rest/v1'}/buildInfo",
         headers={"Content-Type": "application/json"},
-        json={"payload": {"specVersion": "6.0.0", "buildNumber": ""}, "errorMessages": []},
+        json={
+            "payload": {"specVersion": "6.0.0", "buildNumber": ""},
+            "errorMessages": [],
+        },
     )
 
 
@@ -58,7 +64,10 @@ def requests_mock_id5(requests_mock):
     requests_mock.get(
         f"{URL_BASE_ID + '/rest/v1'}/buildInfo",
         headers={"Content-Type": "application/json"},
-        json={"payload": {"specVersion": "5.33.0", "buildNumber": ""}, "errorMessages": []},
+        json={
+            "payload": {"specVersion": "5.33.0", "buildNumber": ""},
+            "errorMessages": [],
+        },
     )
 
 
@@ -67,7 +76,10 @@ def requests_mock_id6(requests_mock):
     requests_mock.get(
         f"{URL_BASE_ID + '/rest/v1'}/buildInfo",
         headers={"Content-Type": "application/json"},
-        json={"payload": {"specVersion": "6.0.0", "buildNumber": ""}, "errorMessages": []},
+        json={
+            "payload": {"specVersion": "6.0.0", "buildNumber": ""},
+            "errorMessages": [],
+        },
     )
 
 
@@ -76,7 +88,10 @@ def requests_mock_id6_7(requests_mock):
     requests_mock.get(
         f"{URL_BASE_ID + '/rest/v1'}/buildInfo",
         headers={"Content-Type": "application/json"},
-        json={"payload": {"specVersion": "6.7.0", "buildNumber": ""}, "errorMessages": []},
+        json={
+            "payload": {"specVersion": "6.7.0", "buildNumber": ""},
+            "errorMessages": [],
+        },
     )
 
 
@@ -85,7 +100,10 @@ def requests_mock_id6_11(requests_mock):
     requests_mock.get(
         f"{URL_BASE_ID + '/rest/v1'}/buildInfo",
         headers={"Content-Type": "application/json"},
-        json={"payload": {"specVersion": "6.11.0", "buildNumber": ""}, "errorMessages": []},
+        json={
+            "payload": {"specVersion": "6.11.0", "buildNumber": ""},
+            "errorMessages": [],
+        },
     )
 
 
@@ -95,7 +113,11 @@ def requests_mock_platform_6_48(requests_mock):
         f"{URL_BASE_ID + '/rest/v1'}/buildInfo",
         headers={"Content-Type": "application/json"},
         json={
-            "payload": {"specVersion": "6.17.0", "buildNumber": "", "platformVersion": "6.48.0"},
+            "payload": {
+                "specVersion": "6.17.0",
+                "buildNumber": "",
+                "platformVersion": "6.48.0",
+            },
             "errorMessages": [],
         },
     )
@@ -107,7 +129,11 @@ def requests_mock_platform_6_50(requests_mock):
         f"{URL_BASE_ID + '/rest/v1'}/buildInfo",
         headers={"Content-Type": "application/json"},
         json={
-            "payload": {"specVersion": "6.17.0", "buildNumber": "", "platformVersion": "6.50.0"},
+            "payload": {
+                "specVersion": "6.17.0",
+                "buildNumber": "",
+                "platformVersion": "6.50.0",
+            },
             "errorMessages": [],
         },
     )
@@ -119,7 +145,11 @@ def requests_mock_platform_7(requests_mock):
         f"{URL_BASE_ID + '/rest/v1'}/buildInfo",
         headers={"Content-Type": "application/json"},
         json={
-            "payload": {"specVersion": "7.0.0", "buildNumber": "", "platformVersion": "8.4.0"},
+            "payload": {
+                "specVersion": "7.0.0",
+                "buildNumber": "",
+                "platformVersion": "8.4.0",
+            },
             "errorMessages": [],
         },
     )
@@ -131,21 +161,34 @@ def requests_mock_platform_8_17(requests_mock):
         f"{URL_BASE_ID + '/rest/v1'}/buildInfo",
         headers={"Content-Type": "application/json"},
         json={
-            "payload": {"specVersion": "7.13.0", "buildNumber": "", "platformVersion": "8.17.0"},
+            "payload": {
+                "specVersion": "7.13.0",
+                "buildNumber": "",
+                "platformVersion": "8.17.0",
+            },
             "errorMessages": [],
         },
     )
+
 
 @pytest.fixture()
 def requests_mock_platform_9(requests_mock):
     requests_mock.get(
         f"{URL_BASE_ID + '/rest/v1'}/buildInfo",
         headers={"Content-Type": "application/json"},
-        json={"payload": {"specVersion": "8.0.0", "buildNumber": "", "platformVersion": "9.0.1"}, "errorMessages": []},
+        json={
+            "payload": {
+                "specVersion": "8.0.0",
+                "buildNumber": "",
+                "platformVersion": "9.0.1",
+            },
+            "errorMessages": [],
+        },
     )
 
 
 ## Different clients based on the above platforms
+
 
 # Tests that should work for all platform versions
 @pytest.fixture(params=["5.33.0", "6.0.0"])
@@ -153,7 +196,10 @@ def client(request, requests_mock):
     requests_mock.get(
         f"{API_BASE}/buildInfo",
         headers={"Content-Type": "application/json"},
-        json={"payload": {"specVersion": request.param, "buildNumber": ""}, "errorMessages": []},
+        json={
+            "payload": {"specVersion": request.param, "buildNumber": ""},
+            "errorMessages": [],
+        },
     )
     return Client(URL_BASE_ID, api_token=TEST_API_TOKEN)
 

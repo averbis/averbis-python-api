@@ -184,7 +184,11 @@ def highlight_annotation(
 
     sys.stdout.write(
         _render_highlighted(
-            document_text, annotation["begin"], annotation["end"], context_size, highlight_color
+            document_text,
+            annotation["begin"],
+            annotation["end"],
+            context_size,
+            highlight_color,
         )
     )
 

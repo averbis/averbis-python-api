@@ -206,7 +206,9 @@ def test_create_resource_container(client, requests_mock):
 
     resource_zip_file = Path(TEST_DIRECTORY) / "resources" / "zip_test" / "zip_test.zip"
     project = client.get_project("test")
-    actual_resource_container = project.create_resource_container("container", resource_zip_file)
+    actual_resource_container = project.create_resource_container(
+        "container", resource_zip_file
+    )
     assert actual_resource_container.name == "container"
 
 
@@ -400,7 +402,9 @@ def test_upload_resources(client_version_6, requests_mock):
             "errorMessages": [],
         },
     )
-    resources = project.upload_resources(TEST_DIRECTORY + "/resources/zip_test/text1.txt")
+    resources = project.upload_resources(
+        TEST_DIRECTORY + "/resources/zip_test/text1.txt"
+    )
     assert len(resources) == 1
 
 
@@ -411,7 +415,10 @@ def test_delete_pear_with_pear_does_not_exist(client_version_6, requests_mock):
         f"{API_EXPERIMENTAL}/textanalysis/projects/{project.name}/pearComponents/{pear_identifier}",
         headers={"Content-Type": "application/json"},
         status_code=404,
-        json={"payload": None, "errorMessages": ["The requested resource could not be found."]},
+        json={
+            "payload": None,
+            "errorMessages": ["The requested resource could not be found."],
+        },
     )
 
     with pytest.raises(Exception) as ex:
