@@ -37,7 +37,10 @@ def test_import_plain_text(document_collection, requests_mock):
     requests_mock.post(
         f"{API_BASE}/importer/projects/{PROJECT_NAME}/documentCollections/test-collection/documents",
         json={
-            "payload": {"original_document_name": "text1.txt", "document_name": "text1.txt"},
+            "payload": {
+                "original_document_name": "text1.txt",
+                "document_name": "text1.txt",
+            },
             "errorMessages": [],
         },
     )
@@ -55,13 +58,18 @@ def test_import_plain_text_with_textanalysis_mode(client_version_8, requests_moc
     requests_mock.post(
         f"{API_BASE}/importer/projects/{PROJECT_NAME}/documentCollections/test-collection/documents",
         json={
-            "payload": {"original_document_name": "text1.txt", "document_name": "text1.txt"},
+            "payload": {
+                "original_document_name": "text1.txt",
+                "document_name": "text1.txt",
+            },
             "errorMessages": [],
         },
     )
     file_path = os.path.join(TEST_DIRECTORY, "resources/texts/text1.txt")
     with open(file_path, "r", encoding="UTF-8") as input_io:
-        result = document_collection.import_documents(input_io, textanalysis_mode=TextanalysisMode.DO_NOTHING)
+        result = document_collection.import_documents(
+            input_io, textanalysis_mode=TextanalysisMode.DO_NOTHING
+        )
 
     assert result[0]["document_name"] == "text1.txt"
 
@@ -70,14 +78,19 @@ def test_import_plain_text_with_textanalysis_mode_not_supported(document_collect
     with pytest.raises(OperationNotSupported):
         file_path = os.path.join(TEST_DIRECTORY, "resources/texts/text1.txt")
         with open(file_path, "r", encoding="UTF-8") as input_io:
-            document_collection.import_documents(input_io, textanalysis_mode=TextanalysisMode.DO_NOTHING)
+            document_collection.import_documents(
+                input_io, textanalysis_mode=TextanalysisMode.DO_NOTHING
+            )
 
 
 def test_import_json(document_collection, requests_mock):
     requests_mock.post(
         f"{API_BASE}/importer/projects/{PROJECT_NAME}/documentCollections/test-collection/documents",
         json={
-            "payload": {"original_document_name": "text1.json", "document_name": "text1.json"},
+            "payload": {
+                "original_document_name": "text1.json",
+                "document_name": "text1.json",
+            },
             "errorMessages": [],
         },
     )
@@ -121,7 +134,10 @@ def test_import_cas(document_collection, requests_mock):
     requests_mock.post(
         f"{API_BASE}/importer/projects/{PROJECT_NAME}/documentCollections/test-collection/documents",
         json={
-            "payload": {"original_document_name": "text1.xmi", "document_name": "text1.xmi"},
+            "payload": {
+                "original_document_name": "text1.xmi",
+                "document_name": "text1.xmi",
+            },
             "errorMessages": [],
         },
     )
@@ -198,7 +214,10 @@ def test_create_and_run_process(document_collection, requests_mock):
     )
 
     expected_process = Process(
-        document_collection.project, process_name, document_collection.name, pipeline_name
+        document_collection.project,
+        process_name,
+        document_collection.name,
+        pipeline_name,
     )
     assert_process_equal(expected_process, actual_process)
 
@@ -246,8 +265,11 @@ def test_create_process(document_collection, requests_mock):
         process_name=process_name, is_manual_annotation=True
     )
 
-    expected_process = Process(document_collection.project, process_name, document_collection.name)
+    expected_process = Process(
+        document_collection.project, process_name, document_collection.name
+    )
     assert_process_equal(expected_process, actual_process)
+
 
 def test_create_searchable_process(client_version_8, requests_mock):
     project = client_version_8.get_project(PROJECT_NAME)
@@ -282,8 +304,11 @@ def test_create_searchable_process(client_version_8, requests_mock):
         process_name=process_name, send_to_search=True
     )
 
-    expected_process = Process(document_collection.project, process_name, document_collection.name)
+    expected_process = Process(
+        document_collection.project, process_name, document_collection.name
+    )
     assert_process_equal(expected_process, actual_process)
+
 
 def test_list_processes(client_version_6, requests_mock):
     project = client_version_6.get_project(PROJECT_NAME)
@@ -347,7 +372,9 @@ def test_get_process(client_version_6, requests_mock):
     document_source_name = "my_document_source"
     pipeline_name = "my_pipeline_name"
 
-    expected_process = Process(project, process_name, document_source_name, pipeline_name)
+    expected_process = Process(
+        project, process_name, document_source_name, pipeline_name
+    )
 
     payload = {
         "processName": process_name,
@@ -363,7 +390,9 @@ def test_get_process(client_version_6, requests_mock):
         headers={"Content-Type": "application/json"},
         json={"payload": payload, "errorMessages": []},
     )
-    actual = project.get_document_collection(document_source_name).get_process(process_name)
+    actual = project.get_document_collection(document_source_name).get_process(
+        process_name
+    )
     assert_process_equal(expected_process, actual)
 
 

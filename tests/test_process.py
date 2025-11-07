@@ -23,7 +23,11 @@ from pathlib import Path
 from cassis import Cas, TypeSystem, load_typesystem
 
 from averbis import Project, Pipeline
-from averbis.core import OperationNotSupported, MEDIA_TYPE_APPLICATION_XMI, EvaluationConfiguration
+from averbis.core import (
+    OperationNotSupported,
+    MEDIA_TYPE_APPLICATION_XMI,
+    EvaluationConfiguration,
+)
 from tests.fixtures import *
 from tests.utils import *
 
@@ -44,9 +48,11 @@ def test_delete(process, requests_mock):
 
     process.delete()
 
+
 def test_process_unprocessed_not_supported(process, requests_mock):
     with pytest.raises(OperationNotSupported):
         process.process_unprocessed()
+
 
 def test_process_unprocessed(client_version_8, requests_mock):
     project = client_version_8.get_project(PROJECT_NAME)
@@ -55,9 +61,9 @@ def test_process_unprocessed(client_version_8, requests_mock):
         f"{API_EXPERIMENTAL}/textanalysis/projects/{PROJECT_NAME}/"
         f"documentSources/{process.document_source_name}/processes/{process.name}/reprocessUnprocessed",
         headers={"Content-Type": "application/json"},
-        json={"payload": None, "errorMessages": []}
+        json={"payload": None, "errorMessages": []},
     )
-    
+
     process.process_unprocessed()
 
 
@@ -71,6 +77,7 @@ def test_rerun(process, requests_mock):
 
     process.rerun()
 
+
 def test_rerun_document_names_not_supported(process):
     with pytest.raises(OperationNotSupported):
         process.rerun(document_names=["doc1.txt", "doc2.txt"])
@@ -79,14 +86,15 @@ def test_rerun_document_names_not_supported(process):
 def test_rerun_document_names(client_version_8, requests_mock):
     project = client_version_8.get_project(PROJECT_NAME)
     process = Process(project, "my_process", "my_doc_source", "my_pipeline")
-    
+
     expected_document_names = ["doc1.txt", "doc2.txt"]
 
     captured_document_names = []
+
     def callback(request, _content):
         captured_document_names.extend(request.json()["documentNames"])
         return {"payload": None, "errorMessages": []}
-    
+
     requests_mock.post(
         f"{API_EXPERIMENTAL}/textanalysis/projects/{PROJECT_NAME}/"
         f"documentSources/{process.document_source_name}/processes/{process.name}/reprocess",
@@ -283,7 +291,10 @@ def test_export_text_analysis_with_page_and_pagsize(client_version_6, requests_m
         page_size = int(request.qs["pageSize"][0])
         page = int(request.qs["page"][0])
         return_payload = [
-            {"documentName": f"Document ({page_size * (page - 1) + k}).txt", "annotationDtos": []}
+            {
+                "documentName": f"Document ({page_size * (page - 1) + k}).txt",
+                "annotationDtos": [],
+            }
             for k in range(1, page_size + 1)
         ]
         return {
@@ -314,6 +325,7 @@ def test_export_text_analysis_with_page_and_pagsize(client_version_6, requests_m
     assert len(export3["textAnalysisResultDtos"]) == 100
     assert export3["textAnalysisResultDtos"][-1]["documentName"] == "Document (200).txt"
 
+
 def test_export_text_analysis_document_selection(client_version_8, requests_mock):
     project = Project(client_version_8, PROJECT_NAME)
     collection = project.get_document_collection(COLLECTION_NAME)
@@ -336,12 +348,14 @@ def test_export_text_analysis_document_selection(client_version_8, requests_mock
     )
     process = collection.get_process(process_name)
     actual_document_names = []
+
     def callback(request, _content):
         actual_document_names.extend(request.json()["documentNames"])
         return {
             "payload": {
                 "textAnalysisResultDtos": [
-                    {"documentName": name, "annotationDtos": []} for name in actual_document_names
+                    {"documentName": name, "annotationDtos": []}
+                    for name in actual_document_names
                 ],
                 "projectName": project.name,
                 # Truncated
@@ -359,9 +373,15 @@ def test_export_text_analysis_document_selection(client_version_8, requests_mock
     export = process.export_text_analysis(document_names=expected_document_names)
     textanalysis_results = export["textAnalysisResultDtos"]
     assert len(textanalysis_results) == len(expected_document_names)
-    assert all(result["documentName"] in expected_document_names for result in textanalysis_results)
+    assert all(
+        result["documentName"] in expected_document_names
+        for result in textanalysis_results
+    )
 
-def test_export_text_analysis_document_selection_not_supported(client_version_7, requests_mock):
+
+def test_export_text_analysis_document_selection_not_supported(
+    client_version_7, requests_mock
+):
     project = Project(client_version_7, PROJECT_NAME)
     collection = project.get_document_collection(COLLECTION_NAME)
     process_name = "my-process"
@@ -416,7 +436,9 @@ def test_export_text_analysis_to_cas_v6_full_name_support(
             <cas:View sofa="1" members="2"/>
         </xmi:XMI>
         """
-    empty_typesystem = '<typeSystemDescription xmlns="http://uima.apache.org/resourceSpecifier"/>'
+    empty_typesystem = (
+        '<typeSystemDescription xmlns="http://uima.apache.org/resourceSpecifier"/>'
+    )
     pipeline = Pipeline(project, "my-pipeline")
     process = Process(project, "my-process", collection.name, pipeline.name)
 
@@ -457,7 +479,9 @@ def test_export_text_analysis_to_cas_v6_onlycas_export_by_name_support(
             <cas:View sofa="1" members="2"/>
         </xmi:XMI>
         """
-    empty_typesystem = '<typeSystemDescription xmlns="http://uima.apache.org/resourceSpecifier"/>'
+    empty_typesystem = (
+        '<typeSystemDescription xmlns="http://uima.apache.org/resourceSpecifier"/>'
+    )
     pipeline = Pipeline(project, "my-pipeline")
     process = Process(project, "my-process", collection.name, pipeline.name)
 
@@ -472,7 +496,9 @@ def test_export_text_analysis_to_cas_v6_onlycas_export_by_name_support(
         f"{API_EXPERIMENTAL}/projects/{project.name}/documentCollections/{collection.name}/documents",
         headers={"Content-Type": "application/json"},
         json={
-            "payload": [{"documentIdentifier": document_id, "documentName": document_name}],
+            "payload": [
+                {"documentIdentifier": document_id, "documentName": document_name}
+            ],
             "errorMessages": [],
         },
     )
@@ -488,7 +514,9 @@ def test_export_text_analysis_to_cas_v6_onlycas_export_by_name_support(
     assert cas.sofa_string == "Test"
 
 
-def test_export_text_analysis_to_cas_v6_only_id_support(client_version_6, requests_mock):
+def test_export_text_analysis_to_cas_v6_only_id_support(
+    client_version_6, requests_mock
+):
     project = client_version_6.get_project(PROJECT_NAME)
     collection = project.get_document_collection(COLLECTION_NAME)
     document_id = "document0001"
@@ -504,7 +532,9 @@ def test_export_text_analysis_to_cas_v6_only_id_support(client_version_6, reques
             <cas:View sofa="1" members="2"/>
         </xmi:XMI>
         """
-    empty_typesystem = '<typeSystemDescription xmlns="http://uima.apache.org/resourceSpecifier"/>'
+    empty_typesystem = (
+        '<typeSystemDescription xmlns="http://uima.apache.org/resourceSpecifier"/>'
+    )
     pipeline = Pipeline(project, "my-pipeline")
     process = Process(project, "my-process", collection.name, pipeline.name)
 
@@ -527,7 +557,9 @@ def test_export_text_analysis_to_cas_v6_only_id_support(client_version_6, reques
         f"{API_EXPERIMENTAL}/projects/{project.name}/documentCollections/{collection.name}/documents",
         headers={"Content-Type": "application/json"},
         json={
-            "payload": [{"documentIdentifier": document_id, "documentName": document_name}],
+            "payload": [
+                {"documentIdentifier": document_id, "documentName": document_name}
+            ],
             "errorMessages": [],
         },
     )
@@ -552,7 +584,9 @@ def test_export_text_analysis_to_cas_v6_only_id_support(client_version_6, reques
     assert cas.sofa_string == "Test"
 
 
-def test_export_text_analysis_to_cas_v6_7_provide_typesystem(client_version_6_7, requests_mock):
+def test_export_text_analysis_to_cas_v6_7_provide_typesystem(
+    client_version_6_7, requests_mock
+):
     project = client_version_6_7.get_project(PROJECT_NAME)
     collection = project.get_document_collection(COLLECTION_NAME)
     document_id = "document0001"
@@ -568,7 +602,9 @@ def test_export_text_analysis_to_cas_v6_7_provide_typesystem(client_version_6_7,
             <cas:View sofa="1" members="2"/>
         </xmi:XMI>
         """
-    empty_typesystem = '<typeSystemDescription xmlns="http://uima.apache.org/resourceSpecifier"/>'
+    empty_typesystem = (
+        '<typeSystemDescription xmlns="http://uima.apache.org/resourceSpecifier"/>'
+    )
     cas_typesystem = load_typesystem(empty_typesystem)
     pipeline = Pipeline(project, "my-pipeline")
     process = Process(project, "my-process", collection.name, pipeline.name)
@@ -577,7 +613,9 @@ def test_export_text_analysis_to_cas_v6_7_provide_typesystem(client_version_6_7,
         f"{API_EXPERIMENTAL}/projects/{project.name}/documentCollections/{collection.name}/documents",
         headers={"Content-Type": "application/json"},
         json={
-            "payload": [{"documentIdentifier": document_id, "documentName": document_name}],
+            "payload": [
+                {"documentIdentifier": document_id, "documentName": document_name}
+            ],
             "errorMessages": [],
         },
     )
@@ -612,7 +650,9 @@ def test_export_text_analysis_to_cas_annotation_types_not_supported(
             <cas:View sofa="1" members="2"/>
         </xmi:XMI>
         """
-    empty_typesystem = '<typeSystemDescription xmlns="http://uima.apache.org/resourceSpecifier"/>'
+    empty_typesystem = (
+        '<typeSystemDescription xmlns="http://uima.apache.org/resourceSpecifier"/>'
+    )
     cas_typesystem = load_typesystem(empty_typesystem)
     pipeline = Pipeline(project, "my-pipeline")
     process = Process(project, "my-process", collection.name, pipeline.name)
@@ -621,7 +661,9 @@ def test_export_text_analysis_to_cas_annotation_types_not_supported(
         f"{API_EXPERIMENTAL}/projects/{project.name}/documentCollections/{collection.name}/documents",
         headers={"Content-Type": "application/json"},
         json={
-            "payload": [{"documentIdentifier": document_id, "documentName": document_name}],
+            "payload": [
+                {"documentIdentifier": document_id, "documentName": document_name}
+            ],
             "errorMessages": [],
         },
     )
@@ -669,7 +711,9 @@ def test_update_text_analysis_result_cas(client_version_6, requests_mock):
         headers={"Content-Type": "application/json"},
         json={"payload": None, "errorMessages": []},
     )
-    process.import_text_analysis_result(cas, document_name, process.name, overwrite=True)
+    process.import_text_analysis_result(
+        cas, document_name, process.name, overwrite=True
+    )
 
 
 def test_add_text_analysis_result_cas_file(client_version_6, requests_mock):

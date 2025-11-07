@@ -44,7 +44,9 @@ from tests.fixtures import *
 
 logging.basicConfig(level=logging.INFO)
 
-EMPTY_TYPESYSTEM = '<typeSystemDescription xmlns="http://uima.apache.org/resourceSpecifier"/>'
+EMPTY_TYPESYSTEM = (
+    '<typeSystemDescription xmlns="http://uima.apache.org/resourceSpecifier"/>'
+)
 
 
 @pytest.fixture
@@ -238,7 +240,9 @@ def test_ensure_started_timeout(client, pipeline_endpoint_behavior_mock):
 
 
 def test_ensure_started_failure_to_start(client, pipeline_endpoint_behavior_mock):
-    error_message = "Starting failed: org.apache.uima.ruta.extensions.RutaParseRuntimeException"
+    error_message = (
+        "Starting failed: org.apache.uima.ruta.extensions.RutaParseRuntimeException"
+    )
 
     pipeline_endpoint_behavior_mock.set_state(
         Pipeline.STATE_STOPPED,
@@ -269,7 +273,10 @@ class PipelineEndpointMock:
         self.state_locked = False
 
     def set_state(
-        self, state: str, locked: bool = False, pipeline_state_message: Optional[str] = None
+        self,
+        state: str,
+        locked: bool = False,
+        pipeline_state_message: Optional[str] = None,
     ) -> None:
         self.state = state
         self.requested_state = state
@@ -319,11 +326,17 @@ def test_analyse_texts_with_paths(client, pipeline_analyse_text_mock):
     for input_file in Path("tests/resources/texts").glob("*.txt"):
         with open(input_file, "r", encoding="UTF-8") as input_io:
             expected_results.append(
-                {"source": str(input_file).replace(os.sep, "/"), "text": input_io.read()}
+                {
+                    "source": str(input_file).replace(os.sep, "/"),
+                    "text": input_io.read(),
+                }
             )
 
     assert [
-        {"source": result.source.replace(os.sep, "/"), "text": result.data[0]["coveredText"]}
+        {
+            "source": result.source.replace(os.sep, "/"),
+            "text": result.data[0]["coveredText"],
+        }
         for result in sorted(results, key=lambda x: x.source)
     ] == sorted(expected_results, key=lambda x: x["source"])
 
@@ -425,7 +438,6 @@ def test_analyse_pdf_to_fhir(client, requests_mock):
 
 
 def test_analyse_text_to_fhir(client_version_7_3_platform_8_17, requests_mock):
-
     def callback(request, _content):
         doc_text = request.text.read().decode("utf-8")
         return {"payload": {"text": doc_text}}
@@ -436,7 +448,9 @@ def test_analyse_text_to_fhir(client_version_7_3_platform_8_17, requests_mock):
         json=callback,
     )
 
-    pipeline = Pipeline(Project(client_version_7_3_platform_8_17, PROJECT_NAME), "discharge")
+    pipeline = Pipeline(
+        Project(client_version_7_3_platform_8_17, PROJECT_NAME), "discharge"
+    )
     text = "The patient has a fever"
     result = pipeline.analyse_text_to_fhir(source=text)
     assert result["text"] == text
@@ -450,7 +464,6 @@ def test_analyse_text_to_fhir_not_supported(client_version_6):
 
 
 def test_analyse_fhir_to_fhir(client_version_7_3_platform_8_17, requests_mock):
-
     def callback(request, _content):
         doc_text = request.text.read().decode("utf-8")
         return {"payload": {"text": doc_text}}
@@ -461,7 +474,9 @@ def test_analyse_fhir_to_fhir(client_version_7_3_platform_8_17, requests_mock):
         json=callback,
     )
 
-    pipeline = Pipeline(Project(client_version_7_3_platform_8_17, PROJECT_NAME), "discharge")
+    pipeline = Pipeline(
+        Project(client_version_7_3_platform_8_17, PROJECT_NAME), "discharge"
+    )
     fhir = _create_fhir(b"The patient has a fever")
     result = pipeline.analyse_fhir_to_fhir(source=str(fhir))
     assert result["text"] == str(fhir)
@@ -488,7 +503,9 @@ def test_analyse_fhir_to_cas(client_version_7_3_platform_8_17, requests_mock):
         text=callback,
     )
 
-    pipeline = Pipeline(Project(client_version_7_3_platform_8_17, PROJECT_NAME), "discharge")
+    pipeline = Pipeline(
+        Project(client_version_7_3_platform_8_17, PROJECT_NAME), "discharge"
+    )
     text = "The patient has a fever"
     fhir = _create_fhir(text.encode("utf-8"))
     result_cas = pipeline.analyse_fhir_to_cas(source=json.dumps(fhir))
@@ -506,7 +523,9 @@ def test_analyse_fhir_to_json(client_version_7_3_platform_8_17, requests_mock):
         json=callback,
     )
 
-    pipeline = Pipeline(Project(client_version_7_3_platform_8_17, PROJECT_NAME), "discharge")
+    pipeline = Pipeline(
+        Project(client_version_7_3_platform_8_17, PROJECT_NAME), "discharge"
+    )
     text = "The patient has a fever"
     fhir = _create_fhir(text.encode("utf-8"))
     result = pipeline.analyse_fhir(source=fhir)
@@ -597,7 +616,9 @@ def test_create_resource_container(client, requests_mock):
     resource_zip_file = Path(TEST_DIRECTORY) / "resources" / "zip_test" / "zip_test.zip"
     project = client.get_project("test")
     pipeline = project.get_pipeline("pipeline")
-    actual_resource_container = pipeline.create_resource_container("container", resource_zip_file)
+    actual_resource_container = pipeline.create_resource_container(
+        "container", resource_zip_file
+    )
     assert actual_resource_container.name == "container"
 
 
@@ -723,7 +744,9 @@ def test_upload_resources(client_version_6, requests_mock):
             "errorMessages": [],
         },
     )
-    resources = pipeline.upload_resources(TEST_DIRECTORY + "/" + "resources/zip_test/text1.txt")
+    resources = pipeline.upload_resources(
+        TEST_DIRECTORY + "/" + "resources/zip_test/text1.txt"
+    )
     assert len(resources) == 1
 
 
