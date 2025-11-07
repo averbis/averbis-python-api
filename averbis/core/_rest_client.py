@@ -17,6 +17,9 @@
 # limitations under the License.
 #
 #
+from __future__ import annotations
+
+import ijson  # type: ignore
 import copy
 from enum import Enum, auto
 from urllib.parse import quote
@@ -40,6 +43,7 @@ from json import JSONDecodeError
 
 from time import sleep, time
 from typing import (
+    Generator,
     List,
     Union,
     IO,
@@ -54,6 +58,7 @@ from typing import (
 from pathlib import Path
 import requests
 import mimetypes
+import weakref
 
 from requests import RequestException
 
@@ -105,6 +110,88 @@ MEDIA_TYPES_CAS = MEDIA_TYPES_CAS_NEEDS_TS + [
     MEDIA_TYPE_CAS_COMPRESSED_FILTERED_TS,
     MEDIA_TYPE_BINARY_TSI,
 ]
+
+
+class ExportDocumentStream:
+    """Iterator wrapper around a streaming export HTTP response.
+
+    The object wraps a requests.Response that was opened with stream=True and
+    provides an iterator over the exported document objects (as parsed by
+    ijson.items(..., "payload.documents.item")).
+
+    Behavior and guarantees:
+    - The response is closed deterministically when the iterator is exhausted.
+    - Calling ``close()`` will close the response immediately and cancel the
+      weakref finalizer.
+    - The object implements the context manager protocol: use ``with`` to
+      ensure the response is closed on early exit.
+    - A weakref finalizer is registered as a last-resort safety net to close
+      the response if the wrapper is garbage-collected without explicit
+      closing. Relying on this finalizer is discouraged; prefer deterministic
+      closing via exhaust/close/with.
+    - Provides a small ``__or__`` helper so callers can write
+      ``export_stream | target.import_json_document_stream`` as a convenience.
+    """
+
+    def __init__(self, response: requests.Response):
+        # _resp may be set to None when closed; annotate as Optional
+        self._resp: Optional[requests.Response] = response
+        self._iter = ijson.items(self._resp.raw, "payload.documents.item")
+        # Finalizer ensures response is closed if this object is dropped
+        self._finalizer = weakref.finalize(self, self._safe_close)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        try:
+            return next(self._iter)
+        except StopIteration:
+            # fully consumed -> close response
+            self.close()
+            raise
+        except Exception:
+            # parsing or IO error -> close and re-raise
+            self.close()
+            raise
+
+    def close(self) -> None:
+        """Idempotently close the underlying response and detach finalizer."""
+        resp = getattr(self, "_resp", None)
+        if resp is not None:
+            try:
+                resp.close()
+            finally:
+                # clear stored reference and detach finalizer
+                self._resp = None
+                try:
+                    self._finalizer.detach()
+                except Exception:
+                    pass
+
+    def _safe_close(self) -> None:
+        try:
+            resp = getattr(self, "_resp", None)
+            if resp is not None:
+                resp.close()
+        except Exception:
+            pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        self.close()
+        return False
+
+    def __or__(self, other):
+        """Support convenience piping: export_stream | target.import_json_document_stream
+
+        Returns the result of calling ``other(self)`` which matches the
+        conventional import method signature accepting an iterator/generator.
+        """
+        return other(self)
+
 
 DOCUMENT_IMPORTER_CAS = "CAS Importer"
 DOCUMENT_IMPORTER_SOLR = "Solr XML Importer"
@@ -1840,6 +1927,75 @@ class DocumentCollection:
             for process in self.project.list_processes()
             if process.document_source_name == self.name
         ]
+
+    @experimental_api
+    def export_json_document_stream(
+        self, document_names: Optional[List[str]] = None
+    ) -> Iterator[Dict[str, Any]]:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Export documents from a collection and return a generator of document objects.
+
+        Args:
+            document_names: Optional list of document names to export (empty list exports all)
+
+        Yields:
+            Document dictionaries from the export response
+        """
+        if document_names is None:
+            document_names = []
+
+        # Open the streaming response and return a safe iterator object which
+        # ensures the underlying response is closed when fully consumed,
+        # when closed explicitly, or when GC'd as a last-resort.
+        resp = self.project.client._export_document_stream(
+            self.project.name, self.name, document_names
+        )
+        resp.raise_for_status()
+
+        # Use the module-level ExportDocumentStream which provides the same
+        # iterator + deterministic close semantics and a weakref finalizer.
+        return ExportDocumentStream(resp)
+
+    @experimental_api
+    def import_json_document_stream(
+        self, document_generator: Generator[Dict[str, Any], None, None]
+    ) -> dict:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Import documents to a collection from a document generator.
+
+        Args:
+            document_generator: Generator yielding document dictionaries
+
+        Returns:
+            Response object from the import request
+        """
+
+        # POST streamed documents to import endpoint. We read and return the
+        # JSON payload from the server and ensure the response is closed
+        # deterministically before returning.
+        resp = self.project.client._import_document_stream(
+            self.project.name, self.name, document_generator
+        )
+        try:
+            resp.raise_for_status()
+            try:
+                payload = resp.json()
+            except Exception:
+                # If server did not return JSON, return raw text as fallback
+                try:
+                    payload = resp.text
+                except Exception:
+                    payload = None
+            return payload
+        finally:
+            try:
+                resp.close()
+            except Exception:
+                pass
 
     def _get_document_identifier(self, document_name: str) -> str:
         documents = [
@@ -4109,6 +4265,71 @@ class Client:
             )
             processes.append(document_collection.get_process(item["processName"]))
         return processes
+
+    def _export_document_stream(
+        self,
+        project_name: str,
+        document_collection_name: str,
+        document_names: List[str],
+    ) -> requests.Response:
+        build_version = self.get_build_info()
+        if not self._is_higher_equal_version(build_version["platformVersion"], 9, 3):
+            raise OperationNotSupported(
+                f"The method 'export_documents' is only supported for platform versions >= 9.3.0 (available from Health Discovery version 7.5.0), but current platform is {build_version['platformVersion']}."
+            )
+
+        return requests.post(
+            f"/experimental/projects/{project_name}/documentCollections/{document_collection_name}/export",
+            headers=self._default_headers(
+                {
+                    HEADER_ACCEPT: MEDIA_TYPE_ANY,
+                    HEADER_CONTENT_TYPE: MEDIA_TYPE_APPLICATION_JSON,
+                }
+            ),
+            json={"documentNames": document_names},
+            stream=True,
+        )
+
+    def _import_document_stream(
+        self,
+        project_name: str,
+        document_collection_name: str,
+        document_generator: Generator[Dict[str, Any], None, None],
+    ):
+        build_version = self.get_build_info()
+        if not self._is_higher_equal_version(build_version["platformVersion"], 9, 3):
+            raise OperationNotSupported(
+                f"The method 'import_documents' is only supported for platform versions >= 9.3.0 (available from Health Discovery version 7.5.0), but current platform is {build_version['platformVersion']}."
+            )
+
+        def generate_import_stream():
+            """Yield import JSON bytes"""
+            yield b'{"documents":['
+            first = True
+            count = 0
+            for doc in document_generator:
+                count += 1
+                if not first:
+                    yield b","
+                else:
+                    first = False
+                yield json.dumps(doc).encode("utf-8")
+            yield b"]}"
+            print(f"Total streamed documents: {count}")
+
+        return requests.post(
+            f"/experimental/projects/{project_name}/documentCollections/{document_collection_name}/import",
+            headers=self._default_headers(
+                {
+                    HEADER_ACCEPT: MEDIA_TYPE_ANY,
+                    HEADER_CONTENT_TYPE: MEDIA_TYPE_APPLICATION_JSON,
+                }
+            ),
+            # requests expects an iterable or file-like object; call the
+            # generator function to get an iterator over bytes
+            data=generate_import_stream(),
+            stream=True,
+        )
 
     def _delete_document(
         self, project_name: str, document_collection_name: str, document_name: str
