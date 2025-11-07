@@ -893,6 +893,7 @@ class Pipeline:
         language: Optional[str] = None,
         timeout: Optional[float] = None,
         annotation_types: Union[None, str, List[str]] = None,
+        meta_data: Optional[dict] = None,
     ) -> Cas:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear. Processes text using a pipeline and returns the result
@@ -904,6 +905,7 @@ class Pipeline:
         :param annotation_types: Optional parameter indicating which types should be returned.
                                  Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types
                                  with prefix "de.averbis.types". Available from Health Discovery 7.3.0 onwards.
+        :param meta_data:        Optional key-value pairs that are used as generic metadata in addition to the document
 
         :return: A cassis.Cas object
         """
@@ -917,6 +919,7 @@ class Pipeline:
                 language=language,
                 timeout=timeout,
                 annotation_types=annotation_types,
+                meta_data=meta_data,
             ),
             typesystem=self.get_type_system(),
         )
@@ -929,6 +932,7 @@ class Pipeline:
         language: Optional[str] = None,
         timeout: Optional[float] = None,
         annotation_types: Union[None, str, List[str]] = None,
+        meta_data: Optional[dict] = None,
     ) -> Iterator[Result]:
         """
         Analyze the given texts or files using the pipeline. If feasible, multiple documents are processed in parallel.
@@ -953,6 +957,7 @@ class Pipeline:
         :param annotation_types: Optional parameter indicating which types should be returned.
                                  Supports wildcard expressions, e.g. "de.averbis.types.*" returns all types
                                  with prefix "de.averbis.types". Available from Health Discovery 7.3.0 onwards.
+        :param meta_data:        Optional key-value pairs that are used as generic metadata in addition to the document
 
         :return: An iterator over the results produced by the pipeline.
         """
@@ -963,6 +968,7 @@ class Pipeline:
             language=language,
             timeout=timeout,
             analyse_function=self.analyse_text_to_cas,
+            meta_data=meta_data,
         )
 
     # Ignoring errors as linter (compiler) cannot resolve dynamically loaded lib
@@ -3669,6 +3675,7 @@ class Client:
         language: Optional[str] = None,
         timeout: Optional[float] = None,
         annotation_types: Union[None, str, List[str]] = None,
+        meta_data: Optional[dict] = None,
     ) -> str:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -3686,15 +3693,17 @@ class Client:
         if "platformVersion" in build_version and self._is_higher_equal_version(
             build_version["platformVersion"], 8, 16
         ):
+            request_params = {
+                "language": language,
+                "annotationTypes": self._preprocess_annotation_types(annotation_types),
+            }
+            request_params.update(meta_data or {})
             return str(
                 self.__request_with_bytes_response(
                     "post",
                     f"/v1/textanalysis/projects/{project}/pipelines/{pipeline}/analyseText",
                     data=data,
-                    params={
-                        "language": language,
-                        "annotationTypes": self._preprocess_annotation_types(annotation_types),
-                    },
+                    params=request_params,
                     headers={
                         HEADER_CONTENT_TYPE: MEDIA_TYPE_TEXT_PLAIN_UTF8,
                         HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_XMI,
@@ -3710,12 +3719,14 @@ class Client:
                 f"but current platform is {build_version['platformVersion']}."
             )
         else:
+            request_params = {"language": language}
+            request_params.update(meta_data or {})
             return str(
                 self.__request_with_bytes_response(
                     "post",
                     f"/experimental/textanalysis/projects/{project}/pipelines/{pipeline}/analyzeTextToCas",
                     data=data,
-                    params={"language": language},
+                    params=request_params,
                     headers={
                         HEADER_CONTENT_TYPE: MEDIA_TYPE_TEXT_PLAIN_UTF8,
                         HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_XMI,
