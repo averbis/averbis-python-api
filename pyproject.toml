@@ -68,6 +68,10 @@ sphinx-build -M html . _build
 """
 help = "builds the documentation with Sphinx"
 
+[[tool.mypy.overrides]]
+module = "cassis"
+ignore_missing_imports = true
+
 [tool.taskipy.tasks.license]
 cmd = """
 licenseheaders -t build/apache-2.tmpl -n "Averbis Python API" -y "2024" -o "Averbis GmbH" -u "https://www.averbis.com" -x ".*" "venv/*"
