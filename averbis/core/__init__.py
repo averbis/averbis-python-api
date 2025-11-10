@@ -70,7 +70,7 @@ __all__ = [
     "Pear",
     "Process",
     "EvaluationConfiguration",
-    "TextanalysisMode"
+    "TextanalysisMode",
     "DOCUMENT_IMPORTER_CAS",
     "DOCUMENT_IMPORTER_SOLR",
     "DOCUMENT_IMPORTER_TEXT",
