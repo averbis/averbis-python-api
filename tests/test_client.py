@@ -192,7 +192,9 @@ def test_create_resource_container(client, requests_mock):
     )
 
     resource_zip_file = Path(TEST_DIRECTORY) / "resources" / "zip_test" / "zip_test.zip"
-    actual_resource_container = client.create_resource_container("container", resource_zip_file)
+    actual_resource_container = client.create_resource_container(
+        "container", resource_zip_file
+    )
     assert actual_resource_container.name == "container"
 
 
@@ -266,7 +268,10 @@ def test_get_build_info(client, requests_mock):
     requests_mock.get(
         f"{API_BASE}/buildInfo",
         headers={"Content-Type": "application/json"},
-        json={"payload": {"specVersion": "5.33.0", "buildNumber": ""}, "errorMessages": []},
+        json={
+            "payload": {"specVersion": "5.33.0", "buildNumber": ""},
+            "errorMessages": [],
+        },
     )
 
     build_info = client.get_build_info()
@@ -322,7 +327,6 @@ def test_get_project(client):
 
 
 def test_list_projects(client, requests_mock):
-
     def callback(request, _):
         return {
             "payload": [
@@ -333,11 +337,15 @@ def test_list_projects(client, requests_mock):
         }
 
     requests_mock.get(
-        f"{API_BASE}/projects", headers={"Content-Type": "application/json"}, status_code=405
+        f"{API_BASE}/projects",
+        headers={"Content-Type": "application/json"},
+        status_code=405,
     )
 
     requests_mock.get(
-        f"{API_EXPERIMENTAL}/projects", headers={"Content-Type": "application/json"}, json=callback
+        f"{API_EXPERIMENTAL}/projects",
+        headers={"Content-Type": "application/json"},
+        json=callback,
     )
 
     project_list = client.list_projects()
@@ -357,7 +365,9 @@ def test_list_projects_v6_11(client_version_6_11, requests_mock):
         }
 
     requests_mock.get(
-        f"{API_BASE}/projects", headers={"Content-Type": "application/json"}, json=callback
+        f"{API_BASE}/projects",
+        headers={"Content-Type": "application/json"},
+        json=callback,
     )
 
     project_list = client_version_6_11.list_projects()
@@ -377,11 +387,15 @@ def test_exists_project(client, requests_mock):
         }
 
     requests_mock.get(
-        f"{API_BASE}/projects", headers={"Content-Type": "application/json"}, status_code=405
+        f"{API_BASE}/projects",
+        headers={"Content-Type": "application/json"},
+        status_code=405,
     )
 
     requests_mock.get(
-        f"{API_EXPERIMENTAL}/projects", headers={"Content-Type": "application/json"}, json=callback
+        f"{API_EXPERIMENTAL}/projects",
+        headers={"Content-Type": "application/json"},
+        json=callback,
     )
 
     assert client.exists_project("Jumble") is True
@@ -606,7 +620,10 @@ def test_import_txt_into_collection(client, requests_mock):
     requests_mock.post(
         f"{API_BASE}/importer/projects/{PROJECT_NAME}/documentCollections/collection0/documents",
         json={
-            "payload": {"original_document_name": "text1.txt", "document_name": "text1.txt"},
+            "payload": {
+                "original_document_name": "text1.txt",
+                "document_name": "text1.txt",
+            },
             "errorMessages": [],
         },
     )
@@ -633,7 +650,10 @@ def test_import_solr_xml_into_collection(client, requests_mock):
     file_path = os.path.join(TEST_DIRECTORY, "resources/xml/disease_solr.xml")
     with open(file_path, "r", encoding="UTF-8") as input_io:
         response = client._import_documents(
-            project.name, "collection0", input_io, mime_type="application/vnd.averbis.solr+xml"
+            project.name,
+            "collection0",
+            input_io,
+            mime_type="application/vnd.averbis.solr+xml",
         )
 
     assert response[0]["original_document_name"] == "disease_solr.xml"
@@ -641,7 +661,9 @@ def test_import_solr_xml_into_collection(client, requests_mock):
     # Otherwise, we get a ValueError
     with pytest.raises(Exception):
         client._import_documents(
-            Path("dummy"), mime_type="application/vnd.averbis.solr+xml", filename="Dummy.txt"
+            Path("dummy"),
+            mime_type="application/vnd.averbis.solr+xml",
+            filename="Dummy.txt",
         )
 
 
@@ -717,7 +739,9 @@ def test_start_terminology_export(client, requests_mock):
         },
     )
 
-    client._start_terminology_export(PROJECT_NAME, "term1", TERMINOLOGY_EXPORTER_OBO_1_4)
+    client._start_terminology_export(
+        PROJECT_NAME, "term1", TERMINOLOGY_EXPORTER_OBO_1_4
+    )
 
 
 def test_get_terminology_export_info(client, requests_mock):
@@ -759,7 +783,9 @@ def test_start_terminology_import(client, requests_mock):
         },
     )
 
-    client._start_terminology_import(PROJECT_NAME, "term1", TERMINOLOGY_IMPORTER_OBO, "<no data/>")
+    client._start_terminology_import(
+        PROJECT_NAME, "term1", TERMINOLOGY_IMPORTER_OBO, "<no data/>"
+    )
 
 
 def test_get_terminology_import_info(client, requests_mock):
@@ -834,9 +860,7 @@ def test_concept_autosuggest(client, requests_mock):
         },
         "errorMessages": [],
     }
-    endpoint = (
-        f"terminology/projects/{project_name}/terminologies/{terminology_name}/conceptAutosuggest"
-    )
+    endpoint = f"terminology/projects/{project_name}/terminologies/{terminology_name}/conceptAutosuggest"
     full_url = f"{API_EXPERIMENTAL}/{endpoint}"
     requests_mock.post(full_url, json=response_json)
 
@@ -876,13 +900,18 @@ def test_analyse_text(client, requests_mock):
     )
 
     response = client._analyse_text(
-        PROJECT_NAME, "discharge", "Der Patient leidet an einer Appendizitis.", language="de"
+        PROJECT_NAME,
+        "discharge",
+        "Der Patient leidet an einer Appendizitis.",
+        language="de",
     )
 
     assert response[0]["coveredText"] == "Appendizitis"
 
 
-def test_analyse_texts_with_some_working_and_some_failing(client_version_5, requests_mock):
+def test_analyse_texts_with_some_working_and_some_failing(
+    client_version_5, requests_mock
+):
     requests_mock.get(
         f"{API_BASE}/textanalysis/projects/{PROJECT_NAME}/pipelines/discharge/configuration",
         headers={"Content-Type": "application/json"},
@@ -984,7 +1013,10 @@ def test_classify_document(client, requests_mock):
     )
 
     response = client._classify_document(
-        PROJECT_NAME, "This is a test.".encode(ENCODING_UTF_8), "Default", DOCUMENT_IMPORTER_TEXT
+        PROJECT_NAME,
+        "This is a test.".encode(ENCODING_UTF_8),
+        "Default",
+        DOCUMENT_IMPORTER_TEXT,
     )
 
     assert response["classifications"][0]["documentIdentifier"] == "UNKNOWN"
@@ -1030,9 +1062,8 @@ def test_download_resources(client, requests_mock):
 
 
 def test_delete_resources(client, requests_mock):
-
     requests_mock.delete(
-        f"{API_EXPERIMENTAL}/textanalysis" f"/resources",
+        f"{API_EXPERIMENTAL}/textanalysis/resources",
         headers={"Content-Type": "application/json"},
         json={"payload": None, "errorMessages": []},
     )
@@ -1083,18 +1114,24 @@ def test_neural_search(client, requests_mock):
 
     # high-level Project API call - use keyword argument for dict
     project = client.get_project(PROJECT_NAME)
-    response_high = project.neural_search(neural_search_parameter={"text": "find me", "topK": 1})
+    response_high = project.neural_search(
+        neural_search_parameter={"text": "find me", "topK": 1}
+    )
     assert "solrResponse" in response_high
 
     # Alternative: test with explicit parameters
-    response_explicit = project.neural_search(text="find me", pipeline_name="test-pipeline", top_k=1)
+    response_explicit = project.neural_search(
+        text="find me", pipeline_name="test-pipeline", top_k=1
+    )
     assert "solrResponse" in response_explicit
 
 
 def test_with_settings_file(requests_mock_hd6):
     client = Client(
         "localhost-hd",
-        settings=os.path.join(TEST_DIRECTORY, "resources/settings/client-settings.json"),
+        settings=os.path.join(
+            TEST_DIRECTORY, "resources/settings/client-settings.json"
+        ),
     )
 
     assert client._url == "https://localhost:8080/health-discovery"
@@ -1137,12 +1174,17 @@ def test_handle_error_outside_platform(client, requests_mock):
         status_code=404,
     )
     with pytest.raises(Exception) as ex:
-        client._Client__request_with_json_response(method="get", endpoint=f"v1/invalid_url")
+        client._Client__request_with_json_response(
+            method="get", endpoint=f"v1/invalid_url"
+        )
     expected_error_message = "404 Server Error: 'Not found' for url: 'https://localhost:8080/information-discovery/rest/v1/invalid_url'."
     assert str(ex.value) == expected_error_message
     assert ex.value.reason == "Not found"
     assert ex.value.status_code == 404
-    assert ex.value.url == "https://localhost:8080/information-discovery/rest/v1/invalid_url"
+    assert (
+        ex.value.url
+        == "https://localhost:8080/information-discovery/rest/v1/invalid_url"
+    )
     assert ex.value.error_message is None
 
 
@@ -1159,12 +1201,17 @@ def test_handle_error_in_non_existing_endpoint(client, requests_mock):
         status_code=404,
     )
     with pytest.raises(Exception) as ex:
-        client._Client__request_with_json_response(method="get", endpoint="v1/invalid_url")
+        client._Client__request_with_json_response(
+            method="get", endpoint="v1/invalid_url"
+        )
     expected_error_message = "404 Server Error: 'None' for url: 'https://localhost:8080/information-discovery/rest/v1/invalid_url'.\nPlatform error message is: 'Not Found'"
     assert str(ex.value) == expected_error_message
     assert ex.value.reason is None
     assert ex.value.status_code == 404
-    assert ex.value.url == "https://localhost:8080/information-discovery/rest/v1/invalid_url"
+    assert (
+        ex.value.url
+        == "https://localhost:8080/information-discovery/rest/v1/invalid_url"
+    )
     assert ex.value.error_message == "Platform error message is: 'Not Found'"
 
 
@@ -1173,11 +1220,16 @@ def test_handle_error_bad_request(client, requests_mock):
     requests_mock.get(
         f"{API_BASE}/invalid_url",
         headers={"Content-Type": "application/json"},
-        json={"payload": None, "errorMessages": ["A project with name 'test' already exists."]},
+        json={
+            "payload": None,
+            "errorMessages": ["A project with name 'test' already exists."],
+        },
         status_code=400,
     )
     with pytest.raises(Exception) as ex:
-        client._Client__request_with_json_response(method="get", endpoint="v1/invalid_url")
+        client._Client__request_with_json_response(
+            method="get", endpoint="v1/invalid_url"
+        )
     expected_error_message = (
         "400 Server Error: 'None' for url: 'https://localhost:8080/information-discovery/rest/v1/invalid_url'.\n"
         "Endpoint error message is: 'A project with name 'test' already exists.'"
@@ -1185,8 +1237,14 @@ def test_handle_error_bad_request(client, requests_mock):
     assert str(ex.value) == expected_error_message
     assert ex.value.reason is None
     assert ex.value.status_code == 400
-    assert ex.value.url == "https://localhost:8080/information-discovery/rest/v1/invalid_url"
-    assert ex.value.error_message == "Endpoint error message is: 'A project with name 'test' already exists.'"
+    assert (
+        ex.value.url
+        == "https://localhost:8080/information-discovery/rest/v1/invalid_url"
+    )
+    assert (
+        ex.value.error_message
+        == "Endpoint error message is: 'A project with name 'test' already exists.'"
+    )
 
 
 def test_handle_error_no_access(client, requests_mock):
@@ -1200,7 +1258,10 @@ def test_handle_error_no_access(client, requests_mock):
     assert str(ex.value) == expected_error_message
     assert ex.value.reason is None
     assert ex.value.status_code == 401
-    assert ex.value.url == "https://localhost:8080/information-discovery/rest/v1/url/that/cannot/be/accessed"
+    assert (
+        ex.value.url
+        == "https://localhost:8080/information-discovery/rest/v1/url/that/cannot/be/accessed"
+    )
     assert ex.value.error_message is None
 
 
@@ -1232,7 +1293,9 @@ def test_create_zip_io__file_does_not_exist(client):
 
 
 def test_create_zip_io__zip_file_io(client):
-    zip_archive_bytes_io = open(Path(TEST_DIRECTORY) / "resources/zip_test/zip_test.zip", "rb")
+    zip_archive_bytes_io = open(
+        Path(TEST_DIRECTORY) / "resources/zip_test/zip_test.zip", "rb"
+    )
     zip_archive_bytes_io = client._create_zip_io(zip_archive_bytes_io)
     zip_file = zipfile.ZipFile(zip_archive_bytes_io)
     files_in_zip = [f.filename for f in zip_file.filelist]
@@ -1279,12 +1342,16 @@ def test_create_zip_io__folder_as_path_with_path_in_zip(client):
 
 
 def test_create_zip_io__folder(client):
-    zip_archive_bytes_io = client._create_zip_io(TEST_DIRECTORY + "/" + "resources/zip_test")
+    zip_archive_bytes_io = client._create_zip_io(
+        TEST_DIRECTORY + "/" + "resources/zip_test"
+    )
     assert_zip_archive_bytes_io_content(zip_archive_bytes_io)
 
 
 def test_annotation_types_normalization(client):
-    normalized = client._preprocess_annotation_types(["custom.Diagnosis", "custom.Medication"])
+    normalized = client._preprocess_annotation_types(
+        ["custom.Diagnosis", "custom.Medication"]
+    )
     assert (
         normalized == "custom.Diagnosis,custom.Medication"
         or normalized == "custom.Medication,custom.Diagnosis"

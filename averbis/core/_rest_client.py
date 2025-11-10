@@ -22,7 +22,13 @@ from enum import Enum, auto
 from urllib.parse import quote
 
 import re
-from cassis import Cas, TypeSystem, load_cas_from_xmi, load_typesystem, merge_typesystems  # type: ignore
+from cassis import (
+    Cas,
+    TypeSystem,
+    load_cas_from_xmi,
+    load_typesystem,
+    merge_typesystems,
+)  # type: ignore
 import json
 import logging
 import zipfile
@@ -33,7 +39,20 @@ from io import BytesIO, IOBase, BufferedReader
 from json import JSONDecodeError
 
 from time import sleep, time
-from typing import List, Union, IO, Iterable, Dict, Iterator, Optional, Any, Tuple, Callable, overload, TypedDict
+from typing import (
+    List,
+    Union,
+    IO,
+    Iterable,
+    Dict,
+    Iterator,
+    Optional,
+    Any,
+    Tuple,
+    Callable,
+    overload,
+    TypedDict,
+)
 from typing_extensions import Required
 from pathlib import Path
 import requests
@@ -64,8 +83,12 @@ MEDIA_TYPE_CAS_BINARY = "application/vnd.uima.cas+binary"
 MEDIA_TYPE_BINARY_TSI = "application/vnd.uima.cas+binary.tsi"
 MEDIA_TYPE_CAS_COMPRESSED = "application/vnd.uima.cas+compressed"
 MEDIA_TYPE_CAS_COMPRESSED_FILTERED = "application/vnd.uima.cas+compressed.filtered"
-MEDIA_TYPE_CAS_COMPRESSED_FILTERED_TS = "application/vnd.uima.cas+compressed.filtered.ts"
-MEDIA_TYPE_CAS_COMPRESSED_FILTERED_TSI = "application/vnd.uima.cas+compressed.filtered.tsi"
+MEDIA_TYPE_CAS_COMPRESSED_FILTERED_TS = (
+    "application/vnd.uima.cas+compressed.filtered.ts"
+)
+MEDIA_TYPE_CAS_COMPRESSED_FILTERED_TSI = (
+    "application/vnd.uima.cas+compressed.filtered.tsi"
+)
 MEDIA_TYPE_CAS_COMPRESSED_TSI = "application/vnd.uima.cas+compressed.tsi"
 MEDIA_TYPE_CAS_SERIALIZED = "application/vnd.uima.cas+serialized"
 MEDIA_TYPE_CAS_SERIALIZED_TSI = "application/vnd.uima.cas+serialized.tsi"
@@ -148,12 +171,14 @@ class OperationTimeoutError(Exception):
 
     pass
 
+
 class NeuralSearchParams(TypedDict, total=False):
     text: Required[str]
     pipelineName: Required[str]
     language: str
     topK: int
     threshold: float
+
 
 class Result:
     def __init__(
@@ -177,7 +202,6 @@ class Result:
 
 
 class ResourceContainer:
-
     def __init__(
         self,
         client: "Client",
@@ -212,22 +236,30 @@ class ResourceContainer:
         self.client._export_container_resources(target_path, self.name, self.base_url)
 
     @experimental_api
-    def export_resource(self, target_path: Union[str, Path], resource_path: str) -> None:
+    def export_resource(
+        self, target_path: Union[str, Path], resource_path: str
+    ) -> None:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
         Export a specific resource file from within the container at the given resources_path.
         """
         # noinspection PyProtectedMember
-        self.client._export_resource(target_path, self.name, self.base_url, resource_path)
+        self.client._export_resource(
+            target_path, self.name, self.base_url, resource_path
+        )
 
     @experimental_api
-    def upsert_resource(self, upload_file_path: Union[str, Path], resource_path: str) -> None:
+    def upsert_resource(
+        self, upload_file_path: Union[str, Path], resource_path: str
+    ) -> None:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
         Insert or update the resource at the given resource_path in the container with the file located at resource_file_path.
         """
         # noinspection PyProtectedMember
-        self.client._upsert_resource(upload_file_path, self.name, self.base_url, resource_path)
+        self.client._upsert_resource(
+            upload_file_path, self.name, self.base_url, resource_path
+        )
 
     @experimental_api
     def delete_resource(self, resource_path: str) -> None:
@@ -255,7 +287,9 @@ class Pipeline:
     STATE_STOPPING = "STOPPING"
 
     def __init__(self, project: "Project", name: str):
-        self.__logger = logging.getLogger(self.__class__.__module__ + "." + self.__class__.__name__)
+        self.__logger = logging.getLogger(
+            self.__class__.__module__ + "." + self.__class__.__name__
+        )
         self.project = project
         self.name = name
         self.pipeline_state_poll_interval = 5
@@ -268,7 +302,10 @@ class Pipeline:
     def wait_for_pipeline_to_leave_transient_state(self) -> str:
         pipeline_info = self.get_info()
         total_time_slept = 0
-        while pipeline_info["pipelineState"] in [self.STATE_STARTING, self.STATE_STOPPING]:
+        while pipeline_info["pipelineState"] in [
+            self.STATE_STARTING,
+            self.STATE_STOPPING,
+        ]:
             self.__fail_on_pipeline_error_state(pipeline_info)
             if total_time_slept > self.pipeline_state_change_timeout:
                 raise OperationTimeoutError(
@@ -364,9 +401,7 @@ class Pipeline:
 
         List the resource containers for the current pipeline.
         """
-        pipeline_url = (
-            f"/experimental/textanalysis/projects/{self.project.name}/pipelines/{self.name}"
-        )
+        pipeline_url = f"/experimental/textanalysis/projects/{self.project.name}/pipelines/{self.name}"
         # noinspection PyProtectedMember
         return self.project.client._list_resource_containers(pipeline_url)
 
@@ -379,9 +414,7 @@ class Pipeline:
 
         Create empty resource container with given name for this pipeline or additionally upload zipped resources.
         """
-        pipeline_url = (
-            f"/experimental/textanalysis/projects/{self.project.name}/pipelines/{self.name}"
-        )
+        pipeline_url = f"/experimental/textanalysis/projects/{self.project.name}/pipelines/{self.name}"
         # noinspection PyProtectedMember
         return self.project.client._create_resource_container(
             name, pipeline_url, resources_zip_path
@@ -444,7 +477,7 @@ class Pipeline:
             accept_type=MEDIA_TYPE_APPLICATION_JSON,
             meta_data=meta_data,
         )
-    
+
     def analyse_pdf_to_fhir(
         self,
         source: Union[Path, IO],
@@ -477,8 +510,6 @@ class Pipeline:
             accept_type=MEDIA_TYPE_FHIR_JSON,
             meta_data=meta_data,
         )
-
-
 
     def analyse_pdf_to_pdf(
         self,
@@ -810,7 +841,9 @@ class Pipeline:
             parallel_request_count = pipeline_instances
 
         if parallel_request_count > 1:
-            self.__logger.debug(f"Triggering {parallel_request_count} requests in parallel")
+            self.__logger.debug(
+                f"Triggering {parallel_request_count} requests in parallel"
+            )
         else:
             self.__logger.debug(
                 f"Not performing parallel requests (remote supports max {pipeline_instances} parallel requests)"
@@ -870,7 +903,9 @@ class Pipeline:
                  representation.
         """
         # noinspection PyProtectedMember
-        return self.project.client._get_pipeline_configuration(self.project.name, self.name)
+        return self.project.client._get_pipeline_configuration(
+            self.project.name, self.name
+        )
 
     def set_configuration(self, configuration: dict) -> None:
         """
@@ -887,7 +922,9 @@ class Pipeline:
         if state == self.STATE_STARTED:
             self.ensure_stopped()
         # noinspection PyProtectedMember
-        self.project.client._set_pipeline_configuration(self.project.name, self.name, configuration)
+        self.project.client._set_pipeline_configuration(
+            self.project.name, self.name, configuration
+        )
         if was_running_before_configuration_change:
             self.ensure_started()
 
@@ -1015,7 +1052,9 @@ class Pipeline:
         if self.cached_type_system is None:
             # noinspection PyProtectedMember
             self.cached_type_system = load_typesystem(
-                self.project.client._get_pipeline_type_system(self.project.name, self.name)
+                self.project.client._get_pipeline_type_system(
+                    self.project.name, self.name
+                )
             )
         return self.cached_type_system
 
@@ -1084,7 +1123,9 @@ class Pipeline:
         Trigger collection process complete of the given pipeline.
         """
         # noinspection PyProtectedMember
-        return self.project.client._collection_process_complete(self.project.name, self.name)
+        return self.project.client._collection_process_complete(
+            self.project.name, self.name
+        )
 
 
 class Terminology:
@@ -1118,7 +1159,9 @@ class Terminology:
     def __repr__(self):
         return f'{self.__class__.__name__}(name="{self.name}", project="{self.project.name}")'
 
-    def start_export(self, terminology_format: str = TERMINOLOGY_EXPORTER_OBO_1_4) -> None:
+    def start_export(
+        self, terminology_format: str = TERMINOLOGY_EXPORTER_OBO_1_4
+    ) -> None:
         """
         Trigger the export of the terminology.
         """
@@ -1135,7 +1178,9 @@ class Terminology:
                  representation.
         """
         # noinspection PyProtectedMember
-        return self.project.client._get_terminology_export_info(self.project.name, self.name)
+        return self.project.client._get_terminology_export_info(
+            self.project.name, self.name
+        )
 
     def start_import(
         self, source: Union[IO, str], importer: str = TERMINOLOGY_IMPORTER_OBO
@@ -1159,10 +1204,15 @@ class Terminology:
                  representation.
         """
         # noinspection PyProtectedMember
-        return self.project.client._get_terminology_import_info(self.project.name, self.name)
+        return self.project.client._get_terminology_import_info(
+            self.project.name, self.name
+        )
 
     def import_data(
-        self, source: Union[IO, str], importer: str = TERMINOLOGY_IMPORTER_OBO, timeout: int = 120
+        self,
+        source: Union[IO, str],
+        importer: str = TERMINOLOGY_IMPORTER_OBO,
+        timeout: int = 120,
     ) -> dict:
         """
         Imports the given terminology into the platform and waits for the import process to complete. If the import
@@ -1243,7 +1293,9 @@ class Process:
         pipeline_name: Optional[str] = None,
         preceding_process_name: Optional[str] = None,
     ):
-        self.__logger = logging.getLogger(self.__class__.__module__ + "." + self.__class__.__name__)
+        self.__logger = logging.getLogger(
+            self.__class__.__module__ + "." + self.__class__.__name__
+        )
         self.project = project
         self.name = name
         self.document_source_name = document_source_name
@@ -1281,8 +1333,12 @@ class Process:
             self.process: Process = kwargs.get("process")
             self.state: str = kwargs.get("state")
             self.processed_documents: int = kwargs.get("processed_documents")
-            self.number_of_total_documents: int = kwargs.get("number_of_total_documents")
-            self.number_of_successful_documents: int = kwargs.get("number_of_successful_documents")
+            self.number_of_total_documents: int = kwargs.get(
+                "number_of_total_documents"
+            )
+            self.number_of_successful_documents: int = kwargs.get(
+                "number_of_successful_documents"
+            )
             self.number_of_unsuccessful_documents: int = kwargs.get(
                 "number_of_unsuccessful_documents"
             )
@@ -1296,11 +1352,17 @@ class Process:
         Deletes the process as soon as it becomes IDLE. All document analysis results will be deleted.
         """
         # noinspection PyProtectedMember
-        self.project.client._delete_process(self.project.name, self.name, self.document_source_name)
+        self.project.client._delete_process(
+            self.project.name, self.name, self.document_source_name
+        )
 
     @experimental_api
     def create_and_run_process(
-        self, process_name: str, pipeline: Union[str, Pipeline], send_to_search: Optional[bool] = None, send_chunks_to_search: Optional[bool] = None
+        self,
+        process_name: str,
+        pipeline: Union[str, Pipeline],
+        send_to_search: Optional[bool] = None,
+        send_chunks_to_search: Optional[bool] = None,
     ) -> "Process":
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -1308,7 +1370,9 @@ class Process:
         Creates a process upon the results of this process.
         """
 
-        document_collection = self.project.get_document_collection(self.document_source_name)
+        document_collection = self.project.get_document_collection(
+            self.document_source_name
+        )
 
         # noinspection PyProtectedMember
         self.project.client._create_and_run_process(
@@ -1317,7 +1381,7 @@ class Process:
             pipeline=pipeline,
             preceding_process_name=self.name,
             send_to_search=send_to_search,
-            send_chunks_to_search=send_chunks_to_search
+            send_chunks_to_search=send_chunks_to_search,
         )
 
         return document_collection.get_process(process_name=process_name)
@@ -1358,8 +1422,13 @@ class Process:
         :param document_names: only rerun the textanalysis process on these documents
         """
         # noinspection PyProtectedMember
-        self.project.client._reprocess(self.project.name, self.name, self.document_source_name, document_names=document_names)
-    
+        self.project.client._reprocess(
+            self.project.name,
+            self.name,
+            self.document_source_name,
+            document_names=document_names,
+        )
+
     @experimental_api
     def process_unprocessed(self):
         """
@@ -1368,8 +1437,9 @@ class Process:
         Triggers a processing of all unprocessed documents in this process.
         """
         # noinspection PyProtectedMember
-        self.project.client._reprocess_unprocessed(self.project.name, self.name, self.document_source_name)
-
+        self.project.client._reprocess_unprocessed(
+            self.project.name, self.name, self.document_source_name
+        )
 
     @experimental_api
     def get_process_state(self) -> ProcessState:
@@ -1386,7 +1456,7 @@ class Process:
         annotation_types: Union[None, str, List[str]] = None,
         page: Optional[int] = None,
         page_size: Optional[int] = 100,
-        document_names: Optional[List[str]] = None
+        document_names: Optional[List[str]] = None,
     ) -> dict:
         """
         Exports a given text analysis process as a json.
@@ -1422,7 +1492,7 @@ class Process:
             annotation_types=annotation_types,
             page=page,
             page_size=page_size,
-            document_names=document_names
+            document_names=document_names,
         )
 
     @experimental_api
@@ -1459,14 +1529,19 @@ class Process:
                 "Filtering by annotation types is not supported in this product version."
             )
 
-        if type_system is None and self._export_text_analysis_to_cas_has_been_called is False:
+        if (
+            type_system is None
+            and self._export_text_analysis_to_cas_has_been_called is False
+        ):
             self.__logger.info(
                 "Providing the typesystem that the CAS will be set up with to the export may speed up "
                 "the process."
             )
         self._export_text_analysis_to_cas_has_been_called = True
 
-        document_collection = self.project.get_document_collection(self.document_source_name)
+        document_collection = self.project.get_document_collection(
+            self.document_source_name
+        )
 
         cas_type_system, document_identifier = self._load_typesystem(
             type_system, document_collection, document_name
@@ -1486,25 +1561,36 @@ class Process:
         )
 
     def _load_typesystem(
-        self, type_system: TypeSystem, document_collection: "DocumentCollection", document_name: str
+        self,
+        type_system: TypeSystem,
+        document_collection: "DocumentCollection",
+        document_name: str,
     ) -> Tuple[TypeSystem, Optional[str]]:
         document_identifier = None
         cas_type_system = type_system
         if cas_type_system is None:
             build_info = self.project.client.get_build_info()
             # noinspection PyProtectedMember
-            if "platformVersion" in build_info and self.project.client._is_higher_equal_version(
-                build_info["platformVersion"], 6, 50
+            if (
+                "platformVersion" in build_info
+                and self.project.client._is_higher_equal_version(
+                    build_info["platformVersion"], 6, 50
+                )
             ):
                 # noinspection PyProtectedMember
                 cas_type_system = load_typesystem(
                     self.project.client._export_analysis_result_typesystem(
-                        self.project.name, self.document_source_name, document_name, self
+                        self.project.name,
+                        self.document_source_name,
+                        document_name,
+                        self,
                     )
                 )
             else:
                 # noinspection PyProtectedMember
-                document_identifier = document_collection._get_document_identifier(document_name)
+                document_identifier = document_collection._get_document_identifier(
+                    document_name
+                )
                 # noinspection PyProtectedMember
                 cas_type_system = load_typesystem(
                     self.project.client._export_analysis_result_typesystem(
@@ -1566,16 +1652,18 @@ class Process:
         # noinspection PyProtectedMember
         return self.project.client._rename_process(self, name)
 
+
 class TextanalysisMode(Enum):
     """
     Enum for the text analysis modes used to define process behaviour when importing documents
     """
+
     TRIGGER_PROCESSES = "triggerProcesses"
     DO_NOTHING = "doNothing"
     REMOVE_RESULTS = "removeResults"
 
-class DocumentCollection:
 
+class DocumentCollection:
     _MANUAL_PROCESS_TYPE = "MANUAL"
 
     def __init__(self, project: "Project", name: str):
@@ -1590,9 +1678,9 @@ class DocumentCollection:
         Returns the number of documents in that collection.
         """
         # noinspection PyProtectedMember
-        return self.project.client._get_document_collection(self.project.name, self.name)[
-            "numberOfDocuments"
-        ]
+        return self.project.client._get_document_collection(
+            self.project.name, self.name
+        )["numberOfDocuments"]
 
     @experimental_api
     def get_process(self, process_name: str) -> Process:
@@ -1612,7 +1700,7 @@ class DocumentCollection:
         pipeline: Union[str, Pipeline],
         annotation_types: Union[None, str, List[str]] = None,
         send_to_search: Optional[bool] = None,
-        send_chunks_to_search: Optional[bool] = None
+        send_chunks_to_search: Optional[bool] = None,
     ) -> Process:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -1629,7 +1717,12 @@ class DocumentCollection:
         """
         # noinspection PyProtectedMember
         self.project.client._create_and_run_process(
-            self, process_name, pipeline, annotation_types=annotation_types, send_to_search=send_to_search, send_chunks_to_search=send_chunks_to_search
+            self,
+            process_name,
+            pipeline,
+            annotation_types=annotation_types,
+            send_to_search=send_to_search,
+            send_chunks_to_search=send_chunks_to_search,
         )
 
         return self.get_process(process_name)
@@ -1641,7 +1734,7 @@ class DocumentCollection:
         is_manual_annotation: bool = False,
         annotation_types: Union[None, str, List[str]] = None,
         send_to_search: Optional[bool] = None,
-        send_chunks_to_search: Optional[bool] = None
+        send_chunks_to_search: Optional[bool] = None,
     ) -> Process:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -1652,7 +1745,7 @@ class DocumentCollection:
         :param annotation_types    : Optional String parameter indicating which types should be saved. Supports wildcard expressions,
                                       - Example 1: "de.averbis.types.*" returns all types with prefix "de.averbis.types".
                                       - Example 2: Can also be a list of type names, e.g. ["de.averbis.types.health.Diagnosis", "de.averbis.types.health.Medication"]
-        :param send_to_search:       Determines if the created process should be searchable. 
+        :param send_to_search:       Determines if the created process should be searchable.
         :param send_chunks_to_search: Determines if the created process should make the chunks searchable.
         :return: The created process
         """
@@ -1667,7 +1760,7 @@ class DocumentCollection:
             process_type=process_type,
             annotation_types=annotation_types,
             send_to_search=send_to_search,
-            send_chunks_to_search=send_chunks_to_search
+            send_chunks_to_search=send_chunks_to_search,
         )
 
         return self.get_process(process_name)
@@ -1686,7 +1779,9 @@ class DocumentCollection:
         Deletes the document collection.
         """
         # noinspection PyProtectedMember
-        return self.project.client._delete_document_collection(self.project.name, self.name)
+        return self.project.client._delete_document_collection(
+            self.project.name, self.name
+        )
 
     def import_documents(
         self,
@@ -1694,7 +1789,7 @@ class DocumentCollection:
         mime_type: Optional[str] = None,
         filename: Optional[str] = None,
         typesystem: Optional["TypeSystem"] = None,
-        textanalysis_mode: Optional[TextanalysisMode] = None
+        textanalysis_mode: Optional[TextanalysisMode] = None,
     ) -> List[dict]:
         """
         Imports documents from a given file, from a given string or from a dictionary (representing the json-format).
@@ -1724,7 +1819,13 @@ class DocumentCollection:
 
         # noinspection PyProtectedMember
         return self.project.client._import_documents(
-            self.project.name, self.name, source, mime_type, filename, typesystem, textanalysis_mode
+            self.project.name,
+            self.name,
+            source,
+            mime_type,
+            filename,
+            typesystem,
+            textanalysis_mode,
         )
 
     @experimental_api
@@ -1742,7 +1843,9 @@ class DocumentCollection:
         Delete the document identified by name from this docuemnt collection
         """
         # noinspection PyProtectedMember
-        return self.project.client._delete_document(self.project.name, self.name, document_name)
+        return self.project.client._delete_document(
+            self.project.name, self.name, document_name
+        )
 
     @experimental_api
     def list_processes(self) -> List[Process]:
@@ -1768,7 +1871,9 @@ class DocumentCollection:
                 f"Document with name {document_name} does not exist in collection {self.name}"
             )
         if len(documents) != 1:
-            raise Exception(f"Document name{document_name} is not unique in collection {self.name}")
+            raise Exception(
+                f"Document name{document_name} is not unique in collection {self.name}"
+            )
         return documents[0]["documentIdentifier"]
 
 
@@ -1823,7 +1928,9 @@ class Project:
 
         return self.__cached_pipelines[name]
 
-    def create_pipeline(self, configuration: dict, name: Optional[str] = None) -> Pipeline:
+    def create_pipeline(
+        self, configuration: dict, name: Optional[str] = None
+    ) -> Pipeline:
         """
         Create a new pipeline.
 
@@ -1897,7 +2004,9 @@ class Project:
         """
         project_url = f"/experimental/textanalysis/projects/{self.name}"
         # noinspection PyProtectedMember
-        return self.client._create_resource_container(name, project_url, resources_zip_path)
+        return self.client._create_resource_container(
+            name, project_url, resources_zip_path
+        )
 
     @experimental_api
     def exists_pipeline(self, name: str) -> bool:
@@ -1926,7 +2035,13 @@ class Project:
         """
         # noinspection PyProtectedMember
         response = self.client._create_terminology(
-            self.name, terminology_name, label, languages, concept_type, version, hierarchical
+            self.name,
+            terminology_name,
+            label,
+            languages,
+            concept_type,
+            version,
+            hierarchical,
         )
         return Terminology(self, response["terminologyName"])
 
@@ -2002,7 +2117,10 @@ class Project:
         """
         # noinspection PyProtectedMember
         return self.client._classify_document(
-            self.name, text.encode(ENCODING_UTF_8), classification_set, DOCUMENT_IMPORTER_TEXT
+            self.name,
+            text.encode(ENCODING_UTF_8),
+            classification_set,
+            DOCUMENT_IMPORTER_TEXT,
         )
 
     def search(self, query: str = "", **kwargs) -> dict:
@@ -2023,15 +2141,12 @@ class Project:
         language: Optional[str] = None,
         top_k: Optional[int] = None,
         threshold: Optional[float] = None,
-        **query_params
+        **query_params,
     ) -> Dict[str, Any]: ...
 
     @overload
     def neural_search(
-        self,
-        *,
-        neural_search_parameter: NeuralSearchParams,
-        **query_params: Any
+        self, *, neural_search_parameter: NeuralSearchParams, **query_params: Any
     ) -> Dict[str, Any]: ...
 
     @experimental_api
@@ -2044,7 +2159,7 @@ class Project:
         threshold: Optional[float] = None,
         *,
         neural_search_parameter: Optional[NeuralSearchParams] = None,
-        **query_params: Any
+        **query_params: Any,
     ) -> Dict[str, Any]:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -2064,7 +2179,7 @@ class Project:
         :param language: Language code (e.g., 'en', 'de')
         :param top_k: Maximum number of results to return
         :param threshold: Minimum similarity threshold for results
-        :param neural_search_parameter: Alternative: provide all parameters as a dict 
+        :param neural_search_parameter: Alternative: provide all parameters as a dict
             (for backward compatibility or advanced usage)
         :param query_params: Additional query parameters forwarded to the server (e.g. fq, sort, start, rows, fl).
 
@@ -2086,7 +2201,7 @@ class Project:
             params = {
                 'text': 'Wie alt ist der Patient?',
                 'language': 'de',
-                'pipelineName': 'ChunkEmbedder', 
+                'pipelineName': 'ChunkEmbedder',
                 'topK': 5,
                 'threshold': 0.1
             }
@@ -2094,8 +2209,15 @@ class Project:
         """
         # Handle both parameter styles
         if neural_search_parameter is not None:
-            if any([text is not None, pipeline_name is not None, language is not None, 
-                   top_k is not None, threshold is not None]):
+            if any(
+                [
+                    text is not None,
+                    pipeline_name is not None,
+                    language is not None,
+                    top_k is not None,
+                    threshold is not None,
+                ]
+            ):
                 raise ValueError(
                     "Cannot use both explicit parameters and neural_search_parameter dict. "
                     "Use either explicit parameters OR neural_search_parameter dict, not both."
@@ -2104,21 +2226,22 @@ class Project:
         else:
             # Validate required parameters when using explicit style
             if text is None:
-                raise ValueError("Parameter 'text' is required when not using neural_search_parameter")
+                raise ValueError(
+                    "Parameter 'text' is required when not using neural_search_parameter"
+                )
             if pipeline_name is None:
-                raise ValueError("Parameter 'pipeline_name' is required when not using neural_search_parameter")
-                
-            # Build request body from explicit parameters  
-            request_body = {
-                'text': text,
-                'pipelineName': pipeline_name
-            }
+                raise ValueError(
+                    "Parameter 'pipeline_name' is required when not using neural_search_parameter"
+                )
+
+            # Build request body from explicit parameters
+            request_body = {"text": text, "pipelineName": pipeline_name}
             if language is not None:
-                request_body['language'] = language
+                request_body["language"] = language
             if top_k is not None:
-                request_body['topK'] = top_k
+                request_body["topK"] = top_k
             if threshold is not None:
-                request_body['threshold'] = threshold
+                request_body["threshold"] = threshold
 
         # noinspection PyProtectedMember
         return self.client._neural_search(self.name, request_body, **query_params)
@@ -2273,7 +2396,9 @@ class EvaluationConfiguration:
         self.partialMatchCriteria = "OVERLAP_MATCH"
         return self
 
-    def use_range_variance_partial_match(self, range_variance: int) -> "EvaluationConfiguration":
+    def use_range_variance_partial_match(
+        self, range_variance: int
+    ) -> "EvaluationConfiguration":
         """
         Annotations that are offset by the given variance are used to calculate partial positives.
         Normally, these will replace a FalsePositive or FalseNegative if a partial match is identified.
@@ -2330,7 +2455,9 @@ class Client:
 
         self._polling_timeout = polling_timeout
         self._poll_delay = poll_delay
-        self.__logger = logging.getLogger(self.__class__.__module__ + "." + self.__class__.__name__)
+        self.__logger = logging.getLogger(
+            self.__class__.__module__ + "." + self.__class__.__name__
+        )
         self._api_token = api_token
         self._verify_ssl = verify_ssl
         self._timeout = timeout
@@ -2340,7 +2467,9 @@ class Client:
         else:
             self._settings = self._load_settings(settings)
 
-        if url_or_id.lower().startswith("http://") or url_or_id.lower().startswith("https://"):
+        if url_or_id.lower().startswith("http://") or url_or_id.lower().startswith(
+            "https://"
+        ):
             self._url = url_or_id
         else:
             if self._exists_profile("*"):
@@ -2498,7 +2627,8 @@ class Client:
 
         if "params" in kwargs:
             kwargs["params"] = {
-                k: make_value_compatible_with_rest_api(v) for k, v in kwargs["params"].items()
+                k: make_value_compatible_with_rest_api(v)
+                for k, v in kwargs["params"].items()
             }
 
         kwargs["verify"] = self._verify_ssl
@@ -2509,14 +2639,20 @@ class Client:
         url = self._build_url(endpoint)
         raw_response = requests.request(method, url, **kwargs)
         self.__logger.debug(
-            "Response for %s %s: %s -- %s", method, url, raw_response, raw_response.content
+            "Response for %s %s: %s -- %s",
+            method,
+            url,
+            raw_response,
+            raw_response.content,
         )
         return raw_response
 
     def _build_url(self, endpoint):
         return f"{self._url.rstrip('/')}/rest/{quote(endpoint.lstrip('/'))}"
 
-    def __request_with_json_response(self, method: str, endpoint: str, **kwargs) -> dict:
+    def __request_with_json_response(
+        self, method: str, endpoint: str, **kwargs
+    ) -> dict:
         """
         A json response is used in almost all endpoints. Error messages are also returned as json.
         """
@@ -2534,7 +2670,9 @@ class Client:
                 pos=e.pos,
             )
 
-    def __request_with_bytes_response(self, method: str, endpoint: str, **kwargs) -> bytes:
+    def __request_with_bytes_response(
+        self, method: str, endpoint: str, **kwargs
+    ) -> bytes:
         """
         A bytes response is used in the experimental API for encoding CAS objects.
         """
@@ -2589,7 +2727,9 @@ class Client:
         """
 
         response = self.__request_with_json_response(
-            "post", f"/v1/users/{user}/apitoken", json={"password": password, "userSourceName": ""}
+            "post",
+            f"/v1/users/{user}/apitoken",
+            json={"password": password, "userSourceName": ""},
         )
         self._api_token = response["payload"]
         return self._api_token
@@ -2603,7 +2743,9 @@ class Client:
         """
 
         response = self.__request_with_json_response(
-            "put", f"/v1/users/{user}/apitoken", json={"password": password, "userSourceName": ""}
+            "put",
+            f"/v1/users/{user}/apitoken",
+            json={"password": password, "userSourceName": ""},
         )
         self._api_token = response["payload"]
         return self._api_token
@@ -2654,7 +2796,9 @@ class Client:
             self._build_info = response["payload"]
         return self._build_info
 
-    def create_project(self, name: str, description: str = "", exist_ok=False) -> Project:
+    def create_project(
+        self, name: str, description: str = "", exist_ok=False
+    ) -> Project:
         """
         Creates a new project.
 
@@ -2704,7 +2848,9 @@ class Client:
         self.__request_with_json_response("delete", container_url)
 
     @experimental_api
-    def _delete_resource(self, container_name: str, base_url: str, resource_path: str) -> None:
+    def _delete_resource(
+        self, container_name: str, base_url: str, resource_path: str
+    ) -> None:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
         Use ResourceContainer.delete_resource() instead.
@@ -2743,11 +2889,15 @@ class Client:
         container_url = f"{base_url}/containers"
         response = self.__request_with_json_response("get", container_url)
         if response["errorMessages"]:
-            raise Exception(f"Error while listing resource containers: {response['errorMessages']}")
+            raise Exception(
+                f"Error while listing resource containers: {response['errorMessages']}"
+            )
         payload = response["payload"]
         containers = payload["containers"]
         return [
-            ResourceContainer(self, container["name"], container["scope"], container_url)
+            ResourceContainer(
+                self, container["name"], container["scope"], container_url
+            )
             for container in containers
         ]
 
@@ -2760,11 +2910,16 @@ class Client:
         Create global empty resource container or additionally upload provided resources to the new container.
         """
         client_base_url = "/experimental/textanalysis"
-        return self._create_resource_container(name, client_base_url, resources_zip_path)
+        return self._create_resource_container(
+            name, client_base_url, resources_zip_path
+        )
 
     @experimental_api
     def _create_resource_container(
-        self, name: str, base_url: str, resources_zip_path: Optional[Union[Path, str]] = None
+        self,
+        name: str,
+        base_url: str,
+        resources_zip_path: Optional[Union[Path, str]] = None,
     ) -> ResourceContainer:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -2789,10 +2944,14 @@ class Client:
                     "post",
                     container_url,
                     params=request_params,
-                    files={"zippedResourceContainer": ("zippedResourceContainer", data)},
+                    files={
+                        "zippedResourceContainer": ("zippedResourceContainer", data)
+                    },
                 )
         if response["errorMessages"]:
-            raise Exception(f"Error during resource container creation {response['errorMessages']}")
+            raise Exception(
+                f"Error during resource container creation {response['errorMessages']}"
+            )
         resource_container = response["payload"]
         return ResourceContainer(
             self,
@@ -2802,7 +2961,9 @@ class Client:
         )
 
     @experimental_api
-    def _list_container_resources(self, container_name: str, base_url: str) -> List[str]:
+    def _list_container_resources(
+        self, container_name: str, base_url: str
+    ) -> List[str]:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
         Use ResourceContainer.list_resources() instead.
@@ -2812,7 +2973,9 @@ class Client:
             raise OperationNotSupported(
                 f"The container resource API is only supported for platform versions >= 8.23, but current platform is {build_version['platformVersion']}."
             )
-        response = self.__request_with_json_response("get", f"{base_url}/{container_name}")
+        response = self.__request_with_json_response(
+            "get", f"{base_url}/{container_name}"
+        )
         if response["errorMessages"]:
             raise Exception(
                 f"Error while listing resources in container {container_name}: {response['errorMessages']}"
@@ -2823,7 +2986,11 @@ class Client:
 
     @experimental_api
     def _export_resource(
-        self, target_path: Union[str, Path], container_name: str, base_url: str, resource_path: str
+        self,
+        target_path: Union[str, Path],
+        container_name: str,
+        base_url: str,
+        resource_path: str,
     ) -> None:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -2868,10 +3035,15 @@ class Client:
             resource_file_path = Path(resource_file_path)
         with resource_file_path.open("rb") as data:
             response = self.__request_with_json_response(
-                "post", request_url, params=request_params, files={"resource": ("resource", data)}
+                "post",
+                request_url,
+                params=request_params,
+                files={"resource": ("resource", data)},
             )
             if response["errorMessages"]:
-                raise Exception(f"Error during resource upload {response['errorMessages']}")
+                raise Exception(
+                    f"Error during resource upload {response['errorMessages']}"
+                )
 
     @experimental_api
     def _export_container_resources(
@@ -2960,7 +3132,9 @@ class Client:
             # in HD 6 below 6.11.0 the following url is used
             if "405" not in e.args[0]:
                 raise e
-            response = self.__request_with_json_response("get", f"/experimental/projects")
+            response = self.__request_with_json_response(
+                "get", f"/experimental/projects"
+            )
         return response["payload"]
 
     @experimental_api
@@ -2986,7 +3160,9 @@ class Client:
                 "Deleting projects is not supported in platform version 5.x."
             )
 
-        response = self.__request_with_json_response("delete", f"/experimental/projects/{name}")
+        response = self.__request_with_json_response(
+            "delete", f"/experimental/projects/{name}"
+        )
         return response["payload"]
 
     def _list_document_collections(self, project: str) -> dict:
@@ -2999,7 +3175,9 @@ class Client:
 
         return response["payload"]
 
-    def _create_document_collection(self, project: str, collection_name: str) -> DocumentCollection:
+    def _create_document_collection(
+        self, project: str, collection_name: str
+    ) -> DocumentCollection:
         """
         Use Project.create_document_collection() instead.
         """
@@ -3008,14 +3186,17 @@ class Client:
             f"/v1/importer/projects/{project}/documentCollections",
             json={"name": collection_name},
         )
-        return DocumentCollection(self.get_project(project), response["payload"]["name"])
+        return DocumentCollection(
+            self.get_project(project), response["payload"]["name"]
+        )
 
     def _get_document_collection(self, project: str, collection_name: str):
         """
         Use DocumentCollection.get_number_of_documents() instead.
         """
         response = self.__request_with_json_response(
-            "get", f"/v1/importer/projects/{project}/documentCollections/{collection_name}"
+            "get",
+            f"/v1/importer/projects/{project}/documentCollections/{collection_name}",
         )
 
         return response["payload"]
@@ -3025,7 +3206,8 @@ class Client:
         Use DocumentCollection.delete() instead.
         """
         response = self.__request_with_json_response(
-            "delete", f"/v1/importer/projects/{project}/documentCollections/{collection_name}"
+            "delete",
+            f"/v1/importer/projects/{project}/documentCollections/{collection_name}",
         )
         return response["payload"]
 
@@ -3051,13 +3233,15 @@ class Client:
         mime_type: Optional[str] = None,
         filename: Optional[str] = None,
         typesystem: Optional["TypeSystem"] = None,
-        textanalysis_mode: Optional[TextanalysisMode] = None
+        textanalysis_mode: Optional[TextanalysisMode] = None,
     ) -> List[dict]:
         """
         Use DocumentCollection.import_document() instead.
         """
 
-        def fetch_filename(src: Union[Cas, Path, IO, str], filename: Optional[str] = None) -> str:
+        def fetch_filename(
+            src: Union[Cas, Path, IO, str], filename: Optional[str] = None
+        ) -> str:
             if filename is not None and not isinstance(src, dict):
                 return filename
 
@@ -3111,7 +3295,9 @@ class Client:
             return guessed_mime_type
 
         # textanalysis_mode is only supported for HD version 8
-        if textanalysis_mode is not None and not self._is_higher_equal_version(self.get_spec_version(), 8, 0):
+        if textanalysis_mode is not None and not self._is_higher_equal_version(
+            self.get_spec_version(), 8, 0
+        ):
             raise OperationNotSupported(
                 "The textanalysis_mode parameter is only supported for Health Discovery versions >= 8.0."
             )
@@ -3141,7 +3327,7 @@ class Client:
                 "post",
                 f"/v1/importer/projects/{project}/documentCollections/{collection_name}/documents",
                 files=files,
-                params={"textanalysisMode": textanalysis_mode.value}
+                params={"textanalysisMode": textanalysis_mode.value},
             )
         else:
             response = self.__request_with_json_response(
@@ -3181,7 +3367,9 @@ class Client:
             else:
                 if isinstance(source, (str, bytes)):
                     data = BytesIO(
-                        source.encode(ENCODING_UTF_8) if isinstance(source, str) else source
+                        source.encode(ENCODING_UTF_8)
+                        if isinstance(source, str)
+                        else source
                     )
                 elif isinstance(source, IOBase):
                     data = source
@@ -3235,7 +3423,9 @@ class Client:
             "delete", f"/v1/terminology/projects/{project}/terminologies/{terminology}"
         )
 
-    def _start_terminology_export(self, project: str, terminology: str, exporter: str) -> None:
+    def _start_terminology_export(
+        self, project: str, terminology: str, exporter: str
+    ) -> None:
         """
         Use Terminology.start_export() instead.
         """
@@ -3268,7 +3458,11 @@ class Client:
             else:
                 return MEDIA_TYPE_OCTET_STREAM
 
-        data: IO = BytesIO(source.encode(ENCODING_UTF_8)) if isinstance(source, str) else source
+        data: IO = (
+            BytesIO(source.encode(ENCODING_UTF_8))
+            if isinstance(source, str)
+            else source
+        )
 
         self.__request_with_json_response(
             "post",
@@ -3306,7 +3500,9 @@ class Client:
             "maxSuggestions": max_suggestions,
         }
         endpoint = f"/experimental/terminology/projects/{project}/terminologies/{terminology}/conceptAutosuggest"
-        response = self.__request_with_json_response("post", endpoint, json=request_json)
+        response = self.__request_with_json_response(
+            "post", endpoint, json=request_json
+        )
         return response["payload"]
 
     def _create_pipeline(self, project: str, configuration: dict) -> Pipeline:
@@ -3325,7 +3521,8 @@ class Client:
         Use Pipeline.delete() instead.
         """
         response = self.__request_with_json_response(
-            "delete", f"/experimental/textanalysis/projects/{project}/pipelines/{pipeline}"
+            "delete",
+            f"/experimental/textanalysis/projects/{project}/pipelines/{pipeline}",
         )
         return response["payload"]
 
@@ -3382,11 +3579,14 @@ class Client:
 
     def _get_pipeline_configuration(self, project: str, pipeline: str) -> dict:
         response = self.__request_with_json_response(
-            "get", f"/v1/textanalysis/projects/{project}/pipelines/{pipeline}/configuration"
+            "get",
+            f"/v1/textanalysis/projects/{project}/pipelines/{pipeline}/configuration",
         )
         return response["payload"]
 
-    def _set_pipeline_configuration(self, project: str, pipeline: str, configuration: dict) -> None:
+    def _set_pipeline_configuration(
+        self, project: str, pipeline: str, configuration: dict
+    ) -> None:
         self.__request_with_json_response(
             "put",
             f"/v1/textanalysis/projects/{project}/pipelines/{pipeline}/configuration",
@@ -3465,11 +3665,16 @@ class Client:
         accept_type: Optional[str] = MEDIA_TYPE_APPLICATION_JSON,
         meta_data: Optional[dict] = None,
     ) -> Union[List[dict], dict, bytes]:
-
-        if accept_type != MEDIA_TYPE_APPLICATION_JSON or content_type != MEDIA_TYPE_TEXT_PLAIN_UTF8:
+        if (
+            accept_type != MEDIA_TYPE_APPLICATION_JSON
+            or content_type != MEDIA_TYPE_TEXT_PLAIN_UTF8
+        ):
             build_version = self.get_build_info()
-            if "platformVersion" not in build_version or not self._is_higher_equal_version(
-                build_version["platformVersion"], 8, 16
+            if (
+                "platformVersion" not in build_version
+                or not self._is_higher_equal_version(
+                    build_version["platformVersion"], 8, 16
+                )
             ):
                 raise OperationNotSupported(
                     f"Accept types other than json and content types other than plain text are only supported "
@@ -3523,7 +3728,10 @@ class Client:
             "annotationTypes": self._preprocess_annotation_types(annotation_types),
             "language": language,
         }
-        request_headers = {HEADER_CONTENT_TYPE: content_type, HEADER_ACCEPT: accept_type}
+        request_headers = {
+            HEADER_CONTENT_TYPE: content_type,
+            HEADER_ACCEPT: accept_type,
+        }
         if accept_type == MEDIA_TYPE_APPLICATION_XMI:
             return self.__request_with_bytes_response(
                 "post",
@@ -3543,7 +3751,9 @@ class Client:
         )
 
     @staticmethod
-    def _create_request_data(content_type: Optional[str], source: Union[Path, IO, str, dict]):
+    def _create_request_data(
+        content_type: Optional[str], source: Union[Path, IO, str, dict]
+    ):
         if isinstance(source, str):
             return BytesIO(source.encode(ENCODING_UTF_8))
         if isinstance(source, IO) or isinstance(source, IOBase):
@@ -3580,7 +3790,10 @@ class Client:
             "language": language,
         }
         request_params.update(meta_data or {})
-        request_headers = {HEADER_CONTENT_TYPE: content_type, HEADER_ACCEPT: accept_type}
+        request_headers = {
+            HEADER_CONTENT_TYPE: content_type,
+            HEADER_ACCEPT: accept_type,
+        }
         if accept_type == MEDIA_TYPE_PDF or accept_type == MEDIA_TYPE_APPLICATION_XMI:
             return self.__request_with_bytes_response(
                 "post",
@@ -3612,7 +3825,11 @@ class Client:
             with source.open("r", encoding=ENCODING_UTF_8) as file:
                 source = file.read()
 
-        data: IO = BytesIO(source.encode(ENCODING_UTF_8)) if isinstance(source, str) else source
+        data: IO = (
+            BytesIO(source.encode(ENCODING_UTF_8))
+            if isinstance(source, str)
+            else source
+        )
 
         response = self.__request_with_json_response(
             "post",
@@ -3637,7 +3854,9 @@ class Client:
         return response["payload"]
 
     @experimental_api
-    def _neural_search(self, project: str, neural_search_parameter: dict, **query_params) -> dict:
+    def _neural_search(
+        self, project: str, neural_search_parameter: dict, **query_params
+    ) -> dict:
         """
         LOW-LEVEL: Call the experimental neural search endpoint.
 
@@ -3663,25 +3882,31 @@ class Client:
         annotation_types: Union[None, str, List[str]] = None,
         page: Optional[int] = None,
         page_size: Optional[int] = None,
-        document_names: Optional[List[str]] = None
+        document_names: Optional[List[str]] = None,
     ):
         """
         Use Process.export_text_analysis() instead.
         """
-        if document_names is not None and not self._is_higher_equal_version(self.get_build_info()["platformVersion"], 8, 22):
+        if document_names is not None and not self._is_higher_equal_version(
+            self.get_build_info()["platformVersion"], 8, 22
+        ):
             raise OperationNotSupported(
                 "Filtering by document names is only supported for platform versions >= 8.22 (starting with health discovery version 7.6.0)"
             )
-        
+
         if document_names is not None and page is not None:
-            raise ValueError("The page parameter cannot be used in conjunction with document names filtering.")
-        
+            raise ValueError(
+                "The page parameter cannot be used in conjunction with document names filtering."
+            )
+
         if document_names is not None:
             response = self.__request_with_json_response(
                 "post",
                 f"/experimental/textanalysis/projects/{project}/documentCollections/{document_source}/processes/{process}/export",
                 params={
-                    "annotationTypes": self._preprocess_annotation_types(annotation_types),
+                    "annotationTypes": self._preprocess_annotation_types(
+                        annotation_types
+                    ),
                 },
                 json={"documentNames": document_names},
                 headers={HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_JSON},
@@ -3691,7 +3916,9 @@ class Client:
                 "get",
                 f"/v1/textanalysis/projects/{project}/documentSources/{document_source}/processes/{process}/export",
                 params={
-                    "annotationTypes": self._preprocess_annotation_types(annotation_types),
+                    "annotationTypes": self._preprocess_annotation_types(
+                        annotation_types
+                    ),
                     "page": page,
                     "pageSize": page_size,
                 },
@@ -3724,7 +3951,9 @@ class Client:
         process_name = self.__process_name(process)
         request_params = {"documentName": document_name}
         if annotation_types is not None:
-            request_params["annotationTypes"] = self._preprocess_annotation_types(annotation_types)
+            request_params["annotationTypes"] = self._preprocess_annotation_types(
+                annotation_types
+            )
 
         try:
             return str(
@@ -3742,9 +3971,13 @@ class Client:
 
         except RequestException as e:
             if document_id is None:
-                document_collection = process.project.get_document_collection(collection_name)
+                document_collection = process.project.get_document_collection(
+                    collection_name
+                )
                 # noinspection PyProtectedMember
-                document_id = document_collection._get_document_identifier(document_name)
+                document_id = document_collection._get_document_identifier(
+                    document_name
+                )
             # in HD 6 below version 6.7 the endpoint is called with identifiers instead
             return str(
                 self.__request_with_bytes_response(
@@ -3820,7 +4053,11 @@ class Client:
             with source.open("r", encoding=ENCODING_UTF_8) as file:
                 source = file.read()
 
-        data: IO = BytesIO(source.encode(ENCODING_UTF_8)) if isinstance(source, str) else source
+        data: IO = (
+            BytesIO(source.encode(ENCODING_UTF_8))
+            if isinstance(source, str)
+            else source
+        )
 
         build_version = self.get_build_info()
         if "platformVersion" in build_version and self._is_higher_equal_version(
@@ -3833,7 +4070,9 @@ class Client:
                     data=data,
                     params={
                         "language": language,
-                        "annotationTypes": self._preprocess_annotation_types(annotation_types),
+                        "annotationTypes": self._preprocess_annotation_types(
+                            annotation_types
+                        ),
                     },
                     headers={
                         HEADER_CONTENT_TYPE: MEDIA_TYPE_TEXT_PLAIN_UTF8,
@@ -3979,20 +4218,29 @@ class Client:
         response = self.__request_with_json_response(
             "post",
             f"/experimental/textanalysis/projects/{project}/pearComponents",
-            files={"pearPackage": (file_or_path.name, file_or_path, "application/octet-stream")},
+            files={
+                "pearPackage": (
+                    file_or_path.name,
+                    file_or_path,
+                    "application/octet-stream",
+                )
+            },
         )
 
         return response["payload"][0]
 
     @experimental_api
-    def _get_default_pear_configuration(self, project: str, pear_identifier: str) -> dict:
+    def _get_default_pear_configuration(
+        self, project: str, pear_identifier: str
+    ) -> dict:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
         Use Pear.get_default_configuration() instead.
         """
         response = self.__request_with_json_response(
-            "get", f"/experimental/textanalysis/projects/{project}/pearComponents/{pear_identifier}"
+            "get",
+            f"/experimental/textanalysis/projects/{project}/pearComponents/{pear_identifier}",
         )
 
         return response["payload"]
@@ -4009,7 +4257,9 @@ class Client:
         )
         processes = []
         for item in response["payload"]:
-            document_collection = project.get_document_collection(item["documentSourceName"])
+            document_collection = project.get_document_collection(
+                item["documentSourceName"]
+            )
             processes.append(document_collection.get_process(item["processName"]))
         return processes
 
@@ -4038,7 +4288,7 @@ class Client:
         preceding_process_name: Optional[str] = None,
         annotation_types: Union[None, str, List[str]] = None,
         send_to_search: Optional[bool] = None,
-        send_chunks_to_search: Optional[bool] = None
+        send_chunks_to_search: Optional[bool] = None,
     ) -> dict:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -4051,13 +4301,21 @@ class Client:
 
         request_json = {
             "processName": process_name,
-            "documentCollectionName": document_collection.name
+            "documentCollectionName": document_collection.name,
         }
 
-        self._add_optional_parameters_for_process_creation(process_type, preceding_process_name, annotation_types, send_to_search, send_chunks_to_search, pipeline_name, request_json)
+        self._add_optional_parameters_for_process_creation(
+            process_type,
+            preceding_process_name,
+            annotation_types,
+            send_to_search,
+            send_chunks_to_search,
+            pipeline_name,
+            request_json,
+        )
 
         response = self.__request_with_json_response(
-           "post",
+            "post",
             f"/experimental/textanalysis/projects/{project.name}/processes",
             json=request_json,
         )
@@ -4065,14 +4323,15 @@ class Client:
         return response["payload"]
 
     def _add_optional_parameters_for_process_creation(
-            self,
-            process_type: Optional[str], 
-            preceding_process_name: Optional[str], 
-            annotation_types: Union[None, str, List[str]], 
-            send_to_search: Optional[bool], 
-            send_chunks_to_search: Optional[bool],
-            pipeline_name: Optional[str], 
-            request_json: dict) -> dict:
+        self,
+        process_type: Optional[str],
+        preceding_process_name: Optional[str],
+        annotation_types: Union[None, str, List[str]],
+        send_to_search: Optional[bool],
+        send_chunks_to_search: Optional[bool],
+        pipeline_name: Optional[str],
+        request_json: dict,
+    ) -> dict:
         if process_type:
             request_json["processType"] = process_type
 
@@ -4082,19 +4341,29 @@ class Client:
         if preceding_process_name:
             request_json["precedingProcessName"] = preceding_process_name
 
-        if annotation_types or send_to_search or send_chunks_to_search or process_type == DocumentCollection._MANUAL_PROCESS_TYPE:
+        if (
+            annotation_types
+            or send_to_search
+            or send_chunks_to_search
+            or process_type == DocumentCollection._MANUAL_PROCESS_TYPE
+        ):
             build_version = self.get_build_info()
             platform_version = build_version["platformVersion"]
-            if process_type == DocumentCollection._MANUAL_PROCESS_TYPE and self._is_higher_equal_version(platform_version, 9, 0):
-                raise OperationNotSupported(f"Manual processes are no longer supported (starting with Health Discovery version 8.0).")
+            if (
+                process_type == DocumentCollection._MANUAL_PROCESS_TYPE
+                and self._is_higher_equal_version(platform_version, 9, 0)
+            ):
+                raise OperationNotSupported(
+                    f"Manual processes are no longer supported (starting with Health Discovery version 8.0)."
+                )
 
             if annotation_types:
                 if not self._is_higher_equal_version(platform_version, 8, 11):
                     raise OperationNotSupported(
                         f"The parameter 'annotation_types' is only supported for platform versions >= 8.11 (available from Health Discovery version 7.1), but current platform is {build_version['platformVersion']}."
                     )
-                request_json["annotationTypesToBeSaved"] = self._preprocess_annotation_types(
-                    annotation_types
+                request_json["annotationTypesToBeSaved"] = (
+                    self._preprocess_annotation_types(annotation_types)
                 )
             if send_to_search:
                 if not self._is_higher_equal_version(platform_version, 9, 0):
@@ -4148,7 +4417,9 @@ class Client:
         )
 
     @experimental_api
-    def _get_process_state(self, project: "Project", process: "Process") -> Process.ProcessState:
+    def _get_process_state(
+        self, project: "Project", process: "Process"
+    ) -> Process.ProcessState:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
@@ -4173,7 +4444,9 @@ class Client:
                 process=process,
                 state=process_details.get("state"),
                 number_of_total_documents=process_details.get("numberOfTotalDocuments"),
-                number_of_successful_documents=process_details.get("numberOfSuccessfulDocuments"),
+                number_of_successful_documents=process_details.get(
+                    "numberOfSuccessfulDocuments"
+                ),
                 number_of_unsuccessful_documents=process_details.get(
                     "numberOfUnsuccessfulDocuments"
                 ),
@@ -4196,9 +4469,11 @@ class Client:
             f"documentSources/{document_source_name}/processes/{process_name}",
         )
         return None
-    
+
     @experimental_api
-    def _reprocess_unprocessed(self, project_name: str, process_name: str, document_source_name: str) -> None:
+    def _reprocess_unprocessed(
+        self, project_name: str, process_name: str, document_source_name: str
+    ) -> None:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
@@ -4216,20 +4491,30 @@ class Client:
         return None
 
     @experimental_api
-    def _reprocess(self, project_name: str, process_name: str, document_source_name: str, document_names: Optional[List[str]] = None) -> None:
+    def _reprocess(
+        self,
+        project_name: str,
+        process_name: str,
+        document_source_name: str,
+        document_names: Optional[List[str]] = None,
+    ) -> None:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
         Use Process.rerun() instead.
         """
-        if document_names and not self._is_higher_equal_version(self.get_spec_version(), 8, 0):
-            raise OperationNotSupported(f"The parameter 'document_names' is only supported for health-discovery versions >= 8.0")
-        
+        if document_names and not self._is_higher_equal_version(
+            self.get_spec_version(), 8, 0
+        ):
+            raise OperationNotSupported(
+                f"The parameter 'document_names' is only supported for health-discovery versions >= 8.0"
+            )
+
         self.__request_with_json_response(
             "post",
             f"/experimental/textanalysis/projects/{project_name}/"
             f"documentSources/{document_source_name}/processes/{process_name}/reprocess",
-            json={"documentNames": document_names} if document_names else None
+            json={"documentNames": document_names} if document_names else None,
         )
         return None
 
@@ -4254,7 +4539,9 @@ class Client:
         self.__request_with_json_response("delete", endpoint)
 
     @experimental_api
-    def _upload_resources(self, zip_file: IO, project_name=None, pipeline_name=None) -> dict:
+    def _upload_resources(
+        self, zip_file: IO, project_name=None, pipeline_name=None
+    ) -> dict:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
@@ -4263,7 +4550,9 @@ class Client:
 
         response = self.__request_with_json_response(
             "post",
-            self.__get_resources_endpoint(project_name=project_name, pipeline_name=pipeline_name),
+            self.__get_resources_endpoint(
+                project_name=project_name, pipeline_name=pipeline_name
+            ),
             files={"resourcesFile": ("zip_file.name", zip_file, "application/zip")},
         )
 
@@ -4285,7 +4574,9 @@ class Client:
         zip_file = open(target_zip_path, "wb")
         response = self.__request_with_bytes_response(
             "get",
-            self.__get_resources_endpoint(project_name=project_name, pipeline_name=pipeline_name),
+            self.__get_resources_endpoint(
+                project_name=project_name, pipeline_name=pipeline_name
+            ),
             headers={HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_ZIP},
         )
         zip_file.write(response)
@@ -4333,7 +4624,11 @@ class Client:
             pass
 
         raise ExtendedRequestException(
-            full_msg, status_code=status_code, reason=reason, url=url, error_message=error_message
+            full_msg,
+            status_code=status_code,
+            reason=reason,
+            url=url,
+            error_message=error_message,
         )
 
     @staticmethod
@@ -4363,8 +4658,9 @@ class Client:
         return endpoint
 
     @staticmethod
-    def _create_zip_io(source: Union[IO, Path, str], path_in_zip: Union[Path, str] = "") -> IO:
-
+    def _create_zip_io(
+        source: Union[IO, Path, str], path_in_zip: Union[Path, str] = ""
+    ) -> IO:
         if isinstance(source, (IO, BufferedReader)):
             return source
 
@@ -4441,7 +4737,9 @@ class Client:
         )
 
     @staticmethod
-    def _create_cas_file_request_parts(file_param_name, filename, source, mime_type, typesystem):
+    def _create_cas_file_request_parts(
+        file_param_name, filename, source, mime_type, typesystem
+    ):
         if isinstance(source, Cas):
             if typesystem is None:
                 typesystem = source.typesystem
@@ -4454,7 +4752,9 @@ class Client:
                     + ",".join(MEDIA_TYPES_CAS)
                 )
             if typesystem is None and mime_type in MEDIA_TYPES_CAS_NEEDS_TS:
-                raise Exception("Provide a typesystem with your file or use a CAS object")
+                raise Exception(
+                    "Provide a typesystem with your file or use a CAS object"
+                )
             if isinstance(source, Path):
                 with source.open("rb") as binary_file:
                     source = BytesIO(binary_file.read())
@@ -4551,7 +4851,9 @@ class Client:
         return process
 
     @staticmethod
-    def _is_higher_equal_version(version: str, compare_major: int, compare_minor: int) -> bool:
+    def _is_higher_equal_version(
+        version: str, compare_major: int, compare_minor: int
+    ) -> bool:
         version_parts = version.split(".")
         major = int(version_parts[0])
         return major > compare_major or (
