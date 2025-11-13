@@ -4315,7 +4315,6 @@ class Client:
                     first = False
                 yield json.dumps(doc).encode("utf-8")
             yield b"]}"
-            print(f"Total streamed documents: {count}")
 
         return requests.post(
             f"/experimental/projects/{project_name}/documentCollections/{document_collection_name}/import",
