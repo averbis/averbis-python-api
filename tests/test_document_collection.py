@@ -542,10 +542,15 @@ def test_import_json_document_stream(requests_mock):
         for d in document_gen:
             captured.append(d)
         # return a dummy response object whose json() returns the server payload
-        return DummyRespCM({"payload": [
-            {"documentName": "doc-a.json"},
-            {"documentName": "doc-b.json"},
-        ], "errorMessages": []})
+        return DummyRespCM(
+            {
+                "payload": [
+                    {"documentName": "doc-a.json"},
+                    {"documentName": "doc-b.json"},
+                ],
+                "errorMessages": [],
+            }
+        )
 
     client._import_document_stream = fake_import_stream
 
@@ -580,7 +585,9 @@ def test_export_document_stream_closes_on_exhaustion(requests_mock):
     collection = DocumentCollection(project, "test-collection")
 
     docs = [{"documentName": "a"}, {"documentName": "b"}]
-    raw_bytes = bytes(json.dumps({"payload": {"documents": docs}, "errorMessages": []}), "utf-8")
+    raw_bytes = bytes(
+        json.dumps({"payload": {"documents": docs}, "errorMessages": []}), "utf-8"
+    )
 
     class DummyResp:
         def __init__(self, raw):
@@ -625,7 +632,9 @@ def test_export_document_stream_closes_on_context_exit(requests_mock):
     collection = DocumentCollection(project, "test-collection")
 
     docs = [{"documentName": "x"}, {"documentName": "y"}]
-    raw_bytes = bytes(json.dumps({"payload": {"documents": docs}, "errorMessages": []}), "utf-8")
+    raw_bytes = bytes(
+        json.dumps({"payload": {"documents": docs}, "errorMessages": []}), "utf-8"
+    )
 
     class DummyResp:
         def __init__(self, raw):
@@ -676,7 +685,9 @@ def test_export_stream_pipe_to_import_consumes_and_closes(requests_mock):
     target_collection = DocumentCollection(target_project, "tgt")
 
     docs = [{"documentName": "1"}, {"documentName": "2"}]
-    raw_bytes = bytes(json.dumps({"payload": {"documents": docs}, "errorMessages": []}), "utf-8")
+    raw_bytes = bytes(
+        json.dumps({"payload": {"documents": docs}, "errorMessages": []}), "utf-8"
+    )
 
     class DummyRespSrc:
         def __init__(self, raw):
@@ -716,7 +727,10 @@ def test_export_stream_pipe_to_import_consumes_and_closes(requests_mock):
     target_client._import_document_stream = fake_import_stream
 
     # Use pipe operator implemented on ExportDocumentStream
-    result = source_collection.export_json_document_stream() | target_collection.import_json_document_stream
+    result = (
+        source_collection.export_json_document_stream()
+        | target_collection.import_json_document_stream
+    )
     assert isinstance(result, dict)
     assert result["payload"] == docs
     # exported stream should have been consumed and closed

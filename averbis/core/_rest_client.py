@@ -43,7 +43,6 @@ from json import JSONDecodeError
 
 from time import sleep, time
 from typing import (
-    Generator,
     List,
     Union,
     IO,
@@ -1931,7 +1930,7 @@ class DocumentCollection:
     @experimental_api
     def export_json_document_stream(
         self, document_names: Optional[List[str]] = None
-    ) -> Iterator[Dict[str, Any]]:
+    ) -> ExportDocumentStream:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
@@ -1960,7 +1959,7 @@ class DocumentCollection:
 
     @experimental_api
     def import_json_document_stream(
-        self, document_generator: Generator[Dict[str, Any], None, None]
+        self, document_generator: Iterator[Dict[str, Any]]
     ) -> dict:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -1968,7 +1967,7 @@ class DocumentCollection:
         Import documents to a collection from a document generator.
 
         Args:
-            document_generator: Generator yielding document dictionaries
+            document_generator: Iterator yielding document dictionaries
 
         Returns:
             Response object from the import request
@@ -4279,7 +4278,9 @@ class Client:
             )
 
         return requests.post(
-            f"/experimental/projects/{project_name}/documentCollections/{document_collection_name}/export",
+            self._build_url(
+                f"/experimental/projects/{project_name}/documentCollections/{document_collection_name}/export"
+            ),
             headers=self._default_headers(
                 {
                     HEADER_ACCEPT: MEDIA_TYPE_ANY,
@@ -4294,7 +4295,7 @@ class Client:
         self,
         project_name: str,
         document_collection_name: str,
-        document_generator: Generator[Dict[str, Any], None, None],
+        document_generator: Iterator[Dict[str, Any]],
     ):
         build_version = self.get_build_info()
         if not self._is_higher_equal_version(build_version["platformVersion"], 9, 3):
@@ -4317,7 +4318,9 @@ class Client:
             yield b"]}"
 
         return requests.post(
-            f"/experimental/projects/{project_name}/documentCollections/{document_collection_name}/import",
+            self._build_url(
+                f"/experimental/projects/{project_name}/documentCollections/{document_collection_name}/import"
+            ),
             headers=self._default_headers(
                 {
                     HEADER_ACCEPT: MEDIA_TYPE_ANY,
