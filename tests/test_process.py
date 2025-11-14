@@ -147,6 +147,52 @@ def test_create_and_run_process(process, requests_mock):
     assert_process_equal(actual_process_with_preceding_process, expected_process)
 
 
+def test_create_and_run_chunks_searchable_process(client_version_8, requests_mock):
+    project = client_version_8.get_project(PROJECT_NAME)
+    process = Process(
+        project, "first-process", "first-document-source", "first-pipeline"
+    )
+
+    process_name = "process-on-process"
+    pipeline_name = "second-pipeline"
+
+    requests_mock.post(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{process.project.name}/processes",
+        headers={"Content-Type": "application/json"},
+        json={"payload": None, "errorMessages": []},
+    )
+
+    payload = {
+        "processName": process_name,
+        "pipelineName": pipeline_name,
+        "documentSourceName": process.document_source_name,
+        "state": "IDLE",
+        "processedDocuments": 12,
+        "precedingProcessName": process.name,
+    }
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{PROJECT_NAME}/"
+        f"documentSources/{process.document_source_name}/processes/{process_name}",
+        headers={"Content-Type": "application/json"},
+        json={"payload": payload, "errorMessages": []},
+    )
+
+    actual_process_with_preceding_process = process.create_and_run_process(
+        process_name, pipeline_name, send_chunks_to_search=True
+    )
+
+    expected_process = Process(
+        process.project,
+        process_name,
+        process.document_source_name,
+        pipeline_name,
+        preceding_process_name=process.name,
+    )
+
+    assert_process_equal(actual_process_with_preceding_process, expected_process)
+
+
 def test_deprecated_process_state(process, requests_mock):
     # todo: delete me when v6 is released
     payload = {
