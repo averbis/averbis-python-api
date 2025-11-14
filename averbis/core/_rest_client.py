@@ -2181,23 +2181,35 @@ class Project:
         :param threshold: Minimum similarity threshold for results
         :param neural_search_parameter: Alternative: provide all parameters as a dict
             (for backward compatibility or advanced usage)
-        :param query_params: Additional query parameters forwarded to the server (e.g. fq, sort, start, rows, fl).
+        :param query_params: Additional Solr query parameters forwarded to the server. Common parameters include:
+            
+            - **fq** (str): Filter query to restrict results (e.g., 'category:medical')
+            - **sort** (str): Sort order (e.g., 'score desc', 'timestamp asc')
+            - **start** (int): Starting offset for pagination (default: 0)
+            - **rows** (int): Number of results to return
+            - **fl** (str): Field list - comma-separated fields to return (e.g., 'id,content,score')
+            - **debugQuery** (bool): Enable debug information in response
 
         :return: The raw payload of the server response (typically a Solr-like JSON response wrapped in payload).
 
         Examples:
-            # Using explicit parameters (recommended)
+            ### Using explicit parameters (recommended)
             results = project.neural_search(
                 text="Wie alt ist der Patient?",
                 pipeline_name="ChunkEmbedder",
                 language="de",
                 top_k=5,
                 threshold=0.1,
-                rows=20,
-                sort="score desc"
+                // Common Solr query parameters:
+                rows=20,                    // Limit number of results
+                start=0,                    // Pagination offset
+                sort="score desc",          // Sort by relevance
+                fl="id,content,score",      // Return only these fields
+                fq="status:active",         // Filter results
+                debugQuery=True             // Include debug info
             )
 
-            # Using dict (backward compatibility)
+            ### Using dict (backward compatibility)
             params = {
                 'text': 'Wie alt ist der Patient?',
                 'language': 'de',
@@ -2205,7 +2217,15 @@ class Project:
                 'topK': 5,
                 'threshold': 0.1
             }
-            results = project.neural_search(neural_search_parameter=params, rows=20)
+            results = project.neural_search(
+                neural_search_parameter=params,
+                rows=10,
+                start=20,                   // Get results 21-30
+                sort='timestamp desc',      // Sort by newest first
+                fl='id,title',              // Return only id and title
+                fq='category:medical',      // Filter to medical category
+                debugQuery=False
+            )
         """
         # Handle both parameter styles
         if neural_search_parameter is not None:
