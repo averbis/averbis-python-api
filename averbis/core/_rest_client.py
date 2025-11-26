@@ -17,6 +17,9 @@
 # limitations under the License.
 #
 #
+from __future__ import annotations
+
+import ijson  # type: ignore
 import copy
 from enum import Enum, auto
 from urllib.parse import quote
@@ -50,10 +53,14 @@ from typing import (
     Any,
     Tuple,
     Callable,
+    overload,
+    TypedDict,
 )
+from typing_extensions import Required
 from pathlib import Path
 import requests
 import mimetypes
+import weakref
 
 from requests import RequestException
 
@@ -105,6 +112,88 @@ MEDIA_TYPES_CAS = MEDIA_TYPES_CAS_NEEDS_TS + [
     MEDIA_TYPE_CAS_COMPRESSED_FILTERED_TS,
     MEDIA_TYPE_BINARY_TSI,
 ]
+
+
+class ExportDocumentStream:
+    """Iterator wrapper around a streaming export HTTP response.
+
+    The object wraps a requests.Response that was opened with stream=True and
+    provides an iterator over the exported document objects (as parsed by
+    ijson.items(..., "payload.documents.item")).
+
+    Behavior and guarantees:
+    - The response is closed deterministically when the iterator is exhausted.
+    - Calling ``close()`` will close the response immediately and cancel the
+      weakref finalizer.
+    - The object implements the context manager protocol: use ``with`` to
+      ensure the response is closed on early exit.
+    - A weakref finalizer is registered as a last-resort safety net to close
+      the response if the wrapper is garbage-collected without explicit
+      closing. Relying on this finalizer is discouraged; prefer deterministic
+      closing via exhaust/close/with.
+    - Provides a small ``__or__`` helper so callers can write
+      ``export_stream | target.import_json_document_stream`` as a convenience.
+    """
+
+    def __init__(self, response: requests.Response):
+        # _resp may be set to None when closed; annotate as Optional
+        self._resp: Optional[requests.Response] = response
+        self._iter = ijson.items(self._resp.raw, "payload.documents.item")
+        # Finalizer ensures response is closed if this object is dropped
+        self._finalizer = weakref.finalize(self, self._safe_close)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        try:
+            return next(self._iter)
+        except StopIteration:
+            # fully consumed -> close response
+            self.close()
+            raise
+        except Exception:
+            # parsing or IO error -> close and re-raise
+            self.close()
+            raise
+
+    def close(self) -> None:
+        """Idempotently close the underlying response and detach finalizer."""
+        resp = getattr(self, "_resp", None)
+        if resp is not None:
+            try:
+                resp.close()
+            finally:
+                # clear stored reference and detach finalizer
+                self._resp = None
+                try:
+                    self._finalizer.detach()
+                except Exception:
+                    pass
+
+    def _safe_close(self) -> None:
+        try:
+            resp = getattr(self, "_resp", None)
+            if resp is not None:
+                resp.close()
+        except Exception:
+            pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        self.close()
+        return False
+
+    def __or__(self, other):
+        """Support convenience piping: export_stream | target.import_json_document_stream
+
+        Returns the result of calling ``other(self)`` which matches the
+        conventional import method signature accepting an iterator/generator.
+        """
+        return other(self)
+
 
 DOCUMENT_IMPORTER_CAS = "CAS Importer"
 DOCUMENT_IMPORTER_SOLR = "Solr XML Importer"
@@ -167,6 +256,14 @@ class OperationTimeoutError(Exception):
     """
 
     pass
+
+
+class NeuralSearchParams(TypedDict, total=False):
+    text: Required[str]
+    pipelineName: Required[str]
+    language: str
+    topK: int
+    threshold: float
 
 
 class Result:
@@ -1357,6 +1454,7 @@ class Process:
         process_name: str,
         pipeline: Union[str, Pipeline],
         send_to_search: Optional[bool] = None,
+        send_chunks_to_search: Optional[bool] = None,
     ) -> "Process":
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -1375,6 +1473,7 @@ class Process:
             pipeline=pipeline,
             preceding_process_name=self.name,
             send_to_search=send_to_search,
+            send_chunks_to_search=send_chunks_to_search,
         )
 
         return document_collection.get_process(process_name=process_name)
@@ -1693,6 +1792,7 @@ class DocumentCollection:
         pipeline: Union[str, Pipeline],
         annotation_types: Union[None, str, List[str]] = None,
         send_to_search: Optional[bool] = None,
+        send_chunks_to_search: Optional[bool] = None,
     ) -> Process:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -1704,6 +1804,7 @@ class DocumentCollection:
                                  - Example 1: "de.averbis.types.*" returns all types with prefix "de.averbis.types".
                                  - Example 2: Can also be a list of type names, e.g. ["de.averbis.types.health.Diagnosis", "de.averbis.types.health.Medication"]
         :param send_to_search:       Determines if the created process should be searchable.
+        :param send_chunks_to_search: Determines if the created process should make the chunks searchable.
         :return: The created process
         """
         # noinspection PyProtectedMember
@@ -1713,6 +1814,7 @@ class DocumentCollection:
             pipeline,
             annotation_types=annotation_types,
             send_to_search=send_to_search,
+            send_chunks_to_search=send_chunks_to_search,
         )
 
         return self.get_process(process_name)
@@ -1724,6 +1826,7 @@ class DocumentCollection:
         is_manual_annotation: bool = False,
         annotation_types: Union[None, str, List[str]] = None,
         send_to_search: Optional[bool] = None,
+        send_chunks_to_search: Optional[bool] = None,
     ) -> Process:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -1735,6 +1838,7 @@ class DocumentCollection:
                                       - Example 1: "de.averbis.types.*" returns all types with prefix "de.averbis.types".
                                       - Example 2: Can also be a list of type names, e.g. ["de.averbis.types.health.Diagnosis", "de.averbis.types.health.Medication"]
         :param send_to_search:       Determines if the created process should be searchable.
+        :param send_chunks_to_search: Determines if the created process should make the chunks searchable.
         :return: The created process
         """
         process_type = self._map_process_type(Process._ProcessType.NO_INIT)
@@ -1748,6 +1852,7 @@ class DocumentCollection:
             process_type=process_type,
             annotation_types=annotation_types,
             send_to_search=send_to_search,
+            send_chunks_to_search=send_chunks_to_search,
         )
 
         return self.get_process(process_name)
@@ -1846,6 +1951,75 @@ class DocumentCollection:
             for process in self.project.list_processes()
             if process.document_source_name == self.name
         ]
+
+    @experimental_api
+    def export_json_document_stream(
+        self, document_names: Optional[List[str]] = None
+    ) -> ExportDocumentStream:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Export documents from a collection and return a generator of document objects.
+
+        Args:
+            document_names: Optional list of document names to export (empty list exports all)
+
+        Yields:
+            Document dictionaries from the export response
+        """
+        if document_names is None:
+            document_names = []
+
+        # Open the streaming response and return a safe iterator object which
+        # ensures the underlying response is closed when fully consumed,
+        # when closed explicitly, or when GC'd as a last-resort.
+        resp = self.project.client._export_document_stream(
+            self.project.name, self.name, document_names
+        )
+        resp.raise_for_status()
+
+        # Use the module-level ExportDocumentStream which provides the same
+        # iterator + deterministic close semantics and a weakref finalizer.
+        return ExportDocumentStream(resp)
+
+    @experimental_api
+    def import_json_document_stream(
+        self, document_generator: Iterator[Dict[str, Any]]
+    ) -> dict:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Import documents to a collection from a document generator.
+
+        Args:
+            document_generator: Iterator yielding document dictionaries
+
+        Returns:
+            Response object from the import request
+        """
+
+        # POST streamed documents to import endpoint. We read and return the
+        # JSON payload from the server and ensure the response is closed
+        # deterministically before returning.
+        resp = self.project.client._import_document_stream(
+            self.project.name, self.name, document_generator
+        )
+        try:
+            resp.raise_for_status()
+            try:
+                payload = resp.json()
+            except Exception:
+                # If server did not return JSON, return raw text as fallback
+                try:
+                    payload = resp.text
+                except Exception:
+                    payload = None
+            return payload
+        finally:
+            try:
+                resp.close()
+            except Exception:
+                pass
 
     def _get_document_identifier(self, document_name: str) -> str:
         documents = [
@@ -2119,6 +2293,139 @@ class Project:
         """
         # noinspection PyProtectedMember
         return self.client._select(self.name, query, **kwargs)
+
+    @overload
+    def neural_search(
+        self,
+        text: str,
+        pipeline_name: str,
+        language: Optional[str] = None,
+        top_k: Optional[int] = None,
+        threshold: Optional[float] = None,
+        **query_params,
+    ) -> Dict[str, Any]: ...
+
+    @overload
+    def neural_search(
+        self, *, neural_search_parameter: NeuralSearchParams, **query_params: Any
+    ) -> Dict[str, Any]: ...
+
+    @experimental_api
+    def neural_search(
+        self,
+        text: Optional[str] = None,
+        pipeline_name: Optional[str] = None,
+        language: Optional[str] = None,
+        top_k: Optional[int] = None,
+        threshold: Optional[float] = None,
+        *,
+        neural_search_parameter: Optional[NeuralSearchParams] = None,
+        **query_params: Any,
+    ) -> Dict[str, Any]:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Perform a neural (dense vector) search using server-side neural search endpoint.
+
+        There are two ways to use this method:
+
+        1. **Explicit parameters (recommended)**:
+           Provide text and pipeline_name as required parameters, with optional parameters.
+
+        2. **Dictionary parameters (advanced)**:
+           Provide all parameters as a dictionary using neural_search_parameter.
+
+        :param text: The text query to search for (required when using explicit parameters)
+        :param pipeline_name: Name of the pipeline to use for embedding generation (required when using explicit parameters)
+        :param language: Language code (e.g., 'en', 'de')
+        :param top_k: Maximum number of results to return
+        :param threshold: Minimum similarity threshold for results
+        :param neural_search_parameter: Alternative: provide all parameters as a dict
+            (for backward compatibility or advanced usage)
+        :param query_params: Additional Solr query parameters forwarded to the server. Common parameters include:
+            
+            - **fq** (str): Filter query to restrict results (e.g., 'category:medical')
+            - **sort** (str): Sort order (e.g., 'score desc', 'timestamp asc')
+            - **start** (int): Starting offset for pagination (default: 0)
+            - **rows** (int): Number of results to return
+            - **fl** (str): Field list - comma-separated fields to return (e.g., 'id,content,score')
+            - **debugQuery** (bool): Enable debug information in response
+
+        :return: The raw payload of the server response (typically a Solr-like JSON response wrapped in payload).
+
+        Examples:
+            ### Using explicit parameters (recommended)
+            results = project.neural_search(
+                text="Wie alt ist der Patient?",
+                pipeline_name="ChunkEmbedder",
+                language="de",
+                top_k=5,
+                threshold=0.1,
+                // Common Solr query parameters:
+                rows=20,                    // Limit number of results
+                start=0,                    // Pagination offset
+                sort="score desc",          // Sort by relevance
+                fl="id,content,score",      // Return only these fields
+                fq="status:active",         // Filter results
+                debugQuery=True             // Include debug info
+            )
+
+            ### Using dict (backward compatibility)
+            params = {
+                'text': 'Wie alt ist der Patient?',
+                'language': 'de',
+                'pipelineName': 'ChunkEmbedder',
+                'topK': 5,
+                'threshold': 0.1
+            }
+            results = project.neural_search(
+                neural_search_parameter=params,
+                rows=10,
+                start=20,                   // Get results 21-30
+                sort='timestamp desc',      // Sort by newest first
+                fl='id,title',              // Return only id and title
+                fq='category:medical',      // Filter to medical category
+                debugQuery=False
+            )
+        """
+        # Handle both parameter styles
+        if neural_search_parameter is not None:
+            if any(
+                [
+                    text is not None,
+                    pipeline_name is not None,
+                    language is not None,
+                    top_k is not None,
+                    threshold is not None,
+                ]
+            ):
+                raise ValueError(
+                    "Cannot use both explicit parameters and neural_search_parameter dict. "
+                    "Use either explicit parameters OR neural_search_parameter dict, not both."
+                )
+            request_body = neural_search_parameter
+        else:
+            # Validate required parameters when using explicit style
+            if text is None:
+                raise ValueError(
+                    "Parameter 'text' is required when not using neural_search_parameter"
+                )
+            if pipeline_name is None:
+                raise ValueError(
+                    "Parameter 'pipeline_name' is required when not using neural_search_parameter"
+                )
+
+            # Build request body from explicit parameters
+            request_body = {"text": text, "pipelineName": pipeline_name}
+            if language is not None:
+                request_body["language"] = language
+            if top_k is not None:
+                request_body["topK"] = top_k
+            if threshold is not None:
+                request_body["threshold"] = threshold
+
+        # noinspection PyProtectedMember
+        return self.client._neural_search(self.name, request_body, **query_params)
 
     @experimental_api
     def list_pears(self) -> List[str]:
@@ -3727,6 +4034,27 @@ class Client:
         )
         return response["payload"]
 
+    @experimental_api
+    def _neural_search(
+        self, project: str, neural_search_parameter: dict, **query_params
+    ) -> dict:
+        """
+        LOW-LEVEL: Call the experimental neural search endpoint.
+
+        :param project: project identifier
+        :param neural_search_parameter: dict to be sent as JSON body
+        :param kwargs: extra query parameters forwarded as params
+        :return: payload from server response
+        """
+        response = self.__request_with_json_response(
+            "post",
+            f"/experimental/search/projects/{project}/neuralSearch",
+            params={**query_params},
+            json=neural_search_parameter,
+            headers={HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_JSON},
+        )
+        return response["payload"]
+
     def _export_text_analysis(
         self,
         project: str,
@@ -4119,6 +4447,74 @@ class Client:
             processes.append(document_collection.get_process(item["processName"]))
         return processes
 
+    def _export_document_stream(
+        self,
+        project_name: str,
+        document_collection_name: str,
+        document_names: List[str],
+    ) -> requests.Response:
+        build_version = self.get_build_info()
+        if not self._is_higher_equal_version(build_version["platformVersion"], 9, 3):
+            raise OperationNotSupported(
+                f"The method 'export_documents' is only supported for platform versions >= 9.3.0 (available from Health Discovery version 7.5.0), but current platform is {build_version['platformVersion']}."
+            )
+
+        return requests.post(
+            self._build_url(
+                f"/experimental/projects/{project_name}/documentCollections/{document_collection_name}/export"
+            ),
+            headers=self._default_headers(
+                {
+                    HEADER_ACCEPT: MEDIA_TYPE_ANY,
+                    HEADER_CONTENT_TYPE: MEDIA_TYPE_APPLICATION_JSON,
+                }
+            ),
+            json={"documentNames": document_names},
+            stream=True,
+        )
+
+    def _import_document_stream(
+        self,
+        project_name: str,
+        document_collection_name: str,
+        document_generator: Iterator[Dict[str, Any]],
+    ):
+        build_version = self.get_build_info()
+        if not self._is_higher_equal_version(build_version["platformVersion"], 9, 3):
+            raise OperationNotSupported(
+                f"The method 'import_documents' is only supported for platform versions >= 9.3.0 (available from Health Discovery version 7.5.0), but current platform is {build_version['platformVersion']}."
+            )
+
+        def generate_import_stream():
+            """Yield import JSON bytes"""
+            yield b'{"documents":['
+            first = True
+            count = 0
+            for doc in document_generator:
+                count += 1
+                if not first:
+                    yield b","
+                else:
+                    first = False
+                yield json.dumps(doc).encode("utf-8")
+            yield b"]}"
+
+        return requests.post(
+            self._build_url(
+                f"/experimental/projects/{project_name}/documentCollections/{document_collection_name}/import"
+            ),
+            headers=self._default_headers(
+                {
+                    HEADER_ACCEPT: MEDIA_TYPE_ANY,
+                    HEADER_CONTENT_TYPE: MEDIA_TYPE_APPLICATION_JSON,
+                }
+            ),
+            # requests expects an iterable or file-like object; call the
+            # generator function to get an iterator over bytes
+            data=generate_import_stream(),
+            stream=True,
+        )
+
     def _delete_document(
         self, project_name: str, document_collection_name: str, document_name: str
     ) -> dict:
@@ -4144,6 +4540,7 @@ class Client:
         preceding_process_name: Optional[str] = None,
         annotation_types: Union[None, str, List[str]] = None,
         send_to_search: Optional[bool] = None,
+        send_chunks_to_search: Optional[bool] = None,
     ) -> dict:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -4164,6 +4561,7 @@ class Client:
             preceding_process_name,
             annotation_types,
             send_to_search,
+            send_chunks_to_search,
             pipeline_name,
             request_json,
         )
@@ -4182,6 +4580,7 @@ class Client:
         preceding_process_name: Optional[str],
         annotation_types: Union[None, str, List[str]],
         send_to_search: Optional[bool],
+        send_chunks_to_search: Optional[bool],
         pipeline_name: Optional[str],
         request_json: dict,
     ) -> dict:
@@ -4197,6 +4596,7 @@ class Client:
         if (
             annotation_types
             or send_to_search
+            or send_chunks_to_search
             or process_type == DocumentCollection._MANUAL_PROCESS_TYPE
         ):
             build_version = self.get_build_info()
@@ -4223,6 +4623,12 @@ class Client:
                         f"The parameter 'send_to_search' is only supported for platform versions >= 9.0 (available from Health Discovery version 8.0), but current platform is {platform_version}."
                     )
                 request_json["sendToSearch"] = send_to_search
+            if send_chunks_to_search:
+                if not self._is_higher_equal_version(platform_version, 9, 0):
+                    raise OperationNotSupported(
+                        f"The parameter 'send_chunks_to_search' is only supported for platform versions >= 9.0 (available from Health Discovery version 8.0), but current platform is {platform_version}."
+                    )
+                request_json["sendChunksToSearch"] = send_chunks_to_search
         return request_json
 
     @experimental_api
