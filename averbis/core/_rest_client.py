@@ -53,7 +53,10 @@ from typing import (
     Any,
     Tuple,
     Callable,
+    overload,
+    TypedDict,
 )
+from typing_extensions import Required
 from pathlib import Path
 import requests
 import mimetypes
@@ -253,6 +256,14 @@ class OperationTimeoutError(Exception):
     """
 
     pass
+
+
+class NeuralSearchParams(TypedDict, total=False):
+    text: Required[str]
+    pipelineName: Required[str]
+    language: str
+    topK: int
+    threshold: float
 
 
 class Result:
@@ -1437,6 +1448,7 @@ class Process:
         process_name: str,
         pipeline: Union[str, Pipeline],
         send_to_search: Optional[bool] = None,
+        send_chunks_to_search: Optional[bool] = None,
     ) -> "Process":
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -1455,6 +1467,7 @@ class Process:
             pipeline=pipeline,
             preceding_process_name=self.name,
             send_to_search=send_to_search,
+            send_chunks_to_search=send_chunks_to_search,
         )
 
         return document_collection.get_process(process_name=process_name)
@@ -1773,6 +1786,7 @@ class DocumentCollection:
         pipeline: Union[str, Pipeline],
         annotation_types: Union[None, str, List[str]] = None,
         send_to_search: Optional[bool] = None,
+        send_chunks_to_search: Optional[bool] = None,
     ) -> Process:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -1784,6 +1798,7 @@ class DocumentCollection:
                                  - Example 1: "de.averbis.types.*" returns all types with prefix "de.averbis.types".
                                  - Example 2: Can also be a list of type names, e.g. ["de.averbis.types.health.Diagnosis", "de.averbis.types.health.Medication"]
         :param send_to_search:       Determines if the created process should be searchable.
+        :param send_chunks_to_search: Determines if the created process should make the chunks searchable.
         :return: The created process
         """
         # noinspection PyProtectedMember
@@ -1793,6 +1808,7 @@ class DocumentCollection:
             pipeline,
             annotation_types=annotation_types,
             send_to_search=send_to_search,
+            send_chunks_to_search=send_chunks_to_search,
         )
 
         return self.get_process(process_name)
@@ -1804,6 +1820,7 @@ class DocumentCollection:
         is_manual_annotation: bool = False,
         annotation_types: Union[None, str, List[str]] = None,
         send_to_search: Optional[bool] = None,
+        send_chunks_to_search: Optional[bool] = None,
     ) -> Process:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -1815,6 +1832,7 @@ class DocumentCollection:
                                       - Example 1: "de.averbis.types.*" returns all types with prefix "de.averbis.types".
                                       - Example 2: Can also be a list of type names, e.g. ["de.averbis.types.health.Diagnosis", "de.averbis.types.health.Medication"]
         :param send_to_search:       Determines if the created process should be searchable.
+        :param send_chunks_to_search: Determines if the created process should make the chunks searchable.
         :return: The created process
         """
         process_type = self._map_process_type(Process._ProcessType.NO_INIT)
@@ -1828,6 +1846,7 @@ class DocumentCollection:
             process_type=process_type,
             annotation_types=annotation_types,
             send_to_search=send_to_search,
+            send_chunks_to_search=send_chunks_to_search,
         )
 
         return self.get_process(process_name)
@@ -2268,6 +2287,139 @@ class Project:
         """
         # noinspection PyProtectedMember
         return self.client._select(self.name, query, **kwargs)
+
+    @overload
+    def neural_search(
+        self,
+        text: str,
+        pipeline_name: str,
+        language: Optional[str] = None,
+        top_k: Optional[int] = None,
+        threshold: Optional[float] = None,
+        **query_params,
+    ) -> Dict[str, Any]: ...
+
+    @overload
+    def neural_search(
+        self, *, neural_search_parameter: NeuralSearchParams, **query_params: Any
+    ) -> Dict[str, Any]: ...
+
+    @experimental_api
+    def neural_search(
+        self,
+        text: Optional[str] = None,
+        pipeline_name: Optional[str] = None,
+        language: Optional[str] = None,
+        top_k: Optional[int] = None,
+        threshold: Optional[float] = None,
+        *,
+        neural_search_parameter: Optional[NeuralSearchParams] = None,
+        **query_params: Any,
+    ) -> Dict[str, Any]:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Perform a neural (dense vector) search using server-side neural search endpoint.
+
+        There are two ways to use this method:
+
+        1. **Explicit parameters (recommended)**:
+           Provide text and pipeline_name as required parameters, with optional parameters.
+
+        2. **Dictionary parameters (advanced)**:
+           Provide all parameters as a dictionary using neural_search_parameter.
+
+        :param text: The text query to search for (required when using explicit parameters)
+        :param pipeline_name: Name of the pipeline to use for embedding generation (required when using explicit parameters)
+        :param language: Language code (e.g., 'en', 'de')
+        :param top_k: Maximum number of results to return
+        :param threshold: Minimum similarity threshold for results
+        :param neural_search_parameter: Alternative: provide all parameters as a dict
+            (for backward compatibility or advanced usage)
+        :param query_params: Additional Solr query parameters forwarded to the server. Common parameters include:
+            
+            - **fq** (str): Filter query to restrict results (e.g., 'category:medical')
+            - **sort** (str): Sort order (e.g., 'score desc', 'timestamp asc')
+            - **start** (int): Starting offset for pagination (default: 0)
+            - **rows** (int): Number of results to return
+            - **fl** (str): Field list - comma-separated fields to return (e.g., 'id,content,score')
+            - **debugQuery** (bool): Enable debug information in response
+
+        :return: The raw payload of the server response (typically a Solr-like JSON response wrapped in payload).
+
+        Examples:
+            ### Using explicit parameters (recommended)
+            results = project.neural_search(
+                text="Wie alt ist der Patient?",
+                pipeline_name="ChunkEmbedder",
+                language="de",
+                top_k=5,
+                threshold=0.1,
+                // Common Solr query parameters:
+                rows=20,                    // Limit number of results
+                start=0,                    // Pagination offset
+                sort="score desc",          // Sort by relevance
+                fl="id,content,score",      // Return only these fields
+                fq="status:active",         // Filter results
+                debugQuery=True             // Include debug info
+            )
+
+            ### Using dict (backward compatibility)
+            params = {
+                'text': 'Wie alt ist der Patient?',
+                'language': 'de',
+                'pipelineName': 'ChunkEmbedder',
+                'topK': 5,
+                'threshold': 0.1
+            }
+            results = project.neural_search(
+                neural_search_parameter=params,
+                rows=10,
+                start=20,                   // Get results 21-30
+                sort='timestamp desc',      // Sort by newest first
+                fl='id,title',              // Return only id and title
+                fq='category:medical',      // Filter to medical category
+                debugQuery=False
+            )
+        """
+        # Handle both parameter styles
+        if neural_search_parameter is not None:
+            if any(
+                [
+                    text is not None,
+                    pipeline_name is not None,
+                    language is not None,
+                    top_k is not None,
+                    threshold is not None,
+                ]
+            ):
+                raise ValueError(
+                    "Cannot use both explicit parameters and neural_search_parameter dict. "
+                    "Use either explicit parameters OR neural_search_parameter dict, not both."
+                )
+            request_body = neural_search_parameter
+        else:
+            # Validate required parameters when using explicit style
+            if text is None:
+                raise ValueError(
+                    "Parameter 'text' is required when not using neural_search_parameter"
+                )
+            if pipeline_name is None:
+                raise ValueError(
+                    "Parameter 'pipeline_name' is required when not using neural_search_parameter"
+                )
+
+            # Build request body from explicit parameters
+            request_body = {"text": text, "pipelineName": pipeline_name}
+            if language is not None:
+                request_body["language"] = language
+            if top_k is not None:
+                request_body["topK"] = top_k
+            if threshold is not None:
+                request_body["threshold"] = threshold
+
+        # noinspection PyProtectedMember
+        return self.client._neural_search(self.name, request_body, **query_params)
 
     @experimental_api
     def list_pears(self) -> List[str]:
@@ -3876,6 +4028,27 @@ class Client:
         )
         return response["payload"]
 
+    @experimental_api
+    def _neural_search(
+        self, project: str, neural_search_parameter: dict, **query_params
+    ) -> dict:
+        """
+        LOW-LEVEL: Call the experimental neural search endpoint.
+
+        :param project: project identifier
+        :param neural_search_parameter: dict to be sent as JSON body
+        :param kwargs: extra query parameters forwarded as params
+        :return: payload from server response
+        """
+        response = self.__request_with_json_response(
+            "post",
+            f"/experimental/search/projects/{project}/neuralSearch",
+            params={**query_params},
+            json=neural_search_parameter,
+            headers={HEADER_ACCEPT: MEDIA_TYPE_APPLICATION_JSON},
+        )
+        return response["payload"]
+
     def _export_text_analysis(
         self,
         project: str,
@@ -4358,6 +4531,7 @@ class Client:
         preceding_process_name: Optional[str] = None,
         annotation_types: Union[None, str, List[str]] = None,
         send_to_search: Optional[bool] = None,
+        send_chunks_to_search: Optional[bool] = None,
     ) -> dict:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
@@ -4378,6 +4552,7 @@ class Client:
             preceding_process_name,
             annotation_types,
             send_to_search,
+            send_chunks_to_search,
             pipeline_name,
             request_json,
         )
@@ -4396,6 +4571,7 @@ class Client:
         preceding_process_name: Optional[str],
         annotation_types: Union[None, str, List[str]],
         send_to_search: Optional[bool],
+        send_chunks_to_search: Optional[bool],
         pipeline_name: Optional[str],
         request_json: dict,
     ) -> dict:
@@ -4411,6 +4587,7 @@ class Client:
         if (
             annotation_types
             or send_to_search
+            or send_chunks_to_search
             or process_type == DocumentCollection._MANUAL_PROCESS_TYPE
         ):
             build_version = self.get_build_info()
@@ -4437,6 +4614,12 @@ class Client:
                         f"The parameter 'send_to_search' is only supported for platform versions >= 9.0 (available from Health Discovery version 8.0), but current platform is {platform_version}."
                     )
                 request_json["sendToSearch"] = send_to_search
+            if send_chunks_to_search:
+                if not self._is_higher_equal_version(platform_version, 9, 0):
+                    raise OperationNotSupported(
+                        f"The parameter 'send_chunks_to_search' is only supported for platform versions >= 9.0 (available from Health Discovery version 8.0), but current platform is {platform_version}."
+                    )
+                request_json["sendChunksToSearch"] = send_chunks_to_search
         return request_json
 
     @experimental_api

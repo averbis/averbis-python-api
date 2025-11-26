@@ -313,6 +313,131 @@ def test_create_searchable_process(client_version_8, requests_mock):
     assert_process_equal(expected_process, actual_process)
 
 
+def test_create_chunks_searchable_process(client_version_8, requests_mock):
+    project = client_version_8.get_project(PROJECT_NAME)
+    document_collection = DocumentCollection(project, "test-collection")
+
+    process_name = "test-process"
+    state = "IDLE"
+    number_of_documents = 12
+
+    requests_mock.post(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{PROJECT_NAME}/processes",
+        headers={"Content-Type": "application/json"},
+        json={"payload": None, "errorMessages": []},
+    )
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{PROJECT_NAME}/"
+        f"documentSources/{document_collection.name}/processes/{process_name}",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": {
+                "processName": process_name,
+                "documentSourceName": document_collection.name,
+                "state": state,
+                "processedDocuments": number_of_documents,
+            },
+            "errorMessages": [],
+        },
+    )
+
+    actual_process = document_collection.create_process(
+        process_name=process_name, send_chunks_to_search=True
+    )
+
+    expected_process = Process(
+        document_collection.project, process_name, document_collection.name
+    )
+    assert_process_equal(expected_process, actual_process)
+
+    assert_process_equal(expected_process, actual_process)
+
+
+def test_create_and_run_chunks_searchable_process(client_version_8, requests_mock):
+    project = client_version_8.get_project(PROJECT_NAME)
+    document_collection = DocumentCollection(project, "test-collection")
+
+    pipeline_name = "test-pipeline"
+    process_name = "test-process"
+    state = "IDLE"
+    number_of_documents = 12
+
+    requests_mock.post(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{PROJECT_NAME}/processes",
+        headers={"Content-Type": "application/json"},
+        json={"payload": None, "errorMessages": []},
+    )
+
+    requests_mock.get(
+        f"{API_EXPERIMENTAL}/textanalysis/projects/{PROJECT_NAME}/"
+        f"documentSources/{document_collection.name}/processes/{process_name}",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": {
+                "processName": process_name,
+                "pipelineName": pipeline_name,
+                "documentSourceName": document_collection.name,
+                "state": state,
+                "processedDocuments": number_of_documents,
+            },
+            "errorMessages": [],
+        },
+    )
+
+    actual_process = document_collection.create_and_run_process(
+        process_name=process_name, pipeline=pipeline_name, send_chunks_to_search=True
+    )
+
+    expected_process = Process(
+        document_collection.project,
+        process_name,
+        document_collection.name,
+        pipeline_name,
+    )
+    assert_process_equal(expected_process, actual_process)
+
+
+def test_create_chunks_searchable_process_not_supported(
+    document_collection, requests_mock
+):
+    requests_mock.get(
+        f"{API_BASE}/buildInfo",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": {
+                "platformVersion": "8.20.0",
+            },
+            "errorMessages": [],
+        },
+    )
+    with pytest.raises(OperationNotSupported):
+        document_collection.create_process(
+            process_name="test-process", send_chunks_to_search=True
+        )
+
+
+def test_create_and_run_chunks_searchable_process_not_supported(
+    document_collection, requests_mock
+):
+    requests_mock.get(
+        f"{API_BASE}/buildInfo",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": {
+                "platformVersion": "8.20.0",
+            },
+            "errorMessages": [],
+        },
+    )
+    with pytest.raises(OperationNotSupported):
+        document_collection.create_and_run_process(
+            process_name="test-process",
+            pipeline="test-pipeline",
+            send_chunks_to_search=True,
+        )
+
+
 def test_list_processes(client_version_6, requests_mock):
     project = client_version_6.get_project(PROJECT_NAME)
     document_collection = DocumentCollection(project, "my_collection")
