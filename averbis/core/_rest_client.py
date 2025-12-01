@@ -1953,6 +1953,50 @@ class DocumentCollection:
         ]
 
     @experimental_api
+    def read_document_text(
+        self, document_name: str
+    ) -> str:
+        """
+        HIGHLY EXPERIMENTAL API - may soon change or disappear.
+
+        Read the text of the given document.
+
+        Args:
+            document_name: Name of the document to read
+
+        Returns:
+            Document text
+        """
+        payload = self.project.client._read_document(
+            self.project.name, self.name, document_name
+        )
+
+        # payload is expected to be a dict with key 'documents' containing a list
+        if isinstance(payload, dict) and "documents" in payload:
+            for doc in payload["documents"]:
+                if doc.get("documentName") == document_name:
+                    if "content" not in doc:
+                        raise Exception(
+                            f"Document '{document_name}' does not contain a 'content' field"
+                        )
+                    content = doc["content"]
+                    if not isinstance(content, list):
+                        raise Exception(
+                            f"Document '{document_name}' content must be a list, got {type(content)}"
+                        )
+                    if len(content) != 1:
+                        raise Exception(
+                            f"Document '{document_name}' content list must contain exactly one element, got {len(content)}"
+                        )
+                    if not isinstance(content[0], str):
+                        raise Exception(
+                            f"Document '{document_name}' content element must be a string, got {type(content[0])}"
+                        )
+                    return content[0]
+
+        raise KeyError(f"Document '{document_name}' not found in payload")
+
+    @experimental_api
     def export_json_document_stream(
         self, document_names: Optional[List[str]] = None
     ) -> ExportDocumentStream:
@@ -4446,7 +4490,35 @@ class Client:
             )
             processes.append(document_collection.get_process(item["processName"]))
         return processes
+    
+    @experimental_api
+    def _read_document(
+        self, project_name: str, document_collection_name: str, document_name: str
+    ) -> dict[str, Any]:
+        build_version = self.get_build_info()
+        if not self._is_higher_equal_version(build_version["platformVersion"], 9, 3):
+            raise OperationNotSupported(
+                f"The method 'export_documents' is only supported for platform versions >= 9.3.0 (available from Health Discovery version 7.5.0), but current platform is {build_version['platformVersion']}."
+            )
+        endpoint = (
+            f"/experimental/projects/{project_name}/documentCollections/{document_collection_name}/export"
+        )
 
+        response = self.__request_with_json_response(
+            "post",
+            endpoint,
+            headers=self._default_headers(
+                {
+                    HEADER_ACCEPT: MEDIA_TYPE_ANY,
+                    HEADER_CONTENT_TYPE: MEDIA_TYPE_APPLICATION_JSON,
+                }
+            ),
+            json={"documentNames": [document_name]},
+        )
+
+        return response["payload"]
+
+    @experimental_api
     def _export_document_stream(
         self,
         project_name: str,
@@ -4473,6 +4545,7 @@ class Client:
             stream=True,
         )
 
+    @experimental_api
     def _import_document_stream(
         self,
         project_name: str,
