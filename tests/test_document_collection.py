@@ -861,3 +861,38 @@ def test_export_stream_pipe_to_import_consumes_and_closes(requests_mock):
     # exported stream should have been consumed and closed
     # we can't directly access the underlying response here, but ensure received list matches
     assert received == docs
+
+
+def test_read_document_text(requests_mock):
+    # Ensure platform version is high enough for read_document API
+    requests_mock.get(
+        f"{API_BASE}/buildInfo",
+        headers={"Content-Type": "application/json"},
+        json={
+            "payload": {
+                "specVersion": "8.0.0",
+                "buildNumber": "",
+                "platformVersion": "9.3.0",
+            },
+            "errorMessages": [],
+        },
+    )
+
+    client = Client(URL_BASE_ID, api_token=TEST_API_TOKEN)
+    project = client.get_project(PROJECT_NAME)
+    collection = DocumentCollection(project, "test-collection")
+
+    # Mock the experimental export endpoint to return raw bytes
+    requests_mock.post(
+        f"{API_EXPERIMENTAL}/projects/{PROJECT_NAME}/documentCollections/{collection.name}/export",
+        headers={"Content-Type": "application/json"},
+        content=b'{"payload": {"documents": [{"documentName":"my-doc.txt","content":["Document content."]}]}, "errorMessages": []}',
+    )
+
+    result = collection.read_document_text("my-doc.txt")
+    assert result == "Document content."
+
+    # Verify that a single POST request was made with the expected JSON body
+    assert len(requests_mock.request_history) >= 1
+    last = requests_mock.request_history[-1]
+    assert last.json() == {"documentNames": ["my-doc.txt"]}
