@@ -56,7 +56,6 @@ from typing import (
     overload,
     TypedDict,
 )
-from typing_extensions import Required
 from pathlib import Path
 import requests
 import mimetypes
@@ -258,12 +257,12 @@ class OperationTimeoutError(Exception):
     pass
 
 
-class NeuralSearchParams(TypedDict, total=False):
-    text: Required[str]
-    pipelineName: Required[str]
-    language: str
-    topK: int
-    threshold: float
+class NeuralSearchParams(TypedDict):
+    text: str 
+    pipelineName: str 
+    language: Optional[str] 
+    topK: Optional[int] 
+    threshold: Optional[float] 
 
 
 class Result:
