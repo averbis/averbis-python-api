@@ -54,12 +54,12 @@ from typing import (
     Tuple,
     Callable,
     overload,
-    TypedDict,
 )
 from pathlib import Path
 import requests
 import mimetypes
 import weakref
+from dataclasses import dataclass, asdict
 
 from requests import RequestException
 
@@ -257,12 +257,17 @@ class OperationTimeoutError(Exception):
     pass
 
 
-class NeuralSearchParams(TypedDict):
-    text: str 
-    pipelineName: str 
-    language: Optional[str] 
-    topK: Optional[int] 
-    threshold: Optional[float] 
+@dataclass
+class NeuralSearchParams:
+    text: str
+    pipelineName: str
+    language: Optional[str] = None
+    topK: Optional[int] = None
+    threshold: Optional[float] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dict, excluding None values"""
+        return {k: v for k, v in asdict(self).items() if v is not None}
 
 
 class Result:
@@ -1952,9 +1957,7 @@ class DocumentCollection:
         ]
 
     @experimental_api
-    def read_document_text(
-        self, document_name: str
-    ) -> str:
+    def read_document_text(self, document_name: str) -> str:
         """
         HIGHLY EXPERIMENTAL API - may soon change or disappear.
 
@@ -2362,7 +2365,9 @@ class Project:
         top_k: Optional[int] = None,
         threshold: Optional[float] = None,
         *,
-        neural_search_parameter: Optional[NeuralSearchParams] = None,
+        neural_search_parameter: Optional[
+            Union[NeuralSearchParams, Dict[str, Any]]
+        ] = None,
         **query_params: Any,
     ) -> Dict[str, Any]:
         """
@@ -2375,18 +2380,18 @@ class Project:
         1. **Explicit parameters (recommended)**:
            Provide text and pipeline_name as required parameters, with optional parameters.
 
-        2. **Dictionary parameters (advanced)**:
-           Provide all parameters as a dictionary using neural_search_parameter.
+        2. **Dictionary or NeuralSearchParams parameters (advanced)**:
+           Provide all parameters as a dictionary or NeuralSearchParams object using neural_search_parameter.
 
         :param text: The text query to search for (required when using explicit parameters)
         :param pipeline_name: Name of the pipeline to use for embedding generation (required when using explicit parameters)
         :param language: Language code (e.g., 'en', 'de')
         :param top_k: Maximum number of results to return
         :param threshold: Minimum similarity threshold for results
-        :param neural_search_parameter: Alternative: provide all parameters as a dict
+        :param neural_search_parameter: Alternative: provide all parameters as a NeuralSearchParams object or dict
             (for backward compatibility or advanced usage)
         :param query_params: Additional Solr query parameters forwarded to the server. Common parameters include:
-            
+
             - **fq** (str): Filter query to restrict results (e.g., 'category:medical')
             - **sort** (str): Sort order (e.g., 'score desc', 'timestamp asc')
             - **start** (int): Starting offset for pagination (default: 0)
@@ -2404,31 +2409,43 @@ class Project:
                 language="de",
                 top_k=5,
                 threshold=0.1,
-                // Common Solr query parameters:
-                rows=20,                    // Limit number of results
-                start=0,                    // Pagination offset
-                sort="score desc",          // Sort by relevance
-                fl="id,content,score",      // Return only these fields
-                fq="status:active",         // Filter results
-                debugQuery=True             // Include debug info
+                rows=20,
+                start=0,
+                sort="score desc",
+                fl="id,content,score",
+                fq="status:active",
+                debugQuery=True
+            )
+
+            ### Using NeuralSearchParams dataclass
+            params = NeuralSearchParams(
+                text='Wie alt ist der Patient?',
+                pipelineName='ChunkEmbedder',
+                language='de',
+                topK=5,
+                threshold=0.1
+            )
+            results = project.neural_search(
+                neural_search_parameter=params,
+                rows=10,
+                start=20,
+                sort='timestamp desc',
+                fl='id,title',
+                fq='category:medical',
+                debugQuery=False
             )
 
             ### Using dict (backward compatibility)
             params = {
                 'text': 'Wie alt ist der Patient?',
-                'language': 'de',
                 'pipelineName': 'ChunkEmbedder',
+                'language': 'de',
                 'topK': 5,
                 'threshold': 0.1
             }
             results = project.neural_search(
                 neural_search_parameter=params,
-                rows=10,
-                start=20,                   // Get results 21-30
-                sort='timestamp desc',      // Sort by newest first
-                fl='id,title',              // Return only id and title
-                fq='category:medical',      // Filter to medical category
-                debugQuery=False
+                rows=10
             )
         """
         # Handle both parameter styles
@@ -2446,7 +2463,12 @@ class Project:
                     "Cannot use both explicit parameters and neural_search_parameter dict. "
                     "Use either explicit parameters OR neural_search_parameter dict, not both."
                 )
-            request_body = neural_search_parameter
+            # Handle both NeuralSearchParams dataclass and dict
+            if isinstance(neural_search_parameter, NeuralSearchParams):
+                request_body = neural_search_parameter.to_dict()
+            else:
+                # It's a dict - use it directly (backward compatibility)
+                request_body = neural_search_parameter
         else:
             # Validate required parameters when using explicit style
             if text is None:
@@ -4489,7 +4511,7 @@ class Client:
             )
             processes.append(document_collection.get_process(item["processName"]))
         return processes
-    
+
     @experimental_api
     def _read_document(
         self, project_name: str, document_collection_name: str, document_name: str
@@ -4499,9 +4521,7 @@ class Client:
             raise OperationNotSupported(
                 f"The method 'export_documents' is only supported for platform versions >= 9.3.0 (available from Health Discovery version 7.5.0), but current platform is {build_version['platformVersion']}."
             )
-        endpoint = (
-            f"/experimental/projects/{project_name}/documentCollections/{document_collection_name}/export"
-        )
+        endpoint = f"/experimental/projects/{project_name}/documentCollections/{document_collection_name}/export"
 
         response = self.__request_with_json_response(
             "post",
